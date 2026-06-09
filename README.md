@@ -31,6 +31,26 @@ mvn spring-boot:run
 
 Backend mặc định chạy tại `http://localhost:8080`.
 
+## Cấu hình Supabase
+
+Backend đã được cấu hình để đọc kết nối PostgreSQL từ file `backend/.env`.
+
+Các biến đang dùng:
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+
+File mẫu nằm ở `backend/.env.example`.
+
+JDBC URL được dựng theo mẫu:
+
+```text
+jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
+```
+
 ## Cấu trúc chính
 
 ```text
