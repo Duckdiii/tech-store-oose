@@ -1,6 +1,5 @@
 package com.oose.tech_store.entity;
 
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,6 +40,18 @@ public class Invoice extends BaseEntity {
     }
 
     public Invoice(Order order, BigDecimal vatAmount, BigDecimal discountAmount, BigDecimal finalAmount) {
+        if (order == null) {
+            throw new IllegalArgumentException("order must not be null");
+        }
+        if (vatAmount == null) {
+            throw new IllegalArgumentException("vatAmount must not be null");
+        }
+        if (discountAmount == null) {
+            throw new IllegalArgumentException("discountAmount must not be null");
+        }
+        if (finalAmount == null) {
+            throw new IllegalArgumentException("finalAmount must not be null");
+        }
         this.vatAmount = vatAmount;
         this.discountAmount = discountAmount;
         this.finalAmount = finalAmount;

@@ -1,6 +1,5 @@
 package com.oose.tech_store.entity;
 
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;

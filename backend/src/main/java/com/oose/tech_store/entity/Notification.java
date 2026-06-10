@@ -63,6 +63,22 @@ public class Notification extends BaseEntity {
     public Notification(ProductSubscription productSubscription, String title, NotificationType type,
             String message, List<NotificationChannel> channels) {
 
+        if (productSubscription == null) {
+            throw new IllegalArgumentException("productSubscription must not be null");
+        }
+        if (title == null) {
+            throw new IllegalArgumentException("title must not be null");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        if (message == null) {
+            throw new IllegalArgumentException("message must not be null");
+        }
+        if (channels == null || channels.isEmpty()) {
+            throw new IllegalArgumentException("channels must not be null or empty");
+        }
+
         this.productSubscription = productSubscription;
         this.title = title;
         this.type = type;
@@ -83,7 +99,8 @@ public class Notification extends BaseEntity {
     }
 
     public void markRead() {
-        if (readAt == null) readAt = LocalDateTime.now();
+        if (readAt == null)
+            readAt = LocalDateTime.now();
     }
 
     public boolean isRead() {

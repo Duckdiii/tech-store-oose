@@ -43,12 +43,28 @@ public class Promotion extends BaseEntity {
 
         public Promotion(String code, String name, Double discountPercent, LocalDateTime startAt, LocalDateTime endAt,
                         Boolean active, Product product) {
+                if (code == null) {
+                        throw new IllegalArgumentException("code must not be null");
+                }
+                if (name == null) {
+                        throw new IllegalArgumentException("name must not be null");
+                }
+                if (discountPercent == null) {
+                        throw new IllegalArgumentException("discountPercent must not be null");
+                }
+                if (startAt == null) {
+                        throw new IllegalArgumentException("startAt must not be null");
+                }
+                if (endAt == null) {
+                        throw new IllegalArgumentException("endAt must not be null");
+                }
                 this.code = code;
                 this.name = name;
                 this.discountPercent = discountPercent;
                 this.startAt = startAt;
                 this.endAt = endAt;
-                if (active != null) this.active = active;
+                if (active != null)
+                        this.active = active;
                 if (product != null) {
                         addProduct(product);
                 }

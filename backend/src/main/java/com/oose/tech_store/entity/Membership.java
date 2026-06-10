@@ -1,6 +1,5 @@
 package com.oose.tech_store.entity;
 
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,10 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(
-        name = "memberships",
-        uniqueConstraints = @UniqueConstraint(name = "uk_memberships_tier", columnNames = "tier")
-)
+@Table(name = "memberships", uniqueConstraints = @UniqueConstraint(name = "uk_memberships_tier", columnNames = "tier"))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -40,16 +36,15 @@ public class Membership extends BaseEntity {
     private List<Customer> customers = new ArrayList<>();
 
     public Membership(MembershipTier tier, MembershipBenefit benefit, BigDecimal minSpending, BigDecimal maxSpending) {
-        this.tier = tier;
-        assignBenefit(benefit);
-        changeSpendingRange(minSpending, maxSpending);
-    }
-
-    public void assignBenefit(MembershipBenefit benefit) {
+        if (tier == null) {
+            throw new IllegalArgumentException("tier must not be null");
+        }
         if (benefit == null) {
             throw new IllegalArgumentException("benefit must not be null");
         }
+        this.tier = tier;
         this.benefit = benefit;
+        changeSpendingRange(minSpending, maxSpending);
     }
 
     public boolean isSpendingInRange(BigDecimal spending) {

@@ -46,9 +46,18 @@ public class ProductSubscription extends BaseEntity {
     private java.util.List<Notification> notifications = new java.util.ArrayList<>();
 
     public ProductSubscription(Product product, Customer customer, SubscriptionStatus status) {
+        if (product == null) {
+            throw new IllegalArgumentException("product must not be null");
+        }
+        if (customer == null) {
+            throw new IllegalArgumentException("customer must not be null");
+        }
+        if (status == null) {
+            throw new IllegalArgumentException("status must not be null");
+        }
         this.product = product;
         this.customer = customer;
-        if (status != null) this.status = status;
+        this.status = status;
         product.getProductSubscriptions().add(this);
         customer.getProductSubscriptions().add(this);
     }

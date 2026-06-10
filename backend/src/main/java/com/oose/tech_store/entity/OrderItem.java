@@ -19,7 +19,7 @@ public class OrderItem extends BaseEntity {
 
     private static final int MAX_BUNDLE_SERVICES = 2;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_variant_id", nullable = false)
     private ProductVariant productVariant;
 
@@ -27,11 +27,7 @@ public class OrderItem extends BaseEntity {
     private Integer quantity;
 
     @OneToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "order_item_bundle_services",
-            joinColumns = @JoinColumn(name = "order_item_id"),
-            inverseJoinColumns = @JoinColumn(name = "bundle_service_id", unique = true)
-    )
+    @JoinTable(name = "order_item_bundle_services", joinColumns = @JoinColumn(name = "order_item_id"), inverseJoinColumns = @JoinColumn(name = "bundle_service_id", unique = true))
     private List<BundleService> bundleServices = new ArrayList<>();
 
     @PrePersist

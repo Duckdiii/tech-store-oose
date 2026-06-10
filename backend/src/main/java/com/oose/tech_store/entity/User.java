@@ -53,6 +53,12 @@ public abstract class User extends BaseEntity {
         if (fullName == null || fullName.isBlank()) {
             throw new IllegalArgumentException("fullName must not be blank");
         }
+        if (phone == null || phone.isBlank()) {
+            throw new IllegalArgumentException("phone must not be blank");
+        }
+        if (address == null || address.isBlank()) {
+            throw new IllegalArgumentException("address must not be blank");
+        }
         this.fullName = fullName;
         changePhone(phone);
         changeAddress(address);

@@ -43,6 +43,37 @@ public class PhoneSpecification extends BaseEntity {
     public PhoneSpecification(Product product, Double screenSize, String rearCamera, String frontCamera,
             String chipset, Boolean nfcSupported, Integer batteryCapacity, String simType,
             String operatingSystem, String screenResolution) {
+        if (product == null) {
+            throw new IllegalArgumentException("product must not be null");
+        }
+        if (screenSize == null) {
+            throw new IllegalArgumentException("screenSize must not be null");
+        }
+        if (rearCamera == null) {
+            throw new IllegalArgumentException("rearCamera must not be null");
+        }
+        if (frontCamera == null) {
+            throw new IllegalArgumentException("frontCamera must not be null");
+        }
+        if (chipset == null) {
+            throw new IllegalArgumentException("chipset must not be null");
+        }
+
+        if (nfcSupported == null) {
+            throw new IllegalArgumentException("nfcSupported must not be null");
+        }
+        if (batteryCapacity == null) {
+            throw new IllegalArgumentException("batteryCapacity must not be null");
+        }
+        if (simType == null) {
+            throw new IllegalArgumentException("simType must not be null");
+        }
+        if (operatingSystem == null) {
+            throw new IllegalArgumentException("operatingSystem must not be null");
+        }
+        if (screenResolution == null) {
+            throw new IllegalArgumentException("screenResolution must not be null");
+        }
         this.screenSize = screenSize;
         this.rearCamera = rearCamera;
         this.frontCamera = frontCamera;

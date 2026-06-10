@@ -22,6 +22,12 @@ public class Staff extends User {
     private LocalDate hireDate;
 
     public Staff(String fullName, String phone, String staffCode, LocalDate hireDate) {
+        if (staffCode == null) {
+            throw new IllegalArgumentException("staffCode must not be null");
+        }
+        if (hireDate == null) {
+            throw new IllegalArgumentException("hireDate must not be null");
+        }
         super(fullName, phone);
         this.staffCode = staffCode;
         this.hireDate = hireDate;

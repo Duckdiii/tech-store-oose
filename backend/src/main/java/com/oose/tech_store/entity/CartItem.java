@@ -6,6 +6,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -27,15 +28,12 @@ public class CartItem extends BaseEntity {
 
         private static final int MAX_BUNDLE_SERVICES = 2;
 
-        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @OneToOne(fetch = FetchType.LAZY, optional = false)
         @JoinColumn(name = "product_variant_id", nullable = false)
         private ProductVariant productVariant;
 
         @Column(name = "quantity", nullable = false)
         private Integer quantity = 1;
-
-        @Column(name = "selected_for_checkout", nullable = false)
-        private Boolean isSelectedForCheckout = false;
 
         @OneToMany(fetch = FetchType.LAZY)
         @JoinTable(name = "cart_item_bundle_services", joinColumns = @JoinColumn(name = "cart_item_id"), inverseJoinColumns = @JoinColumn(name = "bundle_service_id", unique = true))
@@ -44,9 +42,6 @@ public class CartItem extends BaseEntity {
         public CartItem(Cart cart, ProductVariant productVariant, Integer quantity, Boolean isSelectedForCheckout) {
                 this.productVariant = productVariant;
                 changeQuantity(quantity);
-
-                this.isSelectedForCheckout = isSelectedForCheckout;
-
                 cart.addItem(this);
         }
 
@@ -65,18 +60,6 @@ public class CartItem extends BaseEntity {
                         throw new IllegalArgumentException("quantity must be positive");
                 }
                 this.quantity = quantity;
-        }
-
-        public void selectForCheckout() {
-                isSelectedForCheckout = true;
-        }
-
-        public void unselectForCheckout() {
-                isSelectedForCheckout = false;
-        }
-
-        public boolean isSelected() {
-                return Boolean.TRUE.equals(isSelectedForCheckout);
         }
 
         public BigDecimal getUnitPrice() {

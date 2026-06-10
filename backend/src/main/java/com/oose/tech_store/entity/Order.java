@@ -66,6 +66,15 @@ public class Order extends BaseEntity {
         if (address.getUser() != customer) {
             throw new IllegalArgumentException("address does not belong to customer");
         }
+        if (customer == null) {
+            throw new IllegalArgumentException("customer must not be null");
+        }
+        if (address == null) {
+            throw new IllegalArgumentException("address must not be null");
+        }
+        if (selectedPaymentMethod == null) {
+            throw new IllegalArgumentException("selectedPaymentMethod must not be null");
+        }
         this.customer = customer;
         this.address = address;
         this.selectedPaymentMethod = selectedPaymentMethod;

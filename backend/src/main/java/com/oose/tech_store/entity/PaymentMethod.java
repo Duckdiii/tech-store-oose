@@ -25,6 +25,12 @@ public abstract class PaymentMethod extends BaseEntity {
     protected String description;
 
     protected PaymentMethod(String name, String description) {
+        if (name == null) {
+            throw new IllegalArgumentException("name must not be null");
+        }
+        if (description == null) {
+            throw new IllegalArgumentException("description must not be null");
+        }
         this.name = name;
         this.description = description;
     }

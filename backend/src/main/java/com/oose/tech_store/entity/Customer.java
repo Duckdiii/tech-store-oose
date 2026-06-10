@@ -47,11 +47,4 @@ public class Customer extends User {
         }
     }
 
-    public void createCartIfAbsent() {
-        if (cart == null) {
-            cart = new Cart(this);
-        }
-    }
-
 }
-

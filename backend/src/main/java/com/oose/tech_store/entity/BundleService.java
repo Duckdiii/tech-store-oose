@@ -37,6 +37,24 @@ public class BundleService extends BaseEntity {
 
     public BundleService(String name, BundleServiceType type, String description, BigDecimal price,
             Integer durationMonths, Boolean active) {
+        if (name == null) {
+            throw new IllegalArgumentException("name must not be null");
+        }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        if (description == null) {
+            throw new IllegalArgumentException("description must not be null");
+        }
+        if (price == null) {
+            throw new IllegalArgumentException("price must not be null");
+        }
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("price must not be negative");
+        }
         this.name = name;
         this.type = type;
         this.description = description;
@@ -45,32 +63,6 @@ public class BundleService extends BaseEntity {
         if (active != null) {
             this.active = active;
         }
-    }
-
-    public void activate() {
-        active = true;
-    }
-
-    public void deactivate() {
-        active = false;
-    }
-
-    public boolean isActive() {
-        return Boolean.TRUE.equals(active);
-    }
-
-    public void changePrice(BigDecimal price) {
-        if (price == null) {
-            throw new IllegalArgumentException("price must not be null");
-        }
-        if (price.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("price must not be negative");
-        }
-        this.price = price;
-    }
-
-    public boolean isWarranty() {
-        return BundleServiceType.WARRANTY.equals(type);
     }
 
 }

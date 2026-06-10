@@ -43,6 +43,21 @@ public class Address extends BaseEntity {
     private List<Order> orders = new ArrayList<>();
 
     public Address(User user, String street, String ward, String district, String province) {
+        if (user == null) {
+            throw new IllegalArgumentException("user must not be null");
+        }
+        if (street == null) {
+            throw new IllegalArgumentException("street must not be null");
+        }
+        if (ward == null) {
+            throw new IllegalArgumentException("ward must not be null");
+        }
+        if (district == null) {
+            throw new IllegalArgumentException("district must not be null");
+        }
+        if (province == null) {
+            throw new IllegalArgumentException("province must not be null");
+        }
         this.user = user;
         this.street = street;
         this.ward = ward;
