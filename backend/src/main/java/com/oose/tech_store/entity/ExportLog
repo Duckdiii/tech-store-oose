@@ -1,0 +1,58 @@
+package com.techstore.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "export_logs")
+public class ExportLog {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private LocalDateTime exportDate;
+
+    private String note;
+
+    // Quan hệ Composition: Ràng buộc chặt chẽ vòng đời của các item chi tiết phiếu xuất [cite: 11]
+    @OneToMany(mappedBy = "exportLog", cascade = CascadeType.ALL, orphanRemoval = true) // [cite: 413, 416, 417]
+    private List<ExportLogItem> items = new ArrayList<>();
+
+    // Quan hệ một-một hai chiều, phía không sở hữu khóa ngoại sử dụng mappedBy [cite: 220, 260]
+    @OneToOne(mappedBy = "exportLog") // [cite: 260]
+    private Receipt receipt;
+
+    public ExportLog() { // [cite: 142]
+    }
+
+    @PrePersist
+    public void prePersist() {
+        this.exportDate = LocalDateTime.now();
+    }
+
+    public void addItem(ExportLogItem item) {
+        items.add(item);
+        item.setExportLog(this);
+    }
+
+    public void removeItem(ExportLogItem item) {
+        items.remove(item);
+        item.setExportLog(null);
+    }
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public LocalDateTime getExportDate() { return exportDate; }
+    public void setExportDate(LocalDateTime exportDate) { this.exportDate = exportDate; }
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
+    public List<ExportLogItem> getItems() { return items; }
+    public void setItems(List<ExportLogItem> items) { this.items = items; }
+    public Receipt getReceipt() { return receipt; }
+    public void setReceipt(Receipt receipt) { this.receipt = receipt; }
+}
