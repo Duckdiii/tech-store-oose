@@ -52,5 +52,11 @@ public class Receipt {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public ExportLog getExportLog() { return exportLog; }
-    public void setExportLog(ExportLog exportLog) { this.exportLog = exportLog; }
+    public void setExportLog(ExportLog exportLog) {
+        if (this.exportLog == exportLog) return;
+        this.exportLog = exportLog;
+        if (exportLog != null && exportLog.getReceipt() != this) {
+            exportLog.setReceipt(this);
+        }
+    }
 }

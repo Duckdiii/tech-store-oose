@@ -54,5 +54,11 @@ public class ExportLog {
     public List<ExportLogItem> getItems() { return items; }
     public void setItems(List<ExportLogItem> items) { this.items = items; }
     public Receipt getReceipt() { return receipt; }
-    public void setReceipt(Receipt receipt) { this.receipt = receipt; }
+    public void setReceipt(Receipt receipt) {
+        if (this.receipt == receipt) return;
+        this.receipt = receipt;
+        if (receipt != null && receipt.getExportLog() != this) {
+            receipt.setExportLog(this);
+        }
+    }
 }
