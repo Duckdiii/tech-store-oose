@@ -73,7 +73,7 @@ public class LoginLog extends BaseEntity {
         if (user instanceof Customer) {
             return "CUSTOMER";
         }
-        return null;
+        return "UNKNOWN";
     }
 
     public static LoginLog failure(Account account) {

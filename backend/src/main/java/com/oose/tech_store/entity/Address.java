@@ -65,4 +65,27 @@ public class Address extends BaseEntity {
         this.province = province;
         user.getAddresses().add(this);
     }
+
+    public void update(String street, String ward, String district, String province) {
+        if (street == null) {
+            throw new IllegalArgumentException("street must not be null");
+        }
+        if (ward == null) {
+            throw new IllegalArgumentException("ward must not be null");
+        }
+        if (district == null) {
+            throw new IllegalArgumentException("district must not be null");
+        }
+        if (province == null) {
+            throw new IllegalArgumentException("province must not be null");
+        }
+        this.street = street;
+        this.ward = ward;
+        this.district = district;
+        this.province = province;
+    }
+
+    public String getFullAddress() {
+        return String.join(", ", street, ward, district, province);
+    }
 }

@@ -52,12 +52,30 @@ public class Account extends BaseEntity {
                 attachUser(user);
         }
 
+        public void changePassword(String newPassword) {
+                if (newPassword == null || newPassword.isBlank()) {
+                        throw new IllegalArgumentException("newPassword must not be blank");
+                }
+                this.password = newPassword;
+        }
+
+        public void block() {
+                this.status = AccountStatus.BLOCKED;
+        }
+
+        public void unblock() {
+                this.status = AccountStatus.ACTIVE;
+        }
+
+        public void delete() {
+                this.status = AccountStatus.DELETED;
+        }
+
         public void attachUser(User user) {
                 if (user == null) {
                         throw new IllegalArgumentException("user must not be null");
                 }
                 if (this.user == user) {
-                        user.setAccount(this);
                         return;
                 }
                 if (this.user != null) {

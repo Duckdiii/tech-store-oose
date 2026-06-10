@@ -153,6 +153,26 @@ public class Product extends BaseEntity {
         return maxPrice;
     }
 
+    public void addPromotion(Promotion promotion) {
+        if (promotion == null) {
+            throw new IllegalArgumentException("promotion must not be null");
+        }
+        if (!promotions.contains(promotion)) {
+            promotions.add(promotion);
+        }
+        if (!promotion.getProducts().contains(this)) {
+            promotion.getProducts().add(this);
+        }
+    }
+
+    public void removePromotion(Promotion promotion) {
+        if (promotion == null) {
+            return;
+        }
+        promotions.remove(promotion);
+        promotion.getProducts().remove(this);
+    }
+
     public boolean hasAvailableVariant(Inventory inventory) {
         return variants.stream()
                 .anyMatch(variant -> variant.hasEnoughStockIn(inventory, 1));

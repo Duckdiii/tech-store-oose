@@ -65,4 +65,35 @@ public class BundleService extends BaseEntity {
         }
     }
 
+    public void update(String name, String description, BigDecimal price, Integer durationMonths) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (description == null) {
+            throw new IllegalArgumentException("description must not be null");
+        }
+        if (price == null) {
+            throw new IllegalArgumentException("price must not be null");
+        }
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("price must not be negative");
+        }
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.durationMonths = durationMonths;
+    }
+
+    public void activate() {
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public boolean isActive() {
+        return Boolean.TRUE.equals(active);
+    }
+
 }

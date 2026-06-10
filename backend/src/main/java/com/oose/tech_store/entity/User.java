@@ -49,34 +49,34 @@ public abstract class User extends BaseEntity {
         this.phone = phone;
     }
 
-    public void updateProfile(String fullName, String phone, String address) {
+    public void updateProfile(String fullName, String phone) {
         if (fullName == null || fullName.isBlank()) {
             throw new IllegalArgumentException("fullName must not be blank");
         }
         if (phone == null || phone.isBlank()) {
             throw new IllegalArgumentException("phone must not be blank");
         }
-        if (address == null || address.isBlank()) {
-            throw new IllegalArgumentException("address must not be blank");
-        }
         this.fullName = fullName;
         changePhone(phone);
-        changeAddress(address);
     }
 
     public void changePhone(String phone) {
         this.phone = phone;
     }
 
-    public void changeAddress(String address) {
-        if (address == null || address.isBlank()) {
-            throw new IllegalArgumentException("address must not be blank");
+    public void changeAddress(String street, String ward, String district, String province) {
+        if (street == null || street.isBlank()) {
+            throw new IllegalArgumentException("street must not be blank");
         }
         if (addresses.isEmpty()) {
-            new Address(this, address, null, null, null);
+            new Address(this, street, ward, district, province);
             return;
         }
-        addresses.get(0).setStreet(address);
+        Address primary = addresses.get(0);
+        primary.setStreet(street);
+        primary.setWard(ward);
+        primary.setDistrict(district);
+        primary.setProvince(province);
     }
 
     public String getDisplayName() {

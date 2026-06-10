@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
+import com.oose.tech_store.entity.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,15 @@ public class Customer extends User {
         if (!membership.getCustomers().contains(this)) {
             membership.getCustomers().add(this);
         }
+    }
+
+    public boolean isSubscribedTo(Product product) {
+        if (product == null) {
+            return false;
+        }
+        return productSubscriptions.stream()
+                .anyMatch(sub -> sub.getProduct() == product
+                        && SubscriptionStatus.SUBSCRIBED.equals(sub.getStatus()));
     }
 
 }

@@ -45,6 +45,16 @@ public class ProductSubscription extends BaseEntity {
     @OneToMany(mappedBy = "productSubscription", fetch = FetchType.LAZY)
     private java.util.List<Notification> notifications = new java.util.ArrayList<>();
 
+    public void unsubscribe() {
+        this.status = SubscriptionStatus.UNSUBSCRIBED;
+        this.unsubscribedAt = LocalDateTime.now();
+    }
+
+    public void resubscribe() {
+        this.status = SubscriptionStatus.SUBSCRIBED;
+        this.unsubscribedAt = null;
+    }
+
     public ProductSubscription(Product product, Customer customer, SubscriptionStatus status) {
         if (product == null) {
             throw new IllegalArgumentException("product must not be null");

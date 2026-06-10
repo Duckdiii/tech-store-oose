@@ -79,10 +79,6 @@ public class ImportLog extends BaseEntity {
         note = reason;
     }
 
-    public void complete() {
-        status = ImportAndExportStatus.SUCCESS;
-    }
-
     public boolean isCompleted() {
         return ImportAndExportStatus.SUCCESS.equals(status);
     }

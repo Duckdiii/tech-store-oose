@@ -46,7 +46,7 @@ public class ProductVariant extends BaseEntity {
         if (price == null) {
             throw new IllegalArgumentException("price must not be null");
         }
-        if (color != null && color.length() > 80) {
+        if (color.length() > 80) {
             throw new IllegalArgumentException("color length must not exceed 80 characters");
         }
         this.ramGb = ramGb;

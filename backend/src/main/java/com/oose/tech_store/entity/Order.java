@@ -63,9 +63,6 @@ public class Order extends BaseEntity {
     private List<PaymentLog> paymentLogs = new ArrayList<>();
 
     public Order(Customer customer, Address address, PaymentMethod selectedPaymentMethod) {
-        if (address.getUser() != customer) {
-            throw new IllegalArgumentException("address does not belong to customer");
-        }
         if (customer == null) {
             throw new IllegalArgumentException("customer must not be null");
         }
@@ -74,6 +71,9 @@ public class Order extends BaseEntity {
         }
         if (selectedPaymentMethod == null) {
             throw new IllegalArgumentException("selectedPaymentMethod must not be null");
+        }
+        if (address.getUser() != customer) {
+            throw new IllegalArgumentException("address does not belong to customer");
         }
         this.customer = customer;
         this.address = address;

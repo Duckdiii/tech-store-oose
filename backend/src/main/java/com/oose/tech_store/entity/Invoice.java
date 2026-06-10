@@ -57,4 +57,19 @@ public class Invoice extends BaseEntity {
         this.finalAmount = finalAmount;
         order.assignInvoice(this);
     }
+
+    public void update(BigDecimal vatAmount, BigDecimal discountAmount, BigDecimal finalAmount) {
+        if (vatAmount == null) {
+            throw new IllegalArgumentException("vatAmount must not be null");
+        }
+        if (discountAmount == null) {
+            throw new IllegalArgumentException("discountAmount must not be null");
+        }
+        if (finalAmount == null) {
+            throw new IllegalArgumentException("finalAmount must not be null");
+        }
+        this.vatAmount = vatAmount;
+        this.discountAmount = discountAmount;
+        this.finalAmount = finalAmount;
+    }
 }

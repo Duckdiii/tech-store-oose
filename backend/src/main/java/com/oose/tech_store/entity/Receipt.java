@@ -42,4 +42,11 @@ public class Receipt extends BaseEntity {
         this.exportLog = exportLog;
         this.fileUrl = fileUrl;
     }
+
+    public void updateFileUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException("fileUrl must not be blank");
+        }
+        this.fileUrl = fileUrl;
+    }
 }

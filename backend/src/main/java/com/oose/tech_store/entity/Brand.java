@@ -50,4 +50,19 @@ public class Brand extends BaseEntity {
         this.description = description;
     }
 
+    public void update(String name, String logoUrl, String description) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (logoUrl == null || logoUrl.isBlank()) {
+            throw new IllegalArgumentException("logoUrl must not be blank");
+        }
+        if (description == null) {
+            throw new IllegalArgumentException("description must not be null");
+        }
+        this.name = name;
+        this.logoUrl = logoUrl;
+        this.description = description;
+    }
+
 }

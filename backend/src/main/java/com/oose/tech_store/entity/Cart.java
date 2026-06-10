@@ -47,4 +47,14 @@ public class Cart extends BaseEntity {
             items.add(item);
         }
     }
+
+    public void removeItem(CartItem item) {
+        items.remove(item);
+    }
+
+    public BigDecimal calculateTotal() {
+        return items.stream()
+                .map(CartItem::calculateSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 }
