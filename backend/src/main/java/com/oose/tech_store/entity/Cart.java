@@ -1,65 +1,124 @@
 package com.oose.tech_store.entity;
 
 import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "carts")
-public class Cart {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Cart extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false, unique = true)
+    private Customer customer;
 
-	@Column(name = "customer_id", nullable = false, unique = true, length = 36)
-	private String customerId;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "cart_id", nullable = false)
+    private List<CartItem> items = new ArrayList<>();
 
-	@OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<CartItem> items = new ArrayList<>();
+    public Cart(Customer customer) {
 
-	protected Cart() {
-	}
+        this.customer = customer;
+        customer.setCart(this);
+    }
 
-	public Cart(String customerId) {
-		if (customerId == null || customerId.isBlank()) {
-			throw new IllegalArgumentException("Customer id is required");
-		}
-		this.customerId = customerId;
-	}
+    public void addItem(CartItem item) {
+        if (item == null) {
+            throw new IllegalArgumentException("item must not be null");
+        }
+        if (!items.contains(item)) {
+            items.add(item);
+        }
+    }
 
-	public CartItem addItem(String productVariantId, int quantity) {
-		CartItem item = new CartItem(productVariantId, quantity);
-		item.attachTo(this);
-		items.add(item);
-		return item;
-	}
+    public void addItem(ProductVariant variant, int quantity) {
+        if (variant == null) {
+            throw new IllegalArgumentException("variant must not be null");
+        }
+        validatePositiveQuantity(quantity);
 
-	public void removeItem(CartItem item) {
-		if (items.remove(item)) {
-			item.detachFromCart();
-		}
-	}
+        CartItem existingItem = findSimpleItemByVariant(variant);
+        if (existingItem != null) {
+            existingItem.increaseQuantity(quantity);
+            return;
+        }
 
-	public String getId() {
-		return id;
-	}
+        new CartItem(this, variant, quantity, true);
+    }
 
-	public String getCustomerId() {
-		return customerId;
-	}
+    public void removeItem(CartItem item) {
+        if (item == null) {
+            return;
+        }
+        if (items.remove(item)) {
+            for (BundleService bundleService : new ArrayList<>(item.getBundleServices())) {
+                item.removeBundleService(bundleService);
+            }
+        }
+    }
 
-	public List<CartItem> getItems() {
-		return Collections.unmodifiableList(items);
-	}
+    public void removeItemByVariant(ProductVariant variant) {
+        if (variant == null) {
+            return;
+        }
+        new ArrayList<>(items).stream()
+                .filter(item -> item.getProductVariant() == variant)
+                .forEach(this::removeItem);
+    }
+
+    public void clear() {
+        new ArrayList<>(items).forEach(this::removeItem);
+    }
+
+    public List<CartItem> getSelectedItems() {
+        return items.stream()
+                .filter(CartItem::isSelected)
+                .toList();
+    }
+
+    public boolean isEmpty() {
+        return items.isEmpty();
+    }
+
+    public BigDecimal calculateSelectedTotal() {
+        return getSelectedItems().stream()
+                .map(CartItem::calculateSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public void selectAllItems() {
+        items.forEach(CartItem::selectForCheckout);
+    }
+
+    public void unselectAllItems() {
+        items.forEach(CartItem::unselectForCheckout);
+    }
+
+    private CartItem findSimpleItemByVariant(ProductVariant variant) {
+        return items.stream()
+                .filter(item -> item.getProductVariant() == variant)
+                .filter(item -> item.getBundleServices() == null || item.getBundleServices().isEmpty())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void validatePositiveQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
+    }
 }

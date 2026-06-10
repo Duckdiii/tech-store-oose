@@ -1,145 +1,109 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Entity
-@Table(name = "promotions")
-public class Promotion {
+@Table(name = "promotions", uniqueConstraints = @UniqueConstraint(name = "uk_promotions_code", columnNames = "code"))
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Promotion extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+        @JsonIgnore
+        @ManyToMany(mappedBy = "promotions", fetch = FetchType.LAZY)
+        private List<Product> products = new ArrayList<>();
 
-	@Column(nullable = false, unique = true, length = 50)
-	private String code;
+        @Column(name = "code", nullable = false, length = 80)
+        private String code;
 
-	@Column(nullable = false, length = 150)
-	private String name;
+        @Column(name = "name", nullable = false, length = 150)
+        private String name;
 
-	@Column(name = "discount_percent", nullable = false, precision = 5, scale = 2)
-	private BigDecimal discountPercent;
+        @Column(name = "discount_percent", nullable = false)
+        private Double discountPercent;
 
-	@Column(name = "start_at", nullable = false)
-	private LocalDateTime startAt;
+        @Column(name = "start_at", nullable = false)
+        private LocalDateTime startAt;
 
-	@Column(name = "end_at", nullable = false)
-	private LocalDateTime endAt;
+        @Column(name = "end_at", nullable = false)
+        private LocalDateTime endAt;
 
-	@Column(nullable = false)
-	private boolean active;
+        @Column(name = "active", nullable = false)
+        private Boolean active = true;
 
-	@ManyToMany(mappedBy = "promotions")
-	private List<Product> products = new ArrayList<>();
+        public Promotion(String code, String name, Double discountPercent, LocalDateTime startAt, LocalDateTime endAt,
+                        Boolean active, Product product) {
+                this.code = code;
+                this.name = name;
+                this.discountPercent = discountPercent;
+                this.startAt = startAt;
+                this.endAt = endAt;
+                if (active != null) this.active = active;
+                if (product != null) {
+                        addProduct(product);
+                }
+        }
 
-	protected Promotion() {
-	}
+        public void addProduct(Product product) {
+                if (product == null) {
+                        throw new IllegalArgumentException("product must not be null");
+                }
+                if (!products.contains(product)) {
+                        products.add(product);
+                }
+                if (!product.getPromotions().contains(this)) {
+                        product.getPromotions().add(this);
+                }
+        }
 
-	public Promotion(String code, String name, BigDecimal discountPercent, LocalDateTime startAt,
-			LocalDateTime endAt, boolean active) {
-		this.code = requireText(code, "Promotion code is required");
-		this.name = requireText(name, "Promotion name is required");
-		this.discountPercent = requireDiscount(discountPercent);
-		this.startAt = requireDate(startAt, "Promotion start time is required");
-		this.endAt = requireDate(endAt, "Promotion end time is required");
-		this.active = active;
-	}
+        public void removeProduct(Product product) {
+                if (product == null) {
+                        return;
+                }
+                products.remove(product);
+                product.getPromotions().remove(this);
+        }
 
-	void addProduct(Product product) {
-		if (!products.contains(product)) {
-			products.add(product);
-		}
-	}
+        public boolean isActiveNow() {
+                LocalDateTime now = LocalDateTime.now();
+                return Boolean.TRUE.equals(active)
+                                && (now.isEqual(startAt) || now.isAfter(startAt))
+                                && (now.isEqual(endAt) || now.isBefore(endAt));
+        }
 
-	void removeProduct(Product product) {
-		products.remove(product);
-	}
+        public boolean canApplyTo(Product product) {
+                return isActiveNow() && products.contains(product);
+        }
 
-	private static String requireText(String value, String message) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(message);
-		}
-		return value;
-	}
+        public BigDecimal calculateDiscount(BigDecimal amount) {
+                if (amount == null) {
+                        throw new IllegalArgumentException("amount must not be null");
+                }
+                if (amount.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new IllegalArgumentException("amount must not be negative");
+                }
+                if (discountPercent == null) {
+                        throw new IllegalStateException("discountPercent must not be null");
+                }
+                return amount.multiply(BigDecimal.valueOf(discountPercent))
+                                .divide(BigDecimal.valueOf(100));
+        }
 
-	private static LocalDateTime requireDate(LocalDateTime value, String message) {
-		if (value == null) {
-			throw new IllegalArgumentException(message);
-		}
-		return value;
-	}
+        public void activate() {
+                active = true;
+        }
 
-	private static BigDecimal requireDiscount(BigDecimal value) {
-		if (value == null || value.signum() < 0 || value.compareTo(new BigDecimal("100.00")) > 0) {
-			throw new IllegalArgumentException("Discount percent must be between 0 and 100");
-		}
-		return value;
-	}
-
-	public String getId() {
-		return id;
-	}
-
-	public String getCode() {
-		return code;
-	}
-
-	public void setCode(String code) {
-		this.code = requireText(code, "Promotion code is required");
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = requireText(name, "Promotion name is required");
-	}
-
-	public BigDecimal getDiscountPercent() {
-		return discountPercent;
-	}
-
-	public void setDiscountPercent(BigDecimal discountPercent) {
-		this.discountPercent = requireDiscount(discountPercent);
-	}
-
-	public LocalDateTime getStartAt() {
-		return startAt;
-	}
-
-	public void setStartAt(LocalDateTime startAt) {
-		this.startAt = requireDate(startAt, "Promotion start time is required");
-	}
-
-	public LocalDateTime getEndAt() {
-		return endAt;
-	}
-
-	public void setEndAt(LocalDateTime endAt) {
-		this.endAt = requireDate(endAt, "Promotion end time is required");
-	}
-
-	public boolean isActive() {
-		return active;
-	}
-
-	public void setActive(boolean active) {
-		this.active = active;
-	}
-
-	public List<Product> getProducts() {
-		return Collections.unmodifiableList(products);
-	}
+        public void deactivate() {
+                active = false;
+        }
 }

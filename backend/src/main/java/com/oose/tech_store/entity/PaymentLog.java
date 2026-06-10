@@ -1,84 +1,46 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import com.oose.tech_store.entity.enums.PaymentLogStatus;
+import jakarta.persistence.*;
 @Entity
 @Table(name = "payment_logs")
-public class PaymentLog {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class PaymentLog extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 40)
+    private PaymentLogStatus status;
 
-	@Column(name = "order_id", nullable = false, length = 36)
-	private String orderId;
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    private String failureReason;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
-	private PaymentLogStatus status;
+    public PaymentLog(Order order, PaymentLogStatus status, String failureReason) {
+        this.status = status;
+        this.failureReason = failureReason;
+        order.addPaymentLog(this);
+    }
 
-	@Column(name = "failure_reason", length = 500)
-	private String failureReason;
+    public void markSuccess() {
+        status = PaymentLogStatus.SUCCESS;
+        failureReason = null;
+    }
 
-	protected PaymentLog() {
-	}
+    public void markFailed(String reason) {
+        status = PaymentLogStatus.FAILED;
+        failureReason = reason;
+    }
 
-	public PaymentLog(String orderId) {
-		this.orderId = requireOrderId(orderId);
-		this.status = PaymentLogStatus.PENDING;
-	}
+    public boolean isSuccess() {
+        return PaymentLogStatus.SUCCESS.equals(status);
+    }
 
-	public void markSuccess() {
-		this.status = PaymentLogStatus.SUCCESS;
-		this.failureReason = null;
-	}
-
-	public void markFailed(String failureReason) {
-		if (failureReason == null || failureReason.isBlank()) {
-			throw new IllegalArgumentException("Failure reason is required");
-		}
-		this.status = PaymentLogStatus.FAILED;
-		this.failureReason = failureReason;
-	}
-
-	public void markCancelled() {
-		this.status = PaymentLogStatus.CANCELLED;
-		this.failureReason = null;
-	}
-
-	public void markRefunded() {
-		this.status = PaymentLogStatus.REFUNDED;
-		this.failureReason = null;
-	}
-
-	private static String requireOrderId(String orderId) {
-		if (orderId == null || orderId.isBlank()) {
-			throw new IllegalArgumentException("Order id is required");
-		}
-		return orderId;
-	}
-
-	public String getId() {
-		return id;
-	}
-
-	public String getOrderId() {
-		return orderId;
-	}
-
-	public PaymentLogStatus getStatus() {
-		return status;
-	}
-
-	public String getFailureReason() {
-		return failureReason;
-	}
+    public boolean isFailed() {
+        return PaymentLogStatus.FAILED.equals(status);
+    }
 }

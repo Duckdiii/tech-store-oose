@@ -1,40 +1,76 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "item_inventories")
-public class ItemInventory {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ItemInventory extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
 
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private Integer quantity = 0;
 
-    // Phía sở hữu quan hệ Nhiều-Một đối với Inventory [cite: 225]
-    @ManyToOne(fetch = FetchType.LAZY) // Luôn dùng LAZY 
-    @JoinColumn(name = "inventory_id", nullable = false) // Khóa ngoại bắt buộc [cite: 215, 524]
-    private Inventory inventory;
-
-    /* Quan hệ Aggregation hướng tới Product (nằm ngoài phân vùng).
-       Xóa bản ghi tồn kho không được phép xóa mất định nghĩa sản phẩm.
-    */
-    @ManyToOne(fetch = FetchType.LAZY) // [cite: 519]
-    @JoinColumn(name = "product_id", nullable = false) // [cite: 519]
-    private Product product;
-
-    public ItemInventory() { // [cite: 142]
+    public ItemInventory(Inventory inventory, ProductVariant productVariant, Integer quantity) {
+        if (quantity == null || quantity < 0) {
+            throw new IllegalArgumentException("quantity must not be null or negative");
+        }
+        this.quantity = quantity;
+        this.productVariant = productVariant;
+        inventory.addItem(this);
+        productVariant.addInventoryItem(this);
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
-    public Inventory getInventory() { return inventory; }
-    public void setInventory(Inventory inventory) { this.inventory = inventory; }
-    public Product getProduct() { return product; }
-    public void setProduct(Product product) { this.product = product; }
+    public void changeQuantity(Integer quantity) {
+        if (quantity == null) {
+            throw new IllegalArgumentException("quantity must not be null");
+        }
+        adjustQuantity(quantity);
+    }
+
+    public boolean hasEnoughStock(int requestedQuantity) {
+        return requestedQuantity > 0 && quantity >= requestedQuantity;
+    }
+
+    public void increaseQuantity(int amount) {
+        validatePositiveAmount(amount);
+        quantity += amount;
+    }
+
+    public void decreaseQuantity(int amount) {
+        validatePositiveAmount(amount);
+        if (quantity - amount < 0) {
+            throw new IllegalArgumentException("quantity cannot be negative");
+        }
+        quantity -= amount;
+    }
+
+    public void adjustQuantity(int newQuantity) {
+        if (newQuantity < 0) {
+            throw new IllegalArgumentException("newQuantity must not be negative");
+        }
+        quantity = newQuantity;
+    }
+
+    private void validatePositiveAmount(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+    }
 }

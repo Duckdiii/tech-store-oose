@@ -1,55 +1,107 @@
 package com.oose.tech_store.entity;
 
-import java.util.ArrayList; // [cite: 61]
-import java.util.List;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Entity // [cite: 137]
-@Table(name = "inventories") // Đặt tên bảng dạng số nhiều [cite: 140, 403]
-public class Inventory {
+@Entity
+@Table(name = "inventories")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Inventory extends BaseEntity {
 
-    @Id // [cite: 140]
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // [cite: 140]
-    private Long id;
+    @Column(name = "location", length = 255)
+    private String location;
 
-    @Column(nullable = false, length = 150)
-    private String name;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "inventory_id", nullable = false)
+    private List<ItemInventory> items = new ArrayList<>();
 
-    private String address;
-
-    // Quan hệ Composition: ItemInventory sống chết theo Kho hàng [cite: 11]
-    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true) // 
-    private List<ItemInventory> items = new ArrayList<>(); // [cite: 198]
-
-    public Inventory() { // Constructor rỗng bắt buộc [cite: 142]
+    public Inventory(String location) {
+        this.location = location;
     }
 
-    // Helper methods đồng bộ hai chiều [cite: 345, 349]
+    public void changeLocation(String location) {
+        this.location = location;
+    }
+
     public void addItem(ItemInventory item) {
-        items.add(item);
-        item.setInventory(this);
+        if (item == null) {
+            throw new IllegalArgumentException("item must not be null");
+        }
+        if (!items.contains(item)) {
+            items.add(item);
+        }
     }
 
     public void removeItem(ItemInventory item) {
         items.remove(item);
-        item.setInventory(null);
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
-    public List<ItemInventory> getItems() { return items; }
-    public void setItems(List<ItemInventory> items) { this.items = items; }
+    public ItemInventory findItem(ProductVariant productVariant) {
+        if (productVariant == null) {
+            return null;
+        }
+        return items.stream()
+                .filter(i -> i.getProductVariant() == productVariant)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public boolean containsVariant(ProductVariant productVariant) {
+        return findItem(productVariant) != null;
+    }
+
+    public int getQuantity() {
+        int totalQuantity = 0;
+        for (ItemInventory item : items) {
+            if (item == null) {
+                throw new IllegalStateException("inventory item must not be null");
+            }
+            if (item.getQuantity() == null) {
+                throw new IllegalStateException("inventory item quantity must not be null");
+            }
+            totalQuantity += item.getQuantity();
+        }
+        return totalQuantity;
+    }
+
+    public boolean hasEnoughStock(int amount) {
+        return amount > 0 && getQuantity() >= amount;
+    }
+
+    public boolean hasEnoughStock(ProductVariant productVariant, int requestedQuantity) {
+        ItemInventory item = findItem(productVariant);
+        return item != null && item.hasEnoughStock(requestedQuantity);
+    }
+
+    public void increaseQuantity(ProductVariant productVariant, int amount) {
+        getRequiredItem(productVariant).increaseQuantity(amount);
+    }
+
+    public void decreaseQuantity(ProductVariant productVariant, int amount) {
+        getRequiredItem(productVariant).decreaseQuantity(amount);
+    }
+
+    public void adjustQuantity(ProductVariant productVariant, int newQuantity) {
+        getRequiredItem(productVariant).adjustQuantity(newQuantity);
+    }
+
+    private ItemInventory getRequiredItem(ProductVariant productVariant) {
+        ItemInventory item = findItem(productVariant);
+        if (item == null) {
+            throw new IllegalArgumentException("Inventory item not found for product variant");
+        }
+        return item;
+    }
 }

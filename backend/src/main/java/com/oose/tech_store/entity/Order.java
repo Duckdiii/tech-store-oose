@@ -1,116 +1,189 @@
 package com.oose.tech_store.entity;
 
+import com.oose.tech_store.entity.enums.OrderStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "orders")
-public class Order {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Order extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
 
-	@Column(name = "customer_id", nullable = false, length = 36)
-	private String customerId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "address_id", nullable = false)
+    private Address address;
 
-	@Column(name = "customer_address_id", nullable = false, length = 36)
-	private String customerAddressId;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "order_id", nullable = false)
+    private List<OrderItem> items = new ArrayList<>();
 
-	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<OrderItem> items = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "selected_payment_method_id", nullable = false)
+    private PaymentMethod selectedPaymentMethod;
 
-	@Column(name = "order_date", nullable = false)
-	private LocalDateTime orderDate;
+    @Column(name = "order_date", nullable = false)
+    private LocalDateTime orderDate;
 
-	@Column(name = "paid_at")
-	private LocalDateTime paidAt;
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
 
-	@Enumerated(EnumType.STRING)
-	@Column(name = "order_status", nullable = false, length = 30)
-	private OrderStatus orderStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_status", nullable = false, length = 40)
+    private OrderStatus orderStatus = OrderStatus.AWAITING_CONFIRMATION;
 
-	protected Order() {
-	}
+    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
+    private Invoice invoice;
 
-	public Order(String customerId, String customerAddressId, LocalDateTime orderDate) {
-		this.customerId = requireText(customerId, "Customer id is required");
-		this.customerAddressId = requireText(customerAddressId, "Customer address id is required");
-		this.orderDate = orderDate == null ? LocalDateTime.now() : orderDate;
-		this.orderStatus = OrderStatus.AWAITING_CONFIRMATION;
-	}
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private List<PaymentLog> paymentLogs = new ArrayList<>();
 
-	public OrderItem addItem(String productVariantId, int quantity, BigDecimal unitPriceAtOrder) {
-		OrderItem item = new OrderItem(productVariantId, quantity, unitPriceAtOrder);
-		item.attachTo(this);
-		items.add(item);
-		return item;
-	}
+    public Order(Customer customer, Address address, PaymentMethod selectedPaymentMethod) {
+        if (address.getUser() != customer) {
+            throw new IllegalArgumentException("address does not belong to customer");
+        }
+        this.customer = customer;
+        this.address = address;
+        this.selectedPaymentMethod = selectedPaymentMethod;
+        address.getOrders().add(this);
+    }
 
-	public void removeItem(OrderItem item) {
-		if (items.remove(item)) {
-			item.detachFromOrder();
-		}
-	}
+    public void addItem(OrderItem item) {
+        if (item == null) {
+            throw new IllegalArgumentException("item must not be null");
+        }
+        if (!items.contains(item)) {
+            items.add(item);
+        }
+    }
 
-	public void markPaid(LocalDateTime paidAt) {
-		this.paidAt = paidAt == null ? LocalDateTime.now() : paidAt;
-	}
+    public void removeItem(OrderItem item) {
+        if (item == null) {
+            return;
+        }
+        if (items.remove(item)) {
+            item.getBundleServices().clear();
+        }
+    }
 
-	public void changeStatus(OrderStatus orderStatus) {
-		if (orderStatus == null) {
-			throw new IllegalArgumentException("Order status is required");
-		}
-		this.orderStatus = orderStatus;
-	}
+    public void assignPaymentMethod(PaymentMethod paymentMethod) {
+        if (paymentMethod == null) {
+            throw new IllegalArgumentException("paymentMethod must not be null");
+        }
+        selectedPaymentMethod = paymentMethod;
+    }
 
-	private static String requireText(String value, String message) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(message);
-		}
-		return value;
-	}
+    public void confirm() {
+        orderStatus = OrderStatus.PROCESSING;
+    }
 
-	public String getId() {
-		return id;
-	}
+    public void markPaid() {
+        paidAt = LocalDateTime.now();
+        if (OrderStatus.AWAITING_CONFIRMATION.equals(orderStatus)) {
+            confirm();
+        }
+    }
 
-	public String getCustomerId() {
-		return customerId;
-	}
+    public void markShipping() {
+        orderStatus = OrderStatus.SHIPPING;
+    }
 
-	public String getCustomerAddressId() {
-		return customerAddressId;
-	}
+    public void complete() {
+        orderStatus = OrderStatus.COMPLETED;
+    }
 
-	public List<OrderItem> getItems() {
-		return Collections.unmodifiableList(items);
-	}
+    public void cancel() {
+        if (!canCancel()) {
+            throw new IllegalStateException("Order cannot be cancelled in current status");
+        }
+        orderStatus = OrderStatus.CANCELLED;
+    }
 
-	public LocalDateTime getOrderDate() {
-		return orderDate;
-	}
+    public boolean canCancel() { // chỉ cho phép hủy khi đang chờ xác nhận hoặc đang xử lý
+        return OrderStatus.AWAITING_CONFIRMATION.equals(orderStatus)
+                || OrderStatus.PROCESSING.equals(orderStatus);
+    }
 
-	public LocalDateTime getPaidAt() {
-		return paidAt;
-	}
+    public boolean isPaid() {
+        return paidAt != null;
+    }
 
-	public OrderStatus getOrderStatus() {
-		return orderStatus;
-	}
+    public BigDecimal calculateSubtotal() {
+        return items.stream()
+                .map(OrderItem::calculateTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public BigDecimal calculateTotal() {
+        if (invoice != null && invoice.getFinalAmount() != null) {
+            return invoice.getFinalAmount();
+        }
+        return calculateSubtotal();
+    }
+
+    public void assignInvoice(Invoice invoice) {
+        if (invoice == null) {
+            removeInvoice();
+            return;
+        }
+        if (this.invoice == invoice) {
+            invoice.setOrder(this);
+            return;
+        }
+        removeInvoice();
+        if (invoice.getOrder() != null && invoice.getOrder() != this) {
+            invoice.getOrder().setInvoice(null);
+        }
+        this.invoice = invoice;
+        invoice.setOrder(this);
+    }
+
+    public void addPaymentLog(PaymentLog paymentLog) {
+        if (paymentLog == null) {
+            throw new IllegalArgumentException("paymentLog must not be null");
+        }
+        if (!paymentLogs.contains(paymentLog)) {
+            paymentLogs.add(paymentLog);
+        }
+    }
+
+    @PrePersist
+    protected void prePersistOrder() {
+        if (orderDate == null) {
+            orderDate = LocalDateTime.now();
+        }
+    }
+
+    private void removeInvoice() {
+        if (invoice == null) {
+            return;
+        }
+        Invoice currentInvoice = invoice;
+        invoice = null;
+        currentInvoice.setOrder(null);
+    }
 }

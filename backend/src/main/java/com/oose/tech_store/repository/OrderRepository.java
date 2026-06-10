@@ -1,7 +1,7 @@
 package com.oose.tech_store.repository;
 
 import com.oose.tech_store.entity.Order;
-import com.oose.tech_store.entity.OrderStatus;
+import com.oose.tech_store.entity.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

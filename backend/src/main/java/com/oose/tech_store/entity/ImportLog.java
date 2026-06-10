@@ -1,62 +1,108 @@
 package com.oose.tech_store.entity;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import com.oose.tech_store.entity.enums.ImportAndExportStatus;
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-
 @Entity
 @Table(name = "import_logs")
-public class ImportLog {
+@Getter
+@Setter
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ImportLog extends BaseEntity {
 
-    @Column(nullable = false) // [cite: 170]
-    private LocalDateTime importDate; // Kiểu dữ liệu thời gian [cite: 179]
-
-    private String note;
-
-    // Quan hệ Composition: Xóa phiếu nhập tự động xóa toàn bộ các dòng chi tiết [cite: 11, 508, 509]
-    @OneToMany(mappedBy = "importLog", cascade = CascadeType.ALL, orphanRemoval = true) // [cite: 501, 504, 505]
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "import_log_id", nullable = false)
     private List<ImportLogItem> items = new ArrayList<>();
 
-    public ImportLog() { // [cite: 142]
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "performed_by", nullable = false)
+    private User performedBy;
+
+    @Column(name = "imported_at", nullable = false)
+    private LocalDateTime importedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private ImportAndExportStatus status = ImportAndExportStatus.PENDING;
+
+    @Column(name = "note", columnDefinition = "TEXT")
+    private String note;
+
+    @PrePersist
+    protected void prePersistImportLog() {
+        if (importedAt == null) {
+            importedAt = LocalDateTime.now();
+        }
     }
 
-    @PrePersist // Tự động bắt thời gian thực khi tạo mới phiếu [cite: 173, 174]
-    public void prePersist() {
-        this.importDate = LocalDateTime.now(); // [cite: 175]
+    public ImportLog(User performedBy, ImportAndExportStatus status) {
+        this.performedBy = performedBy;
+        this.status = status;
+        performedBy.getImportLogs().add(this);
     }
 
-    // Helper methods duy trì tính toàn vẹn dữ liệu hai chiều [cite: 345, 349]
     public void addItem(ImportLogItem item) {
-        items.add(item);
-        item.setImportLog(this);
+        if (item == null) {
+            throw new IllegalArgumentException("item must not be null");
+        }
+        if (!items.contains(item)) {
+            items.add(item);
+        }
     }
 
     public void removeItem(ImportLogItem item) {
         items.remove(item);
-        item.setImportLog(null);
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public LocalDateTime getImportDate() { return importDate; }
-    public void setImportDate(LocalDateTime importDate) { this.importDate = importDate; }
-    public String getNote() { return note; }
-    public void setNote(String note) { this.note = note; }
-    public List<ImportLogItem> getItems() { return items; }
-    public void setItems(List<ImportLogItem> items) { this.items = items; }
+    public void approve() {
+        status = ImportAndExportStatus.SUCCESS;
+    }
+
+    public void reject(String reason) {
+        status = ImportAndExportStatus.FAILURE;
+        note = reason;
+    }
+
+    public void complete() {
+        status = ImportAndExportStatus.SUCCESS;
+    }
+
+    public boolean isCompleted() {
+        return ImportAndExportStatus.SUCCESS.equals(status);
+    }
+
+    public int calculateTotalQuantity() {
+        int totalQuantity = 0;
+        for (ImportLogItem item : items) {
+            if (item == null) {
+                throw new IllegalStateException("import log item must not be null");
+            }
+            if (item.getQuantity() == null) {
+                throw new IllegalStateException("import log item quantity must not be null");
+            }
+            totalQuantity += item.getQuantity();
+        }
+        return totalQuantity;
+    }
+
+    public BigDecimal calculateTotalImportValue() {
+        BigDecimal totalValue = BigDecimal.ZERO;
+        for (ImportLogItem item : items) {
+            if (item == null) {
+                throw new IllegalStateException("import log item must not be null");
+            }
+            totalValue = totalValue.add(item.calculateLineTotal());
+        }
+        return totalValue;
+    }
 }

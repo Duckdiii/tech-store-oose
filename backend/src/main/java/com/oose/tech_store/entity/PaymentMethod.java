@@ -1,66 +1,47 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
-import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "payment_methods")
 @Inheritance(strategy = InheritanceType.JOINED)
-public abstract class PaymentMethod {
+@DiscriminatorColumn(name = "payment_type")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public abstract class PaymentMethod extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+    @Column(name = "name", nullable = false, length = 100)
+    protected String name;
 
-	@Column(nullable = false, length = 100)
-	private String name;
+    @Column(name = "enabled", nullable = false)
+    protected Boolean enabled = true;
 
-	@Column(nullable = false)
-	private boolean enabled;
+    @Column(name = "description", columnDefinition = "TEXT")
+    protected String description;
 
-	@Column(length = 500)
-	private String description;
+    protected PaymentMethod(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
 
-	protected PaymentMethod() {
-	}
+    public void enable() {
+        enabled = true;
+    }
 
-	protected PaymentMethod(String name, boolean enabled, String description) {
-		if (name == null || name.isBlank()) {
-			throw new IllegalArgumentException("Payment method name is required");
-		}
-		this.name = name;
-		this.enabled = enabled;
-		this.description = description;
-	}
+    public void disable() {
+        enabled = false;
+    }
 
-	public void enable() {
-		this.enabled = true;
-	}
+    public boolean isEnabled() {
+        return Boolean.TRUE.equals(enabled);
+    }
 
-	public void disable() {
-		this.enabled = false;
-	}
-
-	public String getId() {
-		return id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public boolean isEnabled() {
-		return enabled;
-	}
-
-	public String getDescription() {
-		return description;
-	}
+    public void changeDescription(String description) {
+        this.description = description;
+    }
 }

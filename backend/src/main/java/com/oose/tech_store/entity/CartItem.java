@@ -3,89 +3,136 @@ package com.oose.tech_store.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(
-	name = "cart_items",
-	uniqueConstraints = @UniqueConstraint(
-		name = "uk_cart_items_cart_product_variant",
-		columnNames = {"cart_id", "product_variant_id"}
-	)
-)
-public class CartItem {
+@Table(name = "cart_items")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class CartItem extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+        private static final int MAX_BUNDLE_SERVICES = 2;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "cart_id", nullable = false)
-	private Cart cart;
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @JoinColumn(name = "product_variant_id", nullable = false)
+        private ProductVariant productVariant;
 
-	@Column(name = "product_variant_id", nullable = false, length = 36)
-	private String productVariantId;
+        @Column(name = "quantity", nullable = false)
+        private Integer quantity = 1;
 
-	@Column(nullable = false)
-	private int quantity;
+        @Column(name = "selected_for_checkout", nullable = false)
+        private Boolean isSelectedForCheckout = false;
 
-	@Column(name = "selected_for_checkout", nullable = false)
-	private boolean selectedForCheckout;
+        @OneToMany(fetch = FetchType.LAZY)
+        @JoinTable(name = "cart_item_bundle_services", joinColumns = @JoinColumn(name = "cart_item_id"), inverseJoinColumns = @JoinColumn(name = "bundle_service_id", unique = true))
+        private List<BundleService> bundleServices = new ArrayList<>();
 
-	protected CartItem() {
-	}
+        public CartItem(Cart cart, ProductVariant productVariant, Integer quantity, Boolean isSelectedForCheckout) {
+                this.productVariant = productVariant;
+                changeQuantity(quantity);
 
-	CartItem(String productVariantId, int quantity) {
-		if (productVariantId == null || productVariantId.isBlank()) {
-			throw new IllegalArgumentException("Product variant id is required");
-		}
-		changeQuantity(quantity);
-		this.productVariantId = productVariantId;
-	}
+                this.isSelectedForCheckout = isSelectedForCheckout;
 
-	void attachTo(Cart cart) {
-		this.cart = cart;
-	}
+                cart.addItem(this);
+        }
 
-	void detachFromCart() {
-		this.cart = null;
-	}
+        public void increaseQuantity(int amount) {
+                validatePositiveAmount(amount);
+                quantity += amount;
+        }
 
-	public void changeQuantity(int quantity) {
-		if (quantity < 1) {
-			throw new IllegalArgumentException("Quantity must be at least 1");
-		}
-		this.quantity = quantity;
-	}
+        public void decreaseQuantity(int amount) {
+                validatePositiveAmount(amount);
+                changeQuantity(quantity - amount);
+        }
 
-	public void selectForCheckout(boolean selectedForCheckout) {
-		this.selectedForCheckout = selectedForCheckout;
-	}
+        public void changeQuantity(int quantity) {
+                if (quantity <= 0) {
+                        throw new IllegalArgumentException("quantity must be positive");
+                }
+                this.quantity = quantity;
+        }
 
-	public String getId() {
-		return id;
-	}
+        public void selectForCheckout() {
+                isSelectedForCheckout = true;
+        }
 
-	public Cart getCart() {
-		return cart;
-	}
+        public void unselectForCheckout() {
+                isSelectedForCheckout = false;
+        }
 
-	public String getProductVariantId() {
-		return productVariantId;
-	}
+        public boolean isSelected() {
+                return Boolean.TRUE.equals(isSelectedForCheckout);
+        }
 
-	public int getQuantity() {
-		return quantity;
-	}
+        public BigDecimal getUnitPrice() {
+                if (productVariant == null || productVariant.getPrice() == null) {
+                        return BigDecimal.ZERO;
+                }
+                return productVariant.getPrice();
+        }
 
-	public boolean isSelectedForCheckout() {
-		return selectedForCheckout;
-	}
+        public BigDecimal calculateSubtotal() {
+                BigDecimal bundlePrice = BigDecimal.ZERO;
+                for (BundleService service : bundleServices) {
+                        if (service == null) {
+                                throw new IllegalStateException("bundle service must not be null");
+                        }
+                        if (service.getPrice() == null) {
+                                throw new IllegalStateException("bundle service price must not be null");
+                        }
+                        bundlePrice = bundlePrice.add(service.getPrice());
+                }
+                return getUnitPrice()
+                                .add(bundlePrice)
+                                .multiply(BigDecimal.valueOf(quantity));
+        }
+
+        public void addBundleService(BundleService service) {
+                if (service == null) {
+                        throw new IllegalArgumentException("service must not be null");
+                }
+                if (bundleServices.contains(service)) {
+                        return;
+                }
+                if (bundleServices.size() >= MAX_BUNDLE_SERVICES) {
+                        throw new IllegalStateException("CartItem chi duoc toi da 2 bundle services");
+                }
+                bundleServices.add(service);
+        }
+
+        public void removeBundleService(BundleService service) {
+                if (service == null) {
+                        return;
+                }
+                bundleServices.remove(service);
+        }
+
+        @PrePersist
+        @PreUpdate
+        protected void validateBundleServicesLimit() {
+                if (bundleServices != null && bundleServices.size() > MAX_BUNDLE_SERVICES) {
+                        throw new IllegalStateException("CartItem chi duoc toi da 2 bundle services");
+                }
+        }
+
+        private void validatePositiveAmount(int amount) {
+                if (amount <= 0) {
+                        throw new IllegalArgumentException("amount must be positive");
+                }
+        }
 }

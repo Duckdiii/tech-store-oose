@@ -1,82 +1,59 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Entity
 @Table(name = "brands")
-public class Brand {
+@Getter
+@Setter
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Brand extends BaseEntity {
 
-	@Column(nullable = false, unique = true, length = 100)
-	private String name;
+    @Column(name = "name", nullable = false, unique = true, length = 100)
+    private String name;
 
-	@Column(name = "logo_url", length = 500)
-	private String logoUrl;
+    @Column(name = "logo_url", length = 500)
+    private String logoUrl;
 
-	@Column(length = 500)
-	private String description;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
-	@OneToMany(mappedBy = "brand")
-	private List<Product> products = new ArrayList<>();
+    @OneToMany(mappedBy = "brand", fetch = FetchType.LAZY)
+    private List<Product> products = new ArrayList<>();
 
-	protected Brand() {
-	}
+    public Brand(String name, String logoUrl, String description) {
+        this.name = name;
+        this.logoUrl = logoUrl;
+        this.description = description;
+    }
 
-	public Brand(String name, String logoUrl, String description) {
-		this.name = requireText(name, "Brand name is required");
-		this.logoUrl = logoUrl;
-		this.description = description;
-	}
+    public void addProduct(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException("product must not be null");
+        }
+        if (product.getBrand() != null && product.getBrand() != this) {
+            product.getBrand().getProducts().remove(product);
+        }
+        if (!products.contains(product)) {
+            products.add(product);
+        }
+        product.setBrand(this);
+    }
 
-	private static String requireText(String value, String message) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(message);
-		}
-		return value;
-	}
-
-	public String getId() {
-		return id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = requireText(name, "Brand name is required");
-	}
-
-	public String getLogoUrl() {
-		return logoUrl;
-	}
-
-	public void setLogoUrl(String logoUrl) {
-		this.logoUrl = logoUrl;
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
-
-	public List<Product> getProducts() {
-		return Collections.unmodifiableList(products);
-	}
+    public void removeProduct(Product product) {
+        if (product == null) {
+            return;
+        }
+        if (products.remove(product)) {
+            product.setBrand(null);
+        }
+    }
 }

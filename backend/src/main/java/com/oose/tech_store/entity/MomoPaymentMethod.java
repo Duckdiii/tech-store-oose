@@ -1,59 +1,81 @@
 package com.oose.tech_store.entity;
 
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
 import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "momo_payment_methods")
-@PrimaryKeyJoinColumn(name = "id")
+@DiscriminatorValue("MOMO")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MomoPaymentMethod extends PaymentMethod {
 
-	@Column(name = "partner_code", nullable = false, length = 100)
-	private String partnerCode;
+    @Column(name = "partner_code", length = 100)
+    private String partnerCode;
 
-	@Column(name = "merchant_id", nullable = false, length = 100)
-	private String merchantId;
+    @Column(name = "merchant_id", length = 100)
+    private String merchantId;
 
-	@Column(name = "endpoint_url", nullable = false, length = 500)
-	private String endpointUrl;
+    @Column(name = "endpoint_url", length = 500)
+    private String endpointUrl;
 
-	@Column(name = "hash_key", nullable = false, length = 255)
-	private String hashKey;
+    @Column(name = "return_url", length = 500)
+    private String returnUrl;
 
-	protected MomoPaymentMethod() {
-	}
+    @Column(name = "notify_url", length = 500)
+    private String notifyUrl;
 
-	public MomoPaymentMethod(String name, boolean enabled, String description, String partnerCode,
-			String merchantId, String endpointUrl, String hashKey) {
-		super(name, enabled, description);
-		this.partnerCode = requireValue(partnerCode, "Partner code");
-		this.merchantId = requireValue(merchantId, "Merchant id");
-		this.endpointUrl = requireValue(endpointUrl, "Endpoint URL");
-		this.hashKey = requireValue(hashKey, "Hash key");
-	}
+    public MomoPaymentMethod(String name, String description, String partnerCode, String merchantId,
+            String endpointUrl, String returnUrl, String notifyUrl) {
+        super(name, description);
+        this.partnerCode = partnerCode;
+        this.merchantId = merchantId;
+        this.endpointUrl = endpointUrl;
+        this.returnUrl = returnUrl;
+        this.notifyUrl = notifyUrl;
+    }
 
-	private static String requireValue(String value, String fieldName) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(fieldName + " is required");
-		}
-		return value;
-	}
+    public boolean isConfigured() {
+        return !isBlank(partnerCode)
+                && !isBlank(merchantId)
+                && !isBlank(endpointUrl)
+                && !isBlank(returnUrl)
+                && !isBlank(notifyUrl);
+    }
 
-	public String getPartnerCode() {
-		return partnerCode;
-	}
+    public void updateConfig(String partnerCode, String merchantId, String endpointUrl, String returnUrl,
+            String notifyUrl) {
+        if (isBlank(partnerCode)) {
+            throw new IllegalArgumentException("partnerCode must not be blank");
+        }
+        if (isBlank(merchantId)) {
+            throw new IllegalArgumentException("merchantId must not be blank");
+        }
+        if (isBlank(endpointUrl)) {
+            throw new IllegalArgumentException("endpointUrl must not be blank");
+        }
+        if (isBlank(returnUrl)) {
+            throw new IllegalArgumentException("returnUrl must not be blank");
+        }
+        if (isBlank(notifyUrl)) {
+            throw new IllegalArgumentException("notifyUrl must not be blank");
+        }
+        this.partnerCode = partnerCode;
+        this.merchantId = merchantId;
+        this.endpointUrl = endpointUrl;
+        this.returnUrl = returnUrl;
+        this.notifyUrl = notifyUrl;
+    }
 
-	public String getMerchantId() {
-		return merchantId;
-	}
-
-	public String getEndpointUrl() {
-		return endpointUrl;
-	}
-
-	public String getHashKey() {
-		return hashKey;
-	}
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
 }

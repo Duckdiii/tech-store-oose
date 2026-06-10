@@ -3,153 +3,109 @@ package com.oose.tech_store.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(
-	name = "product_variants",
-	uniqueConstraints = @UniqueConstraint(
-		name = "uk_product_variants_product_ram_storage_color",
-		columnNames = {"product_id", "ram_gb", "storage_gb", "color"}
-	)
-)
-public class ProductVariant {
+@Table(name = "product_variants")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ProductVariant extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+    @Column(name = "ram_gb")
+    private Integer ramGb;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "product_id", nullable = false)
-	private Product product;
+    @Column(name = "storage_gb")
+    private Integer storageGb;
 
-	@Column(name = "ram_gb", nullable = false)
-	private int ramGb;
+    @Column(name = "color", length = 80)
+    private String color;
 
-	@Column(name = "storage_gb", nullable = false)
-	private int storageGb;
+    @Column(name = "price", precision = 15, scale = 2)
+    private BigDecimal price;
 
-	@Column(nullable = false, length = 50)
-	private String color;
+    @OneToMany(mappedBy = "productVariant", fetch = FetchType.LAZY)
+    private List<ItemInventory> inventoryItems = new ArrayList<>();
 
-	@Column(nullable = false, precision = 15, scale = 2)
-	private BigDecimal price;
+    public ProductVariant(Product product, Integer ramGb, Integer storageGb, String color, BigDecimal price) {
+        this.ramGb = ramGb;
+        this.storageGb = storageGb;
+        this.color = color;
+        this.price = price;
+        product.addVariant(this);
+    }
 
-	@ManyToMany
-	@JoinTable(
-		name = "product_variant_bundle_services",
-		joinColumns = @JoinColumn(name = "product_variant_id"),
-		inverseJoinColumns = @JoinColumn(name = "bundle_service_id")
-	)
-	private List<BundleService> bundleServices = new ArrayList<>();
+    public void addInventoryItem(ItemInventory inventoryItem) {
+        if (inventoryItem == null) {
+            throw new IllegalArgumentException("inventoryItem must not be null");
+        }
+        if (!inventoryItems.contains(inventoryItem)) {
+            inventoryItems.add(inventoryItem);
+            if (inventoryItem.getProductVariant() != this) {
+                inventoryItem.setProductVariant(this);
+            }
+        }
+    }
 
-	protected ProductVariant() {
-	}
+    public void removeInventoryItem(ItemInventory inventoryItem) {
+        inventoryItems.remove(inventoryItem);
+    }
 
-	public ProductVariant(int ramGb, int storageGb, String color, BigDecimal price) {
-		setRamGb(ramGb);
-		setStorageGb(storageGb);
-		this.color = requireText(color, "Color is required");
-		this.price = requireNonNegative(price, "Product variant price");
-	}
+    public void changePrice(BigDecimal newPrice) {
+        if (newPrice == null) {
+            throw new IllegalArgumentException("newPrice must not be null");
+        }
+        this.price = newPrice;
+    }
 
-	void attachTo(Product product) {
-		if (product == null) {
-			throw new IllegalArgumentException("Product is required");
-		}
-		this.product = product;
-	}
+    public Integer getQuantity() {
+        return inventoryItems.stream().mapToInt(ItemInventory::getQuantity).sum();
+    }
 
-	void detachFromProduct() {
-		this.product = null;
-	}
+    public boolean hasEnoughStock(int requestedQuantity) {
+        return requestedQuantity > 0 && getQuantity() >= requestedQuantity;
+    }
 
-	public void changeVariantInfo(int ramGb, int storageGb, String color, BigDecimal price) {
-		setRamGb(ramGb);
-		setStorageGb(storageGb);
-		this.color = requireText(color, "Color is required");
-		this.price = requireNonNegative(price, "Product variant price");
-	}
+    public Integer getQuantityIn(Inventory inventory) {
+        ItemInventory item = findInventoryItem(inventory);
+        return item == null ? 0 : item.getQuantity();
+    }
 
-	public void addBundleService(BundleService bundleService) {
-		if (bundleService == null) {
-			throw new IllegalArgumentException("Bundle service is required");
-		}
-		if (!bundleServices.contains(bundleService)) {
-			bundleServices.add(bundleService);
-		}
-	}
+    public boolean hasEnoughStockIn(Inventory inventory, int requestedQuantity) {
+        ItemInventory item = findInventoryItem(inventory);
+        return item != null && item.hasEnoughStock(requestedQuantity);
+    }
 
-	public void removeBundleService(BundleService bundleService) {
-		bundleServices.remove(bundleService);
-	}
+    public boolean isStoredIn(Inventory inventory) {
+        return findInventoryItem(inventory) != null;
+    }
 
-	private static String requireText(String value, String message) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(message);
-		}
-		return value;
-	}
+    private ItemInventory findInventoryItem(Inventory inventory) {
+        if (inventory == null) {
+            return null;
+        }
+        return inventory.findItem(this);
+    }
 
-	private static BigDecimal requireNonNegative(BigDecimal value, String fieldName) {
-		if (value == null || value.signum() < 0) {
-			throw new IllegalArgumentException(fieldName + " must not be negative");
-		}
-		return value;
-	}
-
-	public String getId() {
-		return id;
-	}
-
-	public Product getProduct() {
-		return product;
-	}
-
-	public int getRamGb() {
-		return ramGb;
-	}
-
-	public void setRamGb(int ramGb) {
-		if (ramGb <= 0) {
-			throw new IllegalArgumentException("RAM must be greater than zero");
-		}
-		this.ramGb = ramGb;
-	}
-
-	public int getStorageGb() {
-		return storageGb;
-	}
-
-	public void setStorageGb(int storageGb) {
-		if (storageGb <= 0) {
-			throw new IllegalArgumentException("Storage must be greater than zero");
-		}
-		this.storageGb = storageGb;
-	}
-
-	public String getColor() {
-		return color;
-	}
-
-	public BigDecimal getPrice() {
-		return price;
-	}
-
-	public List<BundleService> getBundleServices() {
-		return Collections.unmodifiableList(bundleServices);
-	}
+    public String getDisplayName() {
+        List<String> attributes = new ArrayList<>();
+        if (ramGb != null) {
+            attributes.add(ramGb + "GB RAM");
+        }
+        if (storageGb != null) {
+            attributes.add(storageGb + "GB Storage");
+        }
+        if (color != null && !color.isBlank()) {
+            attributes.add(color);
+        }
+        return attributes.isEmpty() ? "Default" : String.join(" / ", attributes);
+    }
 }

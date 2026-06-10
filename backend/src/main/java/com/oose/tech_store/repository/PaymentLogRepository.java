@@ -1,7 +1,7 @@
 package com.oose.tech_store.repository;
 
 import com.oose.tech_store.entity.PaymentLog;
-import com.oose.tech_store.entity.PaymentLogStatus;
+import com.oose.tech_store.entity.enums.PaymentLogStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

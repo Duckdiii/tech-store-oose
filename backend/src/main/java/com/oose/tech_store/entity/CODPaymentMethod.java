@@ -1,45 +1,68 @@
 package com.oose.tech_store.entity;
 
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
 import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "cod_payment_methods")
-@PrimaryKeyJoinColumn(name = "id")
+@DiscriminatorValue("COD")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CODPaymentMethod extends PaymentMethod {
 
-	@Column(name = "max_amount", nullable = false, precision = 19, scale = 2)
-	private BigDecimal maxAmount;
+    @Column(name = "max_amount", precision = 15, scale = 2)
+    private BigDecimal maxAmount;
 
-	@Column(name = "service_fee", nullable = false, precision = 19, scale = 2)
-	private BigDecimal serviceFee;
+    @Column(name = "service_fee", precision = 15, scale = 2)
+    private BigDecimal serviceFee;
 
-	protected CODPaymentMethod() {
-	}
+    public CODPaymentMethod(String name, String description, BigDecimal maxAmount, BigDecimal serviceFee) {
+        super(name, description);
+        this.maxAmount = maxAmount;
+        this.serviceFee = serviceFee;
+    }
 
-	public CODPaymentMethod(String name, boolean enabled, String description, BigDecimal maxAmount,
-			BigDecimal serviceFee) {
-		super(name, enabled, description);
-		this.maxAmount = requireNonNegative(maxAmount, "Maximum amount");
-		this.serviceFee = requireNonNegative(serviceFee, "Service fee");
-	}
+    public boolean isAmountAllowed(BigDecimal amount) {
+        if (amount == null) {
+            throw new IllegalArgumentException("amount must not be null");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("amount must not be negative");
+        }
+        return maxAmount == null || amount.compareTo(maxAmount) <= 0;
+    }
 
-	private static BigDecimal requireNonNegative(BigDecimal value, String fieldName) {
-		if (value == null || value.signum() < 0) {
-			throw new IllegalArgumentException(fieldName + " must not be negative");
-		}
-		return value;
-	}
+    public BigDecimal calculateServiceFee(BigDecimal amount) {
+        if (!isAmountAllowed(amount)) {
+            throw new IllegalArgumentException("amount exceeds COD limit");
+        }
+        return serviceFee == null ? BigDecimal.ZERO : serviceFee;
+    }
 
-	public BigDecimal getMaxAmount() {
-		return maxAmount;
-	}
+    public void changeLimit(BigDecimal maxAmount) {
+        if (maxAmount != null && maxAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("maxAmount must not be negative");
+        }
+        this.maxAmount = maxAmount;
+    }
 
-	public BigDecimal getServiceFee() {
-		return serviceFee;
-	}
+    public void changeServiceFee(BigDecimal serviceFee) {
+        if (serviceFee == null) {
+            throw new IllegalArgumentException("serviceFee must not be null");
+        }
+        if (serviceFee.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("serviceFee must not be negative");
+        }
+        this.serviceFee = serviceFee;
+    }
 }

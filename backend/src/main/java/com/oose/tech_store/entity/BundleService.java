@@ -1,140 +1,76 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import com.oose.tech_store.entity.enums.BundleServiceType;
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 @Entity
 @Table(name = "bundle_services")
-public class BundleService {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class BundleService extends BaseEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(nullable = false, updatable = false, length = 36)
-	private String id;
+    @Column(name = "name", nullable = false, length = 120)
+    private String name;
 
-	@Column(nullable = false, length = 120)
-	private String name;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 40)
+    private BundleServiceType type;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 30)
-	private BundleServiceType type;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
-	@Column(length = 500)
-	private String description;
+    @Column(name = "price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
-	@Column(nullable = false, precision = 15, scale = 2)
-	private BigDecimal price;
+    @Column(name = "duration_months")
+    private Integer durationMonths;
 
-	@Column(name = "duration_months", nullable = false)
-	private int durationMonths;
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
 
-	@Column(nullable = false)
-	private boolean active;
+    public BundleService(String name, BundleServiceType type, String description, BigDecimal price,
+            Integer durationMonths, Boolean active) {
+        this.name = name;
+        this.type = type;
+        this.description = description;
+        this.price = price;
+        this.durationMonths = durationMonths;
+        if (active != null) {
+            this.active = active;
+        }
+    }
 
-	@ManyToMany(mappedBy = "bundleServices")
-	private List<ProductVariant> productVariants = new ArrayList<>();
+    public void activate() {
+        active = true;
+    }
 
-	protected BundleService() {
-	}
+    public void deactivate() {
+        active = false;
+    }
 
-	public BundleService(String name, BundleServiceType type, String description, BigDecimal price,
-			int durationMonths, boolean active) {
-		this.name = requireText(name, "Bundle service name is required");
-		this.type = requireType(type);
-		this.description = description;
-		this.price = requireNonNegative(price, "Bundle service price");
-		setDurationMonths(durationMonths);
-		this.active = active;
-	}
+    public boolean isActive() {
+        return Boolean.TRUE.equals(active);
+    }
 
-	private static String requireText(String value, String message) {
-		if (value == null || value.isBlank()) {
-			throw new IllegalArgumentException(message);
-		}
-		return value;
-	}
+    public void changePrice(BigDecimal price) {
+        if (price == null) {
+            throw new IllegalArgumentException("price must not be null");
+        }
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("price must not be negative");
+        }
+        this.price = price;
+    }
 
-	private static BundleServiceType requireType(BundleServiceType type) {
-		if (type == null) {
-			throw new IllegalArgumentException("Bundle service type is required");
-		}
-		return type;
-	}
+    public boolean isWarranty() {
+        return BundleServiceType.WARRANTY.equals(type);
+    }
 
-	private static BigDecimal requireNonNegative(BigDecimal value, String fieldName) {
-		if (value == null || value.signum() < 0) {
-			throw new IllegalArgumentException(fieldName + " must not be negative");
-		}
-		return value;
-	}
-
-	public String getId() {
-		return id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = requireText(name, "Bundle service name is required");
-	}
-
-	public BundleServiceType getType() {
-		return type;
-	}
-
-	public void setType(BundleServiceType type) {
-		this.type = requireType(type);
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
-
-	public BigDecimal getPrice() {
-		return price;
-	}
-
-	public void setPrice(BigDecimal price) {
-		this.price = requireNonNegative(price, "Bundle service price");
-	}
-
-	public int getDurationMonths() {
-		return durationMonths;
-	}
-
-	public void setDurationMonths(int durationMonths) {
-		if (durationMonths < 0) {
-			throw new IllegalArgumentException("Duration months must not be negative");
-		}
-		this.durationMonths = durationMonths;
-	}
-
-	public boolean isActive() {
-		return active;
-	}
-
-	public void setActive(boolean active) {
-		this.active = active;
-	}
-
-	public List<ProductVariant> getProductVariants() {
-		return Collections.unmodifiableList(productVariants);
-	}
 }
