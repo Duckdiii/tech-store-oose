@@ -1,4 +1,4 @@
-package com.techstore.entity;
+package com.oose.tech_store.entity;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal; // Kiểu dữ liệu chuẩn cho tiền tệ [cite: 179]
