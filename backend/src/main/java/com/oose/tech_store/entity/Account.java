@@ -37,38 +37,58 @@ public class Account extends BaseEntity {
         @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
         private List<LoginLog> loginLogs = new ArrayList<>();
 
-        public Account(String email, String password, User user) {
+        public Account(String email, String password, User user, AccountStatus status) {
+                if (email == null || email.isBlank()) {
+                        throw new IllegalArgumentException("email must not be blank");
+                }
+                if (password == null || password.isBlank()) {
+                        throw new IllegalArgumentException("password must not be blank");
+                }
                 if (user == null) {
                         throw new IllegalArgumentException("user must not be null");
                 }
-                if (email == null) {
-                        throw new IllegalArgumentException("email must not be null");
+                if (status == null) {
+                        throw new IllegalArgumentException("status must not be null");
                 }
-                if (password == null) {
-                        throw new IllegalArgumentException("password must not be null");
-                }
+                this.status = status;
                 this.email = email;
                 this.password = password;
                 attachUser(user);
         }
 
-        public void changePassword(String newPassword) {
-                if (newPassword == null || newPassword.isBlank()) {
-                        throw new IllegalArgumentException("newPassword must not be blank");
-                }
-                this.password = newPassword;
+        public void activate() {
+                status = AccountStatus.ACTIVE;
         }
 
         public void block() {
-                this.status = AccountStatus.BLOCKED;
+                status = AccountStatus.BLOCKED;
         }
 
-        public void unblock() {
-                this.status = AccountStatus.ACTIVE;
+        public void unlock() {
+                activate();
         }
 
-        public void delete() {
-                this.status = AccountStatus.DELETED;
+        public boolean isActive() {
+                return AccountStatus.ACTIVE.equals(status);
+        }
+
+        public boolean isBlocked() {
+                return AccountStatus.BLOCKED.equals(status);
+        }
+
+        public void changePassword(String encodedPassword) {
+                if (encodedPassword == null || encodedPassword.isBlank()) {
+                        throw new IllegalArgumentException("encodedPassword must not be blank");
+                }
+                password = encodedPassword;
+        }
+
+        public void recordLoginSuccess() {
+                LoginLog.success(this);
+        }
+
+        public void recordLoginFailure() {
+                LoginLog.failure(this);
         }
 
         public void attachUser(User user) {
@@ -76,6 +96,7 @@ public class Account extends BaseEntity {
                         throw new IllegalArgumentException("user must not be null");
                 }
                 if (this.user == user) {
+                        user.setAccount(this);
                         return;
                 }
                 if (this.user != null) {

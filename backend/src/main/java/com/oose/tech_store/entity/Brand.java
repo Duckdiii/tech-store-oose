@@ -30,39 +30,39 @@ public class Brand extends BaseEntity {
     private List<Product> products = new ArrayList<>();
 
     public Brand(String name, String logoUrl, String description) {
-        if (name == null) {
-            throw new IllegalArgumentException("name must not be null");
-        }
-        if (name.isBlank()) {
-            throw new IllegalArgumentException("name must not be blank");
-        }
-        if (logoUrl == null) {
-            throw new IllegalArgumentException("logoUrl must not be null");
-        }
-        if (logoUrl.isBlank()) {
-            throw new IllegalArgumentException("logoUrl must not be blank");
-        }
-        if (description == null) {
-            throw new IllegalArgumentException("description must not be null");
-        }
-        this.name = name;
-        this.logoUrl = logoUrl;
-        this.description = description;
-    }
-
-    public void update(String name, String logoUrl, String description) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
         }
         if (logoUrl == null || logoUrl.isBlank()) {
             throw new IllegalArgumentException("logoUrl must not be blank");
         }
-        if (description == null) {
-            throw new IllegalArgumentException("description must not be null");
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("description must not be blank");
         }
         this.name = name;
         this.logoUrl = logoUrl;
         this.description = description;
     }
 
+    public void addProduct(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException("product must not be null");
+        }
+        if (product.getBrand() != null && product.getBrand() != this) {
+            product.getBrand().getProducts().remove(product);
+        }
+        if (!products.contains(product)) {
+            products.add(product);
+        }
+        product.setBrand(this);
+    }
+
+    public void removeProduct(Product product) {
+        if (product == null) {
+            return;
+        }
+        if (products.remove(product)) {
+            product.setBrand(null);
+        }
+    }
 }

@@ -1,15 +1,14 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "product_variants")
@@ -17,6 +16,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProductVariant extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
 
     @Column(name = "ram_gb")
     private Integer ramGb;
@@ -30,30 +33,21 @@ public class ProductVariant extends BaseEntity {
     @Column(name = "price", precision = 15, scale = 2)
     private BigDecimal price;
 
+    @OneToMany(mappedBy = "productVariant", fetch = FetchType.LAZY)
+    private List<ImportLogItem> importLogItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "productVariant", fetch = FetchType.LAZY)
+    private List<ExportLogItem> exportLogItems = new ArrayList<>();
+
     public ProductVariant(Product product, Integer ramGb, Integer storageGb, String color, BigDecimal price) {
         if (product == null) {
             throw new IllegalArgumentException("product must not be null");
         }
-        if (ramGb == null) {
-            throw new IllegalArgumentException("ramGb must not be null");
-        }
-        if (storageGb == null) {
-            throw new IllegalArgumentException("storageGb must not be null");
-        }
-        if (color == null) {
-            throw new IllegalArgumentException("color must not be null");
-        }
-        if (price == null) {
-            throw new IllegalArgumentException("price must not be null");
-        }
-        if (color.length() > 80) {
-            throw new IllegalArgumentException("color length must not exceed 80 characters");
-        }
+        this.product = product;
         this.ramGb = ramGb;
         this.storageGb = storageGb;
         this.color = color;
         this.price = price;
-        product.addVariant(this);
     }
 
     public void changePrice(BigDecimal newPrice) {
@@ -61,27 +55,6 @@ public class ProductVariant extends BaseEntity {
             throw new IllegalArgumentException("newPrice must not be null");
         }
         this.price = newPrice;
-    }
-
-    public Integer getQuantityIn(Inventory inventory) {
-        ItemInventory item = findInventoryItem(inventory);
-        return item == null ? 0 : item.getQuantity();
-    }
-
-    public boolean hasEnoughStockIn(Inventory inventory, int requestedQuantity) {
-        ItemInventory item = findInventoryItem(inventory);
-        return item != null && item.hasEnoughStock(requestedQuantity);
-    }
-
-    public boolean isStoredIn(Inventory inventory) {
-        return findInventoryItem(inventory) != null;
-    }
-
-    private ItemInventory findInventoryItem(Inventory inventory) {
-        if (inventory == null) {
-            return null;
-        }
-        return inventory.findItem(this);
     }
 
     public String getDisplayName() {

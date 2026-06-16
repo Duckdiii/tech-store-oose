@@ -1,6 +1,5 @@
 package com.oose.tech_store.entity;
 
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,13 +7,12 @@ import lombok.NoArgsConstructor;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "momo_payment_methods")
 @DiscriminatorValue("MOMO")
 @Getter
 @Setter
+
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MomoPaymentMethod extends PaymentMethod {
 

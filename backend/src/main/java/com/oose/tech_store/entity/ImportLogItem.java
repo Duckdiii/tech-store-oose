@@ -1,16 +1,12 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import java.math.BigDecimal;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "import_log_items")
@@ -42,7 +38,6 @@ public class ImportLogItem extends BaseEntity {
         if (importPrice == null) {
             throw new IllegalArgumentException("importPrice must not be null");
         }
-
         this.productVariant = productVariant;
         this.quantity = quantity;
         this.importPrice = importPrice;

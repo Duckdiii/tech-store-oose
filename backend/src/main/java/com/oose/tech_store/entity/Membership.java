@@ -15,6 +15,7 @@ import java.util.List;
 @Table(name = "memberships", uniqueConstraints = @UniqueConstraint(name = "uk_memberships_tier", columnNames = "tier"))
 @Getter
 @Setter
+
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Membership extends BaseEntity {
 
@@ -22,7 +23,7 @@ public class Membership extends BaseEntity {
     @Column(name = "tier", nullable = false, length = 30)
     private MembershipTier tier;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "benefit_id", nullable = false, unique = true)
     private MembershipBenefit benefit;
 

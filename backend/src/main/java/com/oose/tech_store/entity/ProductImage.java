@@ -1,5 +1,6 @@
 package com.oose.tech_store.entity;
 
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,11 +24,8 @@ public class ProductImage extends BaseEntity {
         if (product == null) {
             throw new IllegalArgumentException("product must not be null");
         }
-        if (name == null) {
-            throw new IllegalArgumentException("name must not be null");
-        }
-        if (imageUrl == null) {
-            throw new IllegalArgumentException("imageUrl must not be null");
+        if (imageUrl == null || imageUrl.isBlank()) {
+            throw new IllegalArgumentException("imageUrl must not be blank");
         }
         this.name = name;
         this.imageUrl = imageUrl;

@@ -34,7 +34,6 @@ public class Cart extends BaseEntity {
         if (customer == null) {
             throw new IllegalArgumentException("customer must not be null");
         }
-
         this.customer = customer;
         customer.setCart(this);
     }
@@ -48,13 +47,66 @@ public class Cart extends BaseEntity {
         }
     }
 
+    public void addItem(ProductVariant productVariant, int quantity) {
+        if (productVariant == null) {
+            throw new IllegalArgumentException("productVariant must not be null");
+        }
+        validatePositiveQuantity(quantity);
+
+        CartItem existingItem = findSimpleItemByProductVariant(productVariant);
+        if (existingItem != null) {
+            existingItem.increaseQuantity(quantity);
+            return;
+        }
+
+        new CartItem(this, productVariant, quantity);
+    }
+
     public void removeItem(CartItem item) {
-        items.remove(item);
+        if (item == null) {
+            return;
+        }
+        if (items.remove(item)) {
+            for (BundleService bundleService : new ArrayList<>(item.getBundleServices())) {
+                item.removeBundleService(bundleService);
+            }
+        }
+    }
+
+    public void removeItemByProductVariant(ProductVariant productVariant) {
+        if (productVariant == null) {
+            return;
+        }
+        new ArrayList<>(items).stream()
+                .filter(item -> item.getProductVariant() == productVariant)
+                .forEach(this::removeItem);
+    }
+
+    public void clear() {
+        new ArrayList<>(items).forEach(this::removeItem);
+    }
+
+    public boolean isEmpty() {
+        return items.isEmpty();
     }
 
     public BigDecimal calculateTotal() {
         return items.stream()
                 .map(CartItem::calculateSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private CartItem findSimpleItemByProductVariant(ProductVariant productVariant) {
+        return items.stream()
+                .filter(item -> item.getProductVariant() == productVariant)
+                .filter(item -> item.getBundleServices() == null || item.getBundleServices().isEmpty())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void validatePositiveQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
     }
 }

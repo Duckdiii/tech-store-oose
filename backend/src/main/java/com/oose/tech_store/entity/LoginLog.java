@@ -37,16 +37,12 @@ public class LoginLog extends BaseEntity {
         if (account == null) {
             throw new IllegalArgumentException("account must not be null");
         }
-        if (email == null) {
-            throw new IllegalArgumentException("email must not be null");
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("email must not be blank");
         }
         if (loginStatus == null) {
             throw new IllegalArgumentException("loginStatus must not be null");
         }
-        if (roleName == null) {
-            throw new IllegalArgumentException("roleName must not be null");
-        }
-
         this.account = account;
         this.email = email;
         this.roleName = roleName;
@@ -73,7 +69,7 @@ public class LoginLog extends BaseEntity {
         if (user instanceof Customer) {
             return "CUSTOMER";
         }
-        return "UNKNOWN";
+        return null;
     }
 
     public static LoginLog failure(Account account) {

@@ -5,9 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -28,18 +27,24 @@ public class CartItem extends BaseEntity {
 
         private static final int MAX_BUNDLE_SERVICES = 2;
 
-        @OneToOne(fetch = FetchType.LAZY, optional = false)
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
         @JoinColumn(name = "product_variant_id", nullable = false)
         private ProductVariant productVariant;
 
         @Column(name = "quantity", nullable = false)
         private Integer quantity = 1;
 
-        @OneToMany(fetch = FetchType.LAZY)
-        @JoinTable(name = "cart_item_bundle_services", joinColumns = @JoinColumn(name = "cart_item_id"), inverseJoinColumns = @JoinColumn(name = "bundle_service_id", unique = true))
+        @ManyToMany(fetch = FetchType.LAZY)
+        @JoinTable(name = "cart_item_bundle_services", joinColumns = @JoinColumn(name = "cart_item_id"), inverseJoinColumns = @JoinColumn(name = "bundle_service_id"))
         private List<BundleService> bundleServices = new ArrayList<>();
 
-        public CartItem(Cart cart, ProductVariant productVariant, Integer quantity, Boolean isSelectedForCheckout) {
+        public CartItem(Cart cart, ProductVariant productVariant, Integer quantity) {
+                if (cart == null) {
+                        throw new IllegalArgumentException("cart must not be null");
+                }
+                if (productVariant == null) {
+                        throw new IllegalArgumentException("productVariant must not be null");
+                }
                 this.productVariant = productVariant;
                 changeQuantity(quantity);
                 cart.addItem(this);

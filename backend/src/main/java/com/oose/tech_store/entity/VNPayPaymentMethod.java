@@ -7,13 +7,12 @@ import lombok.NoArgsConstructor;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "vnpay_payment_methods")
 @DiscriminatorValue("VNPAY")
 @Getter
 @Setter
+
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class VNPayPaymentMethod extends PaymentMethod {
 

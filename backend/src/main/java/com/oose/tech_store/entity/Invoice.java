@@ -17,8 +17,11 @@ import java.time.LocalDateTime;
 public class Invoice extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "order_id", nullable = false, unique = true)
+    @JoinColumn(name = "order_id", nullable = false)
     private Order order;
+
+    @Column(name = "original_amount", nullable = false, precision = 15, scale = 2)
+    private BigDecimal originalAmount;
 
     @Column(name = "vat_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal vatAmount;
@@ -39,10 +42,14 @@ public class Invoice extends BaseEntity {
         }
     }
 
-    public Invoice(Order order, BigDecimal vatAmount, BigDecimal discountAmount, BigDecimal finalAmount) {
+    public Invoice(Order order, BigDecimal originalAmount, BigDecimal vatAmount,
+                   BigDecimal discountAmount, BigDecimal finalAmount) {
         if (order == null) {
             throw new IllegalArgumentException("order must not be null");
         }
+        if (originalAmount == null) {
+            throw new IllegalArgumentException("originalAmount must not be null");
+        }
         if (vatAmount == null) {
             throw new IllegalArgumentException("vatAmount must not be null");
         }
@@ -52,22 +59,8 @@ public class Invoice extends BaseEntity {
         if (finalAmount == null) {
             throw new IllegalArgumentException("finalAmount must not be null");
         }
-        this.vatAmount = vatAmount;
-        this.discountAmount = discountAmount;
-        this.finalAmount = finalAmount;
-        order.assignInvoice(this);
-    }
-
-    public void update(BigDecimal vatAmount, BigDecimal discountAmount, BigDecimal finalAmount) {
-        if (vatAmount == null) {
-            throw new IllegalArgumentException("vatAmount must not be null");
-        }
-        if (discountAmount == null) {
-            throw new IllegalArgumentException("discountAmount must not be null");
-        }
-        if (finalAmount == null) {
-            throw new IllegalArgumentException("finalAmount must not be null");
-        }
+        this.order = order;
+        this.originalAmount = originalAmount;
         this.vatAmount = vatAmount;
         this.discountAmount = discountAmount;
         this.finalAmount = finalAmount;

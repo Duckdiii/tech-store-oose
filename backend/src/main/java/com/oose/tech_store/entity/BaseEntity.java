@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @MappedSuperclass
 @Getter
-@Setter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class BaseEntity {
 

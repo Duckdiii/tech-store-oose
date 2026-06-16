@@ -37,63 +37,59 @@ public class BundleService extends BaseEntity {
 
     public BundleService(String name, BundleServiceType type, String description, BigDecimal price,
             Integer durationMonths, Boolean active) {
-        if (name == null) {
-            throw new IllegalArgumentException("name must not be null");
-        }
-        if (name.isBlank()) {
+        if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name must not be blank");
         }
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
         }
-        if (description == null) {
-            throw new IllegalArgumentException("description must not be null");
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("description must not be blank");
         }
         if (price == null) {
             throw new IllegalArgumentException("price must not be null");
         }
         if (price.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("price must not be negative");
+        }
+        if (durationMonths != null && durationMonths < 0) {
+            throw new IllegalArgumentException("durationMonths must not be negative");
+        }
+        if (active == null) {
+            throw new IllegalArgumentException("active must not be null");
         }
         this.name = name;
         this.type = type;
         this.description = description;
         this.price = price;
         this.durationMonths = durationMonths;
-        if (active != null) {
-            this.active = active;
-        }
+        this.active = active;
     }
 
-    public void update(String name, String description, BigDecimal price, Integer durationMonths) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("name must not be blank");
-        }
-        if (description == null) {
-            throw new IllegalArgumentException("description must not be null");
-        }
+    public void activate() {
+        active = true;
+    }
+
+    public void deactivate() {
+        active = false;
+    }
+
+    public boolean isActive() {
+        return Boolean.TRUE.equals(active);
+    }
+
+    public void changePrice(BigDecimal price) {
         if (price == null) {
             throw new IllegalArgumentException("price must not be null");
         }
         if (price.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("price must not be negative");
         }
-        this.name = name;
-        this.description = description;
         this.price = price;
-        this.durationMonths = durationMonths;
     }
 
-    public void activate() {
-        this.active = true;
-    }
-
-    public void deactivate() {
-        this.active = false;
-    }
-
-    public boolean isActive() {
-        return Boolean.TRUE.equals(active);
+    public boolean isWarranty() {
+        return BundleServiceType.WARRANTY.equals(type);
     }
 
 }

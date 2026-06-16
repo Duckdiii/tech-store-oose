@@ -20,10 +20,6 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "product_subscription_id", nullable = false)
-    private ProductSubscription productSubscription;
-
     @Column(name = "title", nullable = false, length = 150)
     private String title;
 
@@ -44,49 +40,39 @@ public class Notification extends BaseEntity {
     @Column(name = "status", nullable = false, length = 30)
     private NotificationStatus status = NotificationStatus.PENDING;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
-    @PrePersist
-    protected void prePersist() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-    }
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "favorite_product_id")
+    private FavoriteProduct favoriteProduct;
 
-    public Notification(ProductSubscription productSubscription, String title, NotificationType type,
-            String message, List<NotificationChannel> channels) {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
 
-        if (productSubscription == null) {
-            throw new IllegalArgumentException("productSubscription must not be null");
+    public Notification(Customer customer, String title, NotificationType type, String message, List<NotificationChannel> channels) {
+        if (customer == null) {
+            throw new IllegalArgumentException("customer must not be null");
         }
-        if (title == null) {
-            throw new IllegalArgumentException("title must not be null");
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("title must not be blank");
         }
         if (type == null) {
             throw new IllegalArgumentException("type must not be null");
         }
-        if (message == null) {
-            throw new IllegalArgumentException("message must not be null");
+        if (channels == null) {
+            throw new IllegalArgumentException("channels must not be null");
         }
-        if (channels == null || channels.isEmpty()) {
-            throw new IllegalArgumentException("channels must not be null or empty");
-        }
-
-        this.productSubscription = productSubscription;
+        this.customer = customer;
         this.title = title;
         this.type = type;
         this.message = message;
-
         this.channels.addAll(channels);
-
-        productSubscription.getNotifications().add(this);
+        customer.getNotifications().add(this);
     }
 
     public void markSent() {

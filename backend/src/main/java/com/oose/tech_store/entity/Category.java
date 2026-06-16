@@ -27,6 +27,12 @@ public class Category extends BaseEntity {
     private List<Product> products = new ArrayList<>();
 
     public Category(String name, String imageUrl) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
+        }
+        if (imageUrl == null || imageUrl.isBlank()) {
+            throw new IllegalArgumentException("imageUrl must not be blank");
+        }
         this.name = name;
         this.imageUrl = imageUrl;
     }

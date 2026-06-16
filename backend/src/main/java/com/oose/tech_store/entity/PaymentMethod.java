@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "payment_methods")
-@Inheritance(strategy = InheritanceType.JOINED)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "payment_type")
 @Getter
 @Setter
@@ -25,11 +25,8 @@ public abstract class PaymentMethod extends BaseEntity {
     protected String description;
 
     protected PaymentMethod(String name, String description) {
-        if (name == null) {
-            throw new IllegalArgumentException("name must not be null");
-        }
-        if (description == null) {
-            throw new IllegalArgumentException("description must not be null");
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name must not be blank");
         }
         this.name = name;
         this.description = description;

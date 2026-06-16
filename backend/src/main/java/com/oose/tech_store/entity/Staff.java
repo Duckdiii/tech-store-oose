@@ -9,7 +9,6 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "staffs")
-@DiscriminatorValue("STAFF")
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -23,21 +22,14 @@ public class Staff extends User {
 
     public Staff(String fullName, String phone, String staffCode, LocalDate hireDate) {
         super(fullName, phone);
-        if (staffCode == null) {
-            throw new IllegalArgumentException("staffCode must not be null");
-        }
-        if (hireDate == null) {
-            throw new IllegalArgumentException("hireDate must not be null");
+        if (staffCode == null || staffCode.isBlank()) {
+            throw new IllegalArgumentException("staffCode must not be blank");
         }
         this.staffCode = staffCode;
         this.hireDate = hireDate;
     }
 
-    public void updateHireDate(LocalDate hireDate) {
-        if (hireDate == null) {
-            throw new IllegalArgumentException("hireDate must not be null");
-        }
-        this.hireDate = hireDate;
+    public boolean canManageInventory() {
+        return true;
     }
-
 }

@@ -1,15 +1,8 @@
 package com.oose.tech_store.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,11 +14,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Address extends BaseEntity {
-
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @Column(name = "street", length = 255)
     private String street;
@@ -39,53 +27,22 @@ public class Address extends BaseEntity {
     @Column(name = "province", length = 100)
     private String province;
 
-    @OneToMany(mappedBy = "address", fetch = FetchType.LAZY)
-    private List<Order> orders = new ArrayList<>();
-
-    public Address(User user, String street, String ward, String district, String province) {
-        if (user == null) {
-            throw new IllegalArgumentException("user must not be null");
+    public Address(String street, String ward, String district, String province) {
+        if (street == null || street.isBlank()) {
+            throw new IllegalArgumentException("street must not be blank");
         }
-        if (street == null) {
-            throw new IllegalArgumentException("street must not be null");
+        if (ward == null || ward.isBlank()) {
+            throw new IllegalArgumentException("ward must not be blank");
         }
-        if (ward == null) {
-            throw new IllegalArgumentException("ward must not be null");
+        if (district == null || district.isBlank()) {
+            throw new IllegalArgumentException("district must not be blank");
         }
-        if (district == null) {
-            throw new IllegalArgumentException("district must not be null");
-        }
-        if (province == null) {
-            throw new IllegalArgumentException("province must not be null");
-        }
-        this.user = user;
-        this.street = street;
-        this.ward = ward;
-        this.district = district;
-        this.province = province;
-        user.getAddresses().add(this);
-    }
-
-    public void update(String street, String ward, String district, String province) {
-        if (street == null) {
-            throw new IllegalArgumentException("street must not be null");
-        }
-        if (ward == null) {
-            throw new IllegalArgumentException("ward must not be null");
-        }
-        if (district == null) {
-            throw new IllegalArgumentException("district must not be null");
-        }
-        if (province == null) {
-            throw new IllegalArgumentException("province must not be null");
+        if (province == null || province.isBlank()) {
+            throw new IllegalArgumentException("province must not be blank");
         }
         this.street = street;
         this.ward = ward;
         this.district = district;
         this.province = province;
-    }
-
-    public String getFullAddress() {
-        return String.join(", ", street, ward, district, province);
     }
 }

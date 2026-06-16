@@ -1,21 +1,24 @@
 package com.oose.tech_store.entity;
 
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import com.oose.tech_store.entity.enums.SubscriptionStatus;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "product_subscriptions", uniqueConstraints = @UniqueConstraint(name = "uk_product_subscriptions_customer_product", columnNames = {
-        "customer_id", "product_id" }))
+@Table(name = "favorite_products", uniqueConstraints = @UniqueConstraint(
+        name = "uk_favorite_products_customer_product",
+        columnNames = { "customer_id", "product_id" }))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ProductSubscription extends BaseEntity {
+public class FavoriteProduct extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
@@ -35,27 +38,17 @@ public class ProductSubscription extends BaseEntity {
     @Column(name = "unsubscribed_at")
     private LocalDateTime unsubscribedAt;
 
+    @OneToMany(mappedBy = "favoriteProduct", fetch = FetchType.LAZY)
+    private List<Notification> notifications = new ArrayList<>();
+
     @PrePersist
-    protected void prePersistProductSubscription() {
+    protected void prePersistFavoriteProduct() {
         if (subscribedAt == null) {
             subscribedAt = LocalDateTime.now();
         }
     }
 
-    @OneToMany(mappedBy = "productSubscription", fetch = FetchType.LAZY)
-    private java.util.List<Notification> notifications = new java.util.ArrayList<>();
-
-    public void unsubscribe() {
-        this.status = SubscriptionStatus.UNSUBSCRIBED;
-        this.unsubscribedAt = LocalDateTime.now();
-    }
-
-    public void resubscribe() {
-        this.status = SubscriptionStatus.SUBSCRIBED;
-        this.unsubscribedAt = null;
-    }
-
-    public ProductSubscription(Product product, Customer customer, SubscriptionStatus status) {
+    public FavoriteProduct(Product product, Customer customer, SubscriptionStatus status) {
         if (product == null) {
             throw new IllegalArgumentException("product must not be null");
         }
@@ -68,7 +61,7 @@ public class ProductSubscription extends BaseEntity {
         this.product = product;
         this.customer = customer;
         this.status = status;
-        product.getProductSubscriptions().add(this);
-        customer.getProductSubscriptions().add(this);
+        product.getFavoriteProducts().add(this);
+        customer.getFavoriteProducts().add(this);
     }
 }

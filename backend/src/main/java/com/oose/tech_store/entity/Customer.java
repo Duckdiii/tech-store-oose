@@ -4,14 +4,12 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
-import com.oose.tech_store.entity.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "customers")
-@DiscriminatorValue("CUSTOMER")
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -25,11 +23,24 @@ public class Customer extends User {
     private Cart cart;
 
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
-    private List<ProductSubscription> productSubscriptions = new ArrayList<>();
+    private List<Notification> notifications = new ArrayList<>();
+
+    @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
+    private List<FavoriteProduct> favoriteProducts = new ArrayList<>();
 
     public Customer(String fullName, String phone, Membership membership) {
         super(fullName, phone);
+        if (membership == null) {
+            throw new IllegalArgumentException("membership must not be null");
+        }
+
         assignMembership(membership);
+    }
+
+    public void createCartIfAbsent() {
+        if (cart == null) {
+            cart = new Cart(this);
+        }
     }
 
     public void assignMembership(Membership membership) {
@@ -46,15 +57,6 @@ public class Customer extends User {
         if (!membership.getCustomers().contains(this)) {
             membership.getCustomers().add(this);
         }
-    }
-
-    public boolean isSubscribedTo(Product product) {
-        if (product == null) {
-            return false;
-        }
-        return productSubscriptions.stream()
-                .anyMatch(sub -> sub.getProduct() == product
-                        && SubscriptionStatus.SUBSCRIBED.equals(sub.getStatus()));
     }
 
 }

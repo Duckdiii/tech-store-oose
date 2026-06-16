@@ -1,23 +1,13 @@
 package com.oose.tech_store.entity;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -40,28 +30,46 @@ public class Product extends BaseEntity {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @Column(name = "screen_size")
+    private Double screenSize;
+
+    @Column(name = "rear_camera", length = 255)
+    private String rearCamera;
+
+    @Column(name = "front_camera", length = 255)
+    private String frontCamera;
+
+    @Column(name = "chipset", length = 120)
+    private String chipset;
+
+    @Column(name = "nfc_supported")
+    private Boolean nfcSupported;
+
+    @Column(name = "battery_capacity")
+    private Integer batteryCapacity;
+
+    @Column(name = "sim_type", length = 100)
+    private String simType;
+
+    @Column(name = "operating_system", length = 120)
+    private String operatingSystem;
+
+    @Column(name = "screen_resolution", length = 120)
+    private String screenResolution;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private List<ProductImage> images = new ArrayList<>();
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "phone_specification_id", unique = true)
-    private PhoneSpecification spec;
-
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private List<ProductVariant> variants = new ArrayList<>();
-
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "product_promotions",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "promotion_id")
-    )
+    @JoinTable(name = "product_promotions", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "promotion_id"))
     private List<Promotion> promotions = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
-    private List<ProductSubscription> productSubscriptions = new ArrayList<>();
+    private List<ProductVariant> variants = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    private List<FavoriteProduct> favoriteProducts = new ArrayList<>();
 
     public Product(String name, String description, Brand brand, Category category) {
         if (name == null || name.isBlank()) {
@@ -75,21 +83,8 @@ public class Product extends BaseEntity {
         }
         this.name = name;
         this.description = description;
-        this.brand = brand;
-        this.category = category;
-    }
-
-    public void addVariant(ProductVariant variant) {
-        if (variant == null) {
-            throw new IllegalArgumentException("variant must not be null");
-        }
-        if (!variants.contains(variant)) {
-            variants.add(variant);
-        }
-    }
-
-    public void removeVariant(ProductVariant variant) {
-        variants.remove(variant);
+        brand.addProduct(this);
+        category.addProduct(this);
     }
 
     public void addImage(ProductImage image) {
@@ -105,76 +100,11 @@ public class Product extends BaseEntity {
         images.remove(image);
     }
 
-    public void assignSpec(PhoneSpecification spec) {
-        this.spec = spec;
-    }
-
-    public void removeSpec() {
-        this.spec = null;
-    }
-
     public void changeBasicInfo(String name, String description) {
         if (name == null) {
             throw new IllegalArgumentException("name must not be null");
         }
         this.name = name;
         this.description = description;
-    }
-
-    public BigDecimal getMinVariantPrice() {
-        BigDecimal minPrice = null;
-        for (ProductVariant variant : variants) {
-            if (variant == null) {
-                throw new IllegalStateException("product variant must not be null");
-            }
-            if (variant.getPrice() == null) {
-                throw new IllegalStateException("product variant price must not be null");
-            }
-            if (minPrice == null || variant.getPrice().compareTo(minPrice) < 0) {
-                minPrice = variant.getPrice();
-            }
-        }
-        return minPrice;
-    }
-
-    public BigDecimal getMaxVariantPrice() {
-        BigDecimal maxPrice = null;
-        for (ProductVariant variant : variants) {
-            if (variant == null) {
-                throw new IllegalStateException("product variant must not be null");
-            }
-            if (variant.getPrice() == null) {
-                throw new IllegalStateException("product variant price must not be null");
-            }
-            if (maxPrice == null || variant.getPrice().compareTo(maxPrice) > 0) {
-                maxPrice = variant.getPrice();
-            }
-        }
-        return maxPrice;
-    }
-
-    public void addPromotion(Promotion promotion) {
-        if (promotion == null) {
-            throw new IllegalArgumentException("promotion must not be null");
-        }
-        if (!promotions.contains(promotion)) {
-            promotions.add(promotion);
-        }
-        if (!promotion.getProducts().contains(this)) {
-            promotion.getProducts().add(this);
-        }
-    }
-
-    public void removePromotion(Promotion promotion) {
-        if (promotion == null) {
-            return;
-        }
-        promotions.remove(promotion);
-        promotion.getProducts().remove(this);
-    }
-
-    public boolean hasAvailableVariant(Inventory inventory) {
-        return variants.stream()
-                .anyMatch(variant -> variant.hasEnoughStockIn(inventory, 1));
     }
 }
