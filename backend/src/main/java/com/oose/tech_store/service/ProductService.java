@@ -1,12 +1,13 @@
 package com.oose.tech_store.service;
 
-import com.oose.tech_store.dto.ProductSearchRequestDTO;
-import com.oose.tech_store.entity.Product;
-import com.oose.tech_store.repository.ProductRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import com.oose.tech_store.dto.ProductSearchRequestDTO;
+import com.oose.tech_store.entity.Product;
+import com.oose.tech_store.repository.ProductRepository;
 
 @Service
 public class ProductService {

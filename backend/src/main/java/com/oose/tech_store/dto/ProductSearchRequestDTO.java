@@ -1,19 +1,5 @@
 package com.oose.tech_store.dto;
 
-public class ProductSearchRequestDTO {
-    private String q;
-    private int page = 0;
-    private int size = 10;
-
-    public String getQ() { return q; }
-    public void setQ(String q) { this.q = q; }
-    public int getPage() { return page; }
-    public void setPage(int page) { this.page = page; }
-    public int getSize() { return size; }
-    public void setSize(int size) { this.size = size; }
-}
-package com.oose.tech_store.dto;
-
 import java.math.BigDecimal;
 
 public class ProductSearchRequestDTO {
