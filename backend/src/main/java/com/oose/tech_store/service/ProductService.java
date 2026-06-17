@@ -19,16 +19,16 @@ public class ProductService {
     }
 
     public Page<Product> searchAndFilterProducts(ProductSearchRequestDTO request) {
-        String q = request.getQ();
+        String keyword = request.getKeyword();
         int page = Math.max(0, request.getPage());
         int size = request.getSize() > 0 ? request.getSize() : 10;
         Pageable pageable = PageRequest.of(page, size);
 
-        if (q == null || q.isBlank()) {
+        if (keyword == null || keyword.isBlank()) {
             return productRepository.findAll(pageable);
         }
 
-        return productRepository.findByNameContainingIgnoreCase(q, pageable);
+        return productRepository.findByNameContainingIgnoreCase(keyword, pageable);
     }
 
     public Product getProductById(Long id) {
