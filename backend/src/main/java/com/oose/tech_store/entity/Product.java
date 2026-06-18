@@ -100,11 +100,4 @@ public class Product extends BaseEntity {
         images.remove(image);
     }
 
-    public void changeBasicInfo(String name, String description) {
-        if (name == null) {
-            throw new IllegalArgumentException("name must not be null");
-        }
-        this.name = name;
-        this.description = description;
-    }
 }

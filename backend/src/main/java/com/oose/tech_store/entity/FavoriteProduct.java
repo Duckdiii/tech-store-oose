@@ -48,6 +48,27 @@ public class FavoriteProduct extends BaseEntity {
         }
     }
 
+    public void subscribe() {
+        if (SubscriptionStatus.SUBSCRIBED.equals(status)) {
+            return;
+        }
+        status = SubscriptionStatus.SUBSCRIBED;
+        subscribedAt = LocalDateTime.now();
+        unsubscribedAt = null;
+    }
+
+    public void unsubscribe() {
+        if (SubscriptionStatus.UNSUBSCRIBED.equals(status)) {
+            return;
+        }
+        status = SubscriptionStatus.UNSUBSCRIBED;
+        unsubscribedAt = LocalDateTime.now();
+    }
+
+    public boolean isSubscribed() {
+        return SubscriptionStatus.SUBSCRIBED.equals(status);
+    }
+
     public FavoriteProduct(Product product, Customer customer, SubscriptionStatus status) {
         if (product == null) {
             throw new IllegalArgumentException("product must not be null");

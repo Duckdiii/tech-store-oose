@@ -45,4 +45,27 @@ public class Address extends BaseEntity {
         this.district = district;
         this.province = province;
     }
+
+    public String getFullAddress() {
+        return String.join(", ", street, ward, district, province);
+    }
+
+    public void update(String street, String ward, String district, String province) {
+        if (street == null || street.isBlank()) {
+            throw new IllegalArgumentException("street must not be blank");
+        }
+        if (ward == null || ward.isBlank()) {
+            throw new IllegalArgumentException("ward must not be blank");
+        }
+        if (district == null || district.isBlank()) {
+            throw new IllegalArgumentException("district must not be blank");
+        }
+        if (province == null || province.isBlank()) {
+            throw new IllegalArgumentException("province must not be blank");
+        }
+        this.street = street;
+        this.ward = ward;
+        this.district = district;
+        this.province = province;
+    }
 }

@@ -107,10 +107,16 @@ public class Order extends BaseEntity {
     }
 
     public void markShipping() {
+        if (!OrderStatus.PROCESSING.equals(orderStatus)) {
+            throw new IllegalStateException("Order can only be marked as shipping when in PROCESSING status");
+        }
         orderStatus = OrderStatus.SHIPPING;
     }
 
     public void complete() {
+        if (!OrderStatus.SHIPPING.equals(orderStatus)) {
+            throw new IllegalStateException("Order can only be completed when in SHIPPING status");
+        }
         orderStatus = OrderStatus.COMPLETED;
     }
 
@@ -128,6 +134,33 @@ public class Order extends BaseEntity {
 
     public boolean isPaid() {
         return paidAt != null;
+    }
+
+    public void refund() {
+        if (!canRefund()) {
+            throw new IllegalStateException("Order can only be refunded when COMPLETED");
+        }
+        orderStatus = OrderStatus.REFUNDED;
+    }
+
+    public boolean canRefund() {
+        return OrderStatus.COMPLETED.equals(orderStatus);
+    }
+
+    public boolean isCompleted() {
+        return OrderStatus.COMPLETED.equals(orderStatus);
+    }
+
+    public boolean isCancelled() {
+        return OrderStatus.CANCELLED.equals(orderStatus);
+    }
+
+    public boolean isShipping() {
+        return OrderStatus.SHIPPING.equals(orderStatus);
+    }
+
+    public boolean isProcessing() {
+        return OrderStatus.PROCESSING.equals(orderStatus);
     }
 
     public BigDecimal calculateSubtotal() {

@@ -43,6 +43,22 @@ public class Customer extends User {
         }
     }
 
+    public void addFavoriteProduct(FavoriteProduct favoriteProduct) {
+        if (favoriteProduct == null) {
+            throw new IllegalArgumentException("favoriteProduct must not be null");
+        }
+        if (!favoriteProducts.contains(favoriteProduct)) {
+            favoriteProducts.add(favoriteProduct);
+        }
+    }
+
+    public void removeFavoriteProduct(FavoriteProduct favoriteProduct) {
+        if (favoriteProduct == null) {
+            return;
+        }
+        favoriteProducts.remove(favoriteProduct);
+    }
+
     public void assignMembership(Membership membership) {
         if (membership == null) {
             throw new IllegalArgumentException("membership must not be null");

@@ -76,6 +76,21 @@ public class Account extends BaseEntity {
                 return AccountStatus.BLOCKED.equals(status);
         }
 
+        public void delete() {
+                status = AccountStatus.DELETED;
+        }
+
+        public boolean isDeleted() {
+                return AccountStatus.DELETED.equals(status);
+        }
+
+        public void changeEmail(String email) {
+                if (email == null || email.isBlank()) {
+                        throw new IllegalArgumentException("email must not be blank");
+                }
+                this.email = email;
+        }
+
         public void changePassword(String encodedPassword) {
                 if (encodedPassword == null || encodedPassword.isBlank()) {
                         throw new IllegalArgumentException("encodedPassword must not be blank");
@@ -96,7 +111,6 @@ public class Account extends BaseEntity {
                         throw new IllegalArgumentException("user must not be null");
                 }
                 if (this.user == user) {
-                        user.setAccount(this);
                         return;
                 }
                 if (this.user != null) {

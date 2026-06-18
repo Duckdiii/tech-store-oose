@@ -81,6 +81,15 @@ public abstract class User extends BaseEntity {
         return getId();
     }
 
+    public void addAddress(Address address) {
+        if (address == null) {
+            throw new IllegalArgumentException("address must not be null");
+        }
+        if (!addresses.contains(address)) {
+            addresses.add(address);
+        }
+    }
+
     public void removeAddress(Address address) {
         if (addresses.size() <= 1) {
             throw new IllegalStateException("user must have at least one address");
