@@ -76,6 +76,14 @@ public class Account extends BaseEntity {
                 return AccountStatus.BLOCKED.equals(status);
         }
 
+        public boolean isDeleted() {
+                return AccountStatus.DELETED.equals(status);
+        }
+
+        public void delete() {
+                status = AccountStatus.DELETED;
+        }
+
         public void changePassword(String encodedPassword) {
                 if (encodedPassword == null || encodedPassword.isBlank()) {
                         throw new IllegalArgumentException("encodedPassword must not be blank");
