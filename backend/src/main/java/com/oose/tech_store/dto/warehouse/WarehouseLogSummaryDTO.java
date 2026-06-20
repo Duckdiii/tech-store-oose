@@ -10,5 +10,5 @@ public record WarehouseLogSummaryDTO(
         String performedBy,
         ImportAndExportStatus status,
         int totalQuantity,
-        String description) {
+        String productNames) {
 }

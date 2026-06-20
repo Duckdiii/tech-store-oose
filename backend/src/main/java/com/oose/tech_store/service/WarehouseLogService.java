@@ -13,11 +13,11 @@ import com.oose.tech_store.entity.ImportLogItem;
 import com.oose.tech_store.entity.enums.ImportAndExportStatus;
 import com.oose.tech_store.repository.ExportLogRepository;
 import com.oose.tech_store.repository.ImportLogRepository;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -117,7 +117,9 @@ public class WarehouseLogService {
                 log.getPerformedBy(),
                 log.getStatus(),
                 log.calculateTotalQuantity(),
-                "Imported products");
+                productNames(log.getItems().stream()
+                        .map(ImportLogItem::getProductVariant)
+                        .toList()));
     }
 
     private WarehouseLogSummaryDTO toExportSummary(ExportLog log) {
@@ -128,7 +130,9 @@ public class WarehouseLogService {
                 log.getPerformedBy(),
                 log.getStatus(),
                 log.calculateTotalQuantity(),
-                "Exported products");
+                productNames(log.getItems().stream()
+                        .map(ExportLogItem::getProductVariant)
+                        .toList()));
     }
 
     private WarehouseLogDetailResponseDTO toImportDetail(ImportLog log) {
@@ -182,5 +186,12 @@ public class WarehouseLogService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "from must be before or equal to to");
         }
+    }
+
+    private String productNames(List<com.oose.tech_store.entity.ProductVariant> variants) {
+        return variants.stream()
+                .map(variant -> variant.getProduct().getName())
+                .distinct()
+                .collect(Collectors.joining(", "));
     }
 }

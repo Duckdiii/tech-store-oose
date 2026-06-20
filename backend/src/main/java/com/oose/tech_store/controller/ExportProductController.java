@@ -2,6 +2,7 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.warehouse.ExportProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ExportProductResponseDTO;
+import com.oose.tech_store.dto.warehouse.ExportProductPreviewResponseDTO;
 import com.oose.tech_store.service.ExportProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/warehouse/exports")
@@ -19,10 +21,17 @@ public class ExportProductController {
 
     private final ExportProductService exportProductService;
 
-    @PostMapping
-    public ResponseEntity<ExportProductResponseDTO> exportProduct(
+    @PostMapping("/validate")
+    public ExportProductPreviewResponseDTO validateExport(
             @Valid @RequestBody ExportProductRequestDTO request) {
+        return exportProductService.validateExport(request);
+    }
+
+    @PostMapping("/confirm")
+    public ResponseEntity<ExportProductResponseDTO> confirmExport(
+            @Valid @RequestBody ExportProductRequestDTO request,
+            Principal principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(exportProductService.exportProduct(request));
+                .body(exportProductService.confirmExport(request, principal.getName()));
     }
 }

@@ -1,77 +1,100 @@
 package com.oose.tech_store.service;
 
+import com.oose.tech_store.dto.warehouse.ExportProductPreviewResponseDTO;
 import com.oose.tech_store.dto.warehouse.ExportProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ExportProductResponseDTO;
+import com.oose.tech_store.dto.warehouse.InventoryStatusDTO;
 import com.oose.tech_store.dto.warehouse.ReceiptDTO;
-import com.oose.tech_store.entity.ExportLog;
-import com.oose.tech_store.entity.ExportLogItem;
 import com.oose.tech_store.entity.ProductVariant;
-import com.oose.tech_store.entity.Receipt;
-import com.oose.tech_store.entity.enums.ImportAndExportStatus;
-import com.oose.tech_store.repository.ExportLogRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
-import com.oose.tech_store.repository.ReceiptRepository;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ExportProductService {
 
     private final ProductVariantRepository productVariantRepository;
-    private final ExportLogRepository exportLogRepository;
-    private final ReceiptRepository receiptRepository;
+    private final ExportPersistenceService exportPersistenceService;
+    private final ReceiptService receiptService;
+    private final InventoryNotificationService inventoryNotificationService;
 
-    @Transactional
-    public ExportProductResponseDTO exportProduct(ExportProductRequestDTO request) {
-        String serialId = request.serialId().trim();
-        ProductVariant productVariant = productVariantRepository.findById(serialId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Product serial was not found"));
+    /** Validates serials and availability without changing product status. */
+    public ExportProductPreviewResponseDTO validateExport(ExportProductRequestDTO request) {
+        List<ProductVariant> variants = findAvailableVariants(request.serialIds());
+        return new ExportProductPreviewResponseDTO(
+                variants.size(),
+                variants.stream().map(ProductVariant::getId).toList(),
+                "Export information is valid. Please confirm the export.");
+    }
 
-        if (!productVariant.isAvailable()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Product serial is already exported");
+    public ExportProductResponseDTO confirmExport(ExportProductRequestDTO request, String performedBy) {
+        // Validate first, then validate again inside the save transaction to avoid stale stock.
+        findAvailableVariants(request.serialIds());
+        ExportPersistenceResult result = exportPersistenceService.saveExport(request, performedBy);
+
+        ReceiptDTO receipt = null;
+        List<String> warnings = new ArrayList<>();
+        try {
+            receipt = receiptService.generateReceipt(result.exportLogId());
+        } catch (RuntimeException exception) {
+            // Export is already committed. Keep the warning required by the specification.
+            log.error("Receipt generation failed for export log {}", result.exportLogId(), exception);
+            warnings.add("Products were exported, but the receipt could not be generated.");
         }
 
-        productVariant.markAsExported();
-        productVariantRepository.save(productVariant);
+        List<InventoryStatusDTO> inventoryStatuses = List.of();
+        try {
+            inventoryStatuses = inventoryNotificationService.notifyInventoryChange(result.affectedProducts());
+        } catch (RuntimeException exception) {
+            log.error("Inventory notification failed for export log {}", result.exportLogId(), exception);
+            warnings.add("Inventory was updated, but notification status could not be displayed.");
+        }
 
-        ExportLog exportLog = new ExportLog(
-                request.performedBy().trim(),
-                normalizeNullable(request.reason()),
-                ImportAndExportStatus.PENDING);
-        new ExportLogItem(exportLog, productVariant, 1);
-        exportLog.complete();
-        ExportLog savedExportLog = exportLogRepository.save(exportLog);
-
-        // The current model stores a receipt record. File generation can be added later.
-        Receipt receipt = receiptRepository.save(new Receipt(savedExportLog, null));
-
+        String message = warnings.isEmpty()
+                ? "Products were exported successfully"
+                : "Products were exported with warnings";
         return new ExportProductResponseDTO(
-                savedExportLog.getId(),
-                productVariant.getId(),
-                productVariant.getStatus(),
-                savedExportLog.getStatus(),
-                toReceiptDTO(receipt),
-                "Product was exported successfully");
+                result.exportLogId(),
+                result.serialIds(),
+                result.status(),
+                receipt,
+                inventoryStatuses,
+                warnings,
+                message);
     }
 
-    private ReceiptDTO toReceiptDTO(Receipt receipt) {
-        return new ReceiptDTO(
-                receipt.getId(),
-                receipt.getExportLog().getId(),
-                receipt.getIssuedAt(),
-                receipt.getFileUrl());
-    }
-
-    private String normalizeNullable(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+    private List<ProductVariant> findAvailableVariants(List<String> requestedSerialIds) {
+        Set<String> uniqueSerialIds = new HashSet<>();
+        for (String serialId : requestedSerialIds) {
+            String normalizedId = serialId.trim().toLowerCase(Locale.ROOT);
+            if (!uniqueSerialIds.add(normalizedId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Duplicate serial id in export request: " + serialId.trim());
+            }
         }
-        return value.trim();
+
+        List<ProductVariant> variants = productVariantRepository.findAllById(
+                requestedSerialIds.stream().map(String::trim).toList());
+        if (variants.size() != requestedSerialIds.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Insufficient product quantity in inventory");
+        }
+        for (ProductVariant variant : variants) {
+            if (!variant.isAvailable()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Insufficient product quantity in inventory");
+            }
+        }
+        return variants;
     }
 }

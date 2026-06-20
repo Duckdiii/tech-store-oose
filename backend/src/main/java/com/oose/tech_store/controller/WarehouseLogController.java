@@ -1,6 +1,7 @@
 package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.warehouse.WarehouseLogDetailResponseDTO;
+import com.oose.tech_store.dto.warehouse.WarehouseLogFileFormat;
 import com.oose.tech_store.dto.warehouse.WarehouseLogRequestDTO;
 import com.oose.tech_store.dto.warehouse.WarehouseLogResponseDTO;
 import com.oose.tech_store.dto.warehouse.WarehouseLogType;
@@ -57,16 +58,19 @@ public class WarehouseLogController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(required = false) WarehouseLogType logType,
             @RequestParam(required = false) ImportAndExportStatus status,
-            @RequestParam(required = false) String performedBy) {
-        byte[] csv = warehouseLogExportService.exportCsv(
-                createRequest(from, to, logType, status, performedBy));
+            @RequestParam(required = false) String performedBy,
+            @RequestParam(defaultValue = "CSV") WarehouseLogFileFormat format) {
+        byte[] file = warehouseLogExportService.export(
+                createRequest(from, to, logType, status, performedBy), format);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+        headers.setContentType(format == WarehouseLogFileFormat.EXCEL
+                ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                : new MediaType("text", "csv", StandardCharsets.UTF_8));
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("warehouse-logs.csv")
+                .filename(format == WarehouseLogFileFormat.EXCEL ? "warehouse-logs.xlsx" : "warehouse-logs.csv")
                 .build());
-        return ResponseEntity.ok().headers(headers).body(csv);
+        return ResponseEntity.ok().headers(headers).body(file);
     }
 
     private WarehouseLogRequestDTO createRequest(

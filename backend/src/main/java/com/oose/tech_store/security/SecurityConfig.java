@@ -12,12 +12,17 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(
+			HttpSecurity http, AccountUserDetailsService accountUserDetailsService) throws Exception {
 		return http
 			.csrf(csrf -> csrf.disable())
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/api/health").permitAll()
+				.requestMatchers("/api/warehouse/logs/**").hasRole("MANAGER")
+				.requestMatchers("/api/warehouse/imports/**", "/api/warehouse/exports/**", "/api/warehouse/receipts/**")
+					.hasAnyRole("STAFF", "MANAGER")
 				.anyRequest().authenticated())
+			.userDetailsService(accountUserDetailsService)
 			.httpBasic(Customizer.withDefaults())
 			.build();
 	}

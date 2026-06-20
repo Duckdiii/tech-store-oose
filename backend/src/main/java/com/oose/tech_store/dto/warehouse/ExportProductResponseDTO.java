@@ -1,13 +1,14 @@
 package com.oose.tech_store.dto.warehouse;
 
 import com.oose.tech_store.entity.enums.ImportAndExportStatus;
-import com.oose.tech_store.entity.enums.ProductVariantStatus;
+import java.util.List;
 
 public record ExportProductResponseDTO(
         String exportLogId,
-        String serialId,
-        ProductVariantStatus productStatus,
+        List<String> serialIds,
         ImportAndExportStatus status,
         ReceiptDTO receipt,
+        List<InventoryStatusDTO> inventoryStatuses,
+        List<String> warnings,
         String message) {
 }
