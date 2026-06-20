@@ -15,6 +15,10 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf.disable())
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/api/health").permitAll()
+				.requestMatchers("/api/invoices/**").permitAll()
+				.requestMatchers("/api/payments/**").permitAll()
+				.requestMatchers("/api/bundle-services/**").permitAll()
+				.requestMatchers("/api/cart/**").permitAll()
 				.anyRequest().authenticated())
 			.httpBasic(Customizer.withDefaults())
 			.build();
