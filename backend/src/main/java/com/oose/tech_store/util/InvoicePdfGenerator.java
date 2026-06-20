@@ -2,6 +2,7 @@ package com.oose.tech_store.util;
 
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
+import com.lowagie.text.pdf.draw.LineSeparator;
 import com.oose.tech_store.dto.invoice.InvoiceItemResponse;
 import com.oose.tech_store.dto.invoice.InvoiceResponse;
 
@@ -18,7 +19,8 @@ public class InvoicePdfGenerator {
     private static final Color COLOR_ACCENT = new Color(37, 99, 235);
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private InvoicePdfGenerator() {}
+    private InvoicePdfGenerator() {
+    }
 
     public static byte[] generate(InvoiceResponse invoice) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -90,7 +92,7 @@ public class InvoicePdfGenerator {
     }
 
     private static void addMetaCell(PdfPTable table, String label, String value,
-                                     Font labelFont, Font valueFont) {
+            Font labelFont, Font valueFont) {
         PdfPCell cell = new PdfPCell();
         cell.setBorder(Rectangle.NO_BORDER);
         cell.setPaddingBottom(4);
@@ -104,13 +106,13 @@ public class InvoicePdfGenerator {
         Font bodyFont = new Font(Font.HELVETICA, 9, Font.NORMAL, COLOR_PRIMARY);
         Font subFont = new Font(Font.HELVETICA, 8, Font.ITALIC, COLOR_MUTED);
 
-        float[] widths = {0.35f, 0.18f, 0.12f, 0.12f, 0.12f, 0.11f};
+        float[] widths = { 0.35f, 0.18f, 0.12f, 0.12f, 0.12f, 0.11f };
         PdfPTable table = new PdfPTable(widths);
         table.setWidthPercentage(100);
         table.setSpacingBefore(8);
         table.setSpacingAfter(8);
 
-        String[] headers = {"Product", "Variant", "Qty", "Unit Price", "Bundle", "Subtotal"};
+        String[] headers = { "Product", "Variant", "Qty", "Unit Price", "Bundle", "Subtotal" };
         for (String h : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(h, headFont));
             cell.setBackgroundColor(COLOR_PRIMARY);
@@ -177,7 +179,7 @@ public class InvoicePdfGenerator {
     }
 
     private static void addSummaryRow(PdfPTable table, String label, String value,
-                                       Font labelFont, Font valueFont) {
+            Font labelFont, Font valueFont) {
         PdfPCell labelCell = new PdfPCell(new Phrase(label, labelFont));
         labelCell.setBorder(Rectangle.TOP);
         labelCell.setBorderColor(COLOR_BORDER);
@@ -205,7 +207,8 @@ public class InvoicePdfGenerator {
     }
 
     private static String formatMoney(BigDecimal amount) {
-        if (amount == null) return "-";
+        if (amount == null)
+            return "-";
         return String.format("%,.0f VND", amount);
     }
 }

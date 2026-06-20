@@ -11,6 +11,7 @@ import com.oose.tech_store.exception.BundleServiceUpdateException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.repository.BundleServiceRepository;
 import com.oose.tech_store.repository.CartRepository;
+import com.oose.tech_store.service.CartBundleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
