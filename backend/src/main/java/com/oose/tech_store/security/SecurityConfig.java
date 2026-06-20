@@ -19,6 +19,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/payments/**").permitAll()
 				.requestMatchers("/api/bundle-services/**").permitAll()
 				.requestMatchers("/api/cart/**").permitAll()
+				.requestMatchers("/api/orders/**").permitAll()
 				.anyRequest().authenticated())
 			.httpBasic(Customizer.withDefaults())
 			.build();
