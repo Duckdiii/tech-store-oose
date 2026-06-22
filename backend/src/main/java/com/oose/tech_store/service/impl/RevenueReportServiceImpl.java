@@ -127,7 +127,7 @@ public class RevenueReportServiceImpl implements RevenueReportService {
             }
         }
         return map.entrySet().stream()
-                .sorted(Comparator.<Map.Entry<String, ProductStats>>comparingByValue(
+                .sorted(Map.Entry.<String, ProductStats>comparingByValue(
                         Comparator.comparingLong(ProductStats::qty)).reversed())
                 .limit(5)
                 .map(e -> new TopProductItem(e.getKey(), e.getValue().qty(), e.getValue().revenue()))
