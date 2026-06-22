@@ -22,6 +22,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/bundle-services/**").permitAll()
 				.requestMatchers("/api/cart/**").permitAll()
 				.requestMatchers("/api/orders/**").permitAll()
+				.requestMatchers("/api/admin/recovery/**").permitAll()
 				.anyRequest().authenticated())
 			.httpBasic(Customizer.withDefaults())
 			.build();
