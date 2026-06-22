@@ -1,0 +1,20 @@
+package com.oose.tech_store.entity;
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "managers")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Manager extends User {
+
+    public Manager(String fullName, String phone) {
+        super(fullName, phone);
+    }
+}

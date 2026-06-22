@@ -1,92 +1,94 @@
 package com.oose.tech_store.service;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.oose.tech_store.dto.MembershipTierResponseDTO;
+import com.oose.tech_store.entity.Customer;
 import com.oose.tech_store.entity.Membership;
-import com.oose.tech_store.entity.MembershipTier;
+import com.oose.tech_store.repository.CustomerRepository;
 import com.oose.tech_store.repository.MembershipRepository;
-import com.oose.tech_store.repository.MembershipTierRepository;
 
 @Service
 public class MembershipService {
 
+    private final CustomerRepository customerRepository;
     private final MembershipRepository membershipRepository;
-    private final MembershipTierRepository membershipTierRepository;
 
-    public MembershipService(MembershipRepository membershipRepository,
-                             MembershipTierRepository membershipTierRepository) {
+    public MembershipService(CustomerRepository customerRepository,
+                             MembershipRepository membershipRepository) {
+        this.customerRepository = customerRepository;
         this.membershipRepository = membershipRepository;
-        this.membershipTierRepository = membershipTierRepository;
     }
 
-    public MembershipTierResponseDTO getMembershipInfo(Long userId) {
-        Membership membership = membershipRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Membership not found for user: " + userId));
+    @Transactional(readOnly = true)
+    public MembershipTierResponseDTO getMembershipInfo(String customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerId));
 
-        return calculateTier(membership);
+        return calculateTier(customer.getMembership());
     }
 
+    @Transactional(readOnly = true)
     public MembershipTierResponseDTO calculateTier(Membership membership) {
-        // Get all tiers sorted by minSpendingRequired ascending
-        List<MembershipTier> allTiers = membershipTierRepository.findAll();
-        allTiers.sort((a, b) -> Long.compare(a.getMinSpendingRequired(), b.getMinSpendingRequired()));
-
-        // Determine current tier based on totalSpending
-        MembershipTier currentTier = membership.getCurrentTier();
-        for (MembershipTier tier : allTiers) {
-            if (membership.getTotalSpending().compareTo(BigDecimal.valueOf(tier.getMinSpendingRequired())) >= 0) {
-                currentTier = tier;
-            }
+        if (membership == null) {
+            throw new RuntimeException("Membership not found");
         }
 
-        // Find next tier
-        MembershipTier nextTier = null;
-        Long pointsNeededForNext = 0L;
-        for (MembershipTier tier : allTiers) {
-            if (tier.getMinSpendingRequired() > currentTier.getMinSpendingRequired()) {
-                nextTier = tier;
-                pointsNeededForNext = tier.getMinSpendingRequired() - membership.getTotalSpending().longValue();
-                break;
-            }
-        }
+        Membership nextTier = findNextTier(membership);
 
-        // Build response DTO
         MembershipTierResponseDTO response = new MembershipTierResponseDTO();
-        response.setCurrentTierId(currentTier.getId());
-        response.setCurrentTierName(currentTier.getName());
-        response.setCurrentTierDescription(currentTier.getDescription());
-        response.setPointsMultiplier(currentTier.getPointsMultiplier());
-        response.setTotalSpending(membership.getTotalSpending());
-        response.setCurrentPoints(membership.getCurrentPoints());
-        response.setPointsNeededForNextTier(pointsNeededForNext);
+        response.setCurrentTierId(membership.getId());
+        response.setCurrentTierName(membership.getTier().name());
+        response.setCurrentTierDescription(membership.getBenefit().getDescription());
+        response.setDiscountPercentage(membership.getBenefit().getDiscountPercentage());
+        response.setFreeShipping(membership.getBenefit().hasFreeShipping());
+        response.setMinSpending(membership.getMinSpending());
+        response.setMaxSpending(membership.getMaxSpending());
         if (nextTier != null) {
-            response.setNextTierName(nextTier.getName());
+            response.setNextTierName(nextTier.getTier().name());
+            response.setNextTierMinSpending(nextTier.getMinSpending());
         }
 
         return response;
     }
 
-    public void updateSpendingAndTier(Long userId, BigDecimal amount) {
-        Membership membership = membershipRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Membership not found for user: " + userId));
+    @Transactional
+    public void updateSpendingAndTier(String customerId, BigDecimal totalSpending) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerId));
+        customer.assignMembership(findTierForSpending(totalSpending));
+        customerRepository.save(customer);
+    }
 
-        // Update total spending
-        membership.setTotalSpending(membership.getTotalSpending().add(amount));
-
-        // Recalculate tier
-        List<MembershipTier> allTiers = membershipTierRepository.findAll();
-        allTiers.sort((a, b) -> Long.compare(a.getMinSpendingRequired(), b.getMinSpendingRequired()));
-
-        for (MembershipTier tier : allTiers) {
-            if (membership.getTotalSpending().compareTo(BigDecimal.valueOf(tier.getMinSpendingRequired())) >= 0) {
-                membership.setCurrentTier(tier);
-            }
+    private Membership findTierForSpending(BigDecimal totalSpending) {
+        if (totalSpending == null) {
+            throw new IllegalArgumentException("totalSpending must not be null");
         }
+        return sortedMemberships().stream()
+                .filter(membership -> membership.isSpendingInRange(totalSpending))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No membership tier found for spending: " + totalSpending));
+    }
 
-        membershipRepository.save(membership);
+    private Membership findNextTier(Membership currentMembership) {
+        return sortedMemberships().stream()
+                .filter(membership -> currentMembership.getMinSpending() == null
+                        || membership.getMinSpending() != null
+                        && membership.getMinSpending().compareTo(currentMembership.getMinSpending()) > 0)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private List<Membership> sortedMemberships() {
+        return membershipRepository.findAll().stream()
+                .sorted(Comparator.comparing(
+                        Membership::getMinSpending,
+                        Comparator.nullsFirst(BigDecimal::compareTo)))
+                .toList();
     }
 }

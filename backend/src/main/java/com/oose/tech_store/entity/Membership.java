@@ -1,48 +1,96 @@
 package com.oose.tech_store.entity;
 
-import java.math.BigDecimal;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import com.oose.tech_store.entity.enums.MembershipTier;
+import jakarta.persistence.*;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "memberships")
-public class Membership {
+@Table(name = "memberships", uniqueConstraints = @UniqueConstraint(name = "uk_memberships_tier", columnNames = "tier"))
+@Getter
+@Setter
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Membership extends BaseEntity {
 
-    @Column(nullable = false, unique = true, name = "user_id")
-    private Long userId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tier", nullable = false, length = 30)
+    private MembershipTier tier;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "tier_id", nullable = false)
-    private MembershipTier currentTier;
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "benefit_id", nullable = false, unique = true)
+    private MembershipBenefit benefit;
 
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal totalSpending;
+    @Column(name = "min_spending", precision = 15, scale = 2)
+    private BigDecimal minSpending;
 
-    @Column(nullable = false)
-    private Long currentPoints;
+    @Column(name = "max_spending", precision = 15, scale = 2)
+    private BigDecimal maxSpending;
 
-    public Membership() {
+    @OneToMany(mappedBy = "membership", fetch = FetchType.LAZY)
+    private List<Customer> customers = new ArrayList<>();
+
+    public Membership(MembershipTier tier, MembershipBenefit benefit, BigDecimal minSpending, BigDecimal maxSpending) {
+        if (tier == null) {
+            throw new IllegalArgumentException("tier must not be null");
+        }
+        if (benefit == null) {
+            throw new IllegalArgumentException("benefit must not be null");
+        }
+        this.tier = tier;
+        this.benefit = benefit;
+        changeSpendingRange(minSpending, maxSpending);
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-    public MembershipTier getCurrentTier() { return currentTier; }
-    public void setCurrentTier(MembershipTier currentTier) { this.currentTier = currentTier; }
-    public BigDecimal getTotalSpending() { return totalSpending; }
-    public void setTotalSpending(BigDecimal totalSpending) { this.totalSpending = totalSpending; }
-    public Long getCurrentPoints() { return currentPoints; }
-    public void setCurrentPoints(Long currentPoints) { this.currentPoints = currentPoints; }
+    public boolean isSpendingInRange(BigDecimal spending) {
+        if (spending == null) {
+            throw new IllegalArgumentException("spending must not be null");
+        }
+        if (minSpending != null && spending.compareTo(minSpending) < 0) {
+            return false;
+        }
+        return maxSpending == null || spending.compareTo(maxSpending) <= 0;
+    }
+
+    public void addCustomer(Customer customer) {
+        if (customer == null) {
+            throw new IllegalArgumentException("customer must not be null");
+        }
+        if (customer.getMembership() != null && customer.getMembership() != this) {
+            customer.getMembership().getCustomers().remove(customer);
+        }
+        if (!customers.contains(customer)) {
+            customers.add(customer);
+        }
+        customer.setMembership(this);
+    }
+
+    public void removeCustomer(Customer customer) {
+        if (customer == null) {
+            return;
+        }
+        if (customers.remove(customer)) {
+            customer.setMembership(null);
+        }
+    }
+
+    public void changeSpendingRange(BigDecimal min, BigDecimal max) {
+        if (min != null && min.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("min must not be negative");
+        }
+        if (max != null && max.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("max must not be negative");
+        }
+        if (min != null && max != null && min.compareTo(max) > 0) {
+            throw new IllegalArgumentException("min must not be greater than max");
+        }
+        minSpending = min;
+        maxSpending = max;
+    }
 }

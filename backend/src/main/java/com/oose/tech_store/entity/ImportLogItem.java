@@ -1,44 +1,70 @@
 package com.oose.tech_store.entity;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal; // Kiểu dữ liệu chuẩn cho tiền tệ [cite: 179]
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "import_log_items")
-public class ImportLogItem {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ImportLogItem extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
 
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    // Cần lưu giá tại thời điểm nhập phòng trường hợp giá sản phẩm thay đổi sau này [cite: 456, 465, 466]
-    @Column(nullable = false, precision = 12, scale = 2) // [cite: 161]
-    private BigDecimal unitPriceAtImport; // [cite: 179]
+    @Column(name = "import_price", nullable = false)
+    private BigDecimal importPrice;
 
-    @ManyToOne(fetch = FetchType.LAZY) // [cite: 448]
-    @JoinColumn(name = "import_log_id", nullable = false) // [cite: 449]
-    private ImportLog importLog;
-
-    // Quan hệ Aggregation hướng tới Product ngoài phân vùng [cite: 515, 520]
-    @ManyToOne(fetch = FetchType.LAZY) // [cite: 451]
-    @JoinColumn(name = "product_id", nullable = false) // [cite: 452]
-    private Product product;
-
-    public ImportLogItem() { // [cite: 142]
+    public ImportLogItem(ImportLog importLog, ProductVariant productVariant, Integer quantity, BigDecimal importPrice) {
+        if (importLog == null) {
+            throw new IllegalArgumentException("importLog must not be null");
+        }
+        if (productVariant == null) {
+            throw new IllegalArgumentException("productVariant must not be null");
+        }
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
+        if (importPrice == null) {
+            throw new IllegalArgumentException("importPrice must not be null");
+        }
+        this.productVariant = productVariant;
+        this.quantity = quantity;
+        this.importPrice = importPrice;
+        importLog.addItem(this);
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
-    public BigDecimal getUnitPriceAtImport() { return unitPriceAtImport; }
-    public void setUnitPriceAtImport(BigDecimal unitPriceAtImport) { this.unitPriceAtImport = unitPriceAtImport; }
-    public ImportLog getImportLog() { return importLog; }
-    public void setImportLog(ImportLog importLog) { this.importLog = importLog; }
-    public Product getProduct() { return product; }
-    public void setProduct(Product product) { this.product = product; }
+    public BigDecimal calculateLineTotal() {
+        if (quantity == null) {
+            throw new IllegalStateException("quantity must not be null");
+        }
+        if (importPrice == null) {
+            throw new IllegalStateException("importPrice must not be null");
+        }
+        return importPrice.multiply(BigDecimal.valueOf(quantity));
+    }
+
+    public void changeQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
+        this.quantity = quantity;
+    }
+
+    public void changeImportPrice(BigDecimal importPrice) {
+        if (importPrice == null) {
+            throw new IllegalArgumentException("importPrice must not be null");
+        }
+        this.importPrice = importPrice;
+    }
 }

@@ -23,10 +23,12 @@ public class MembershipController {
     @GetMapping("/my-tier")
     public MembershipTierResponseDTO getMyMembershipTier(Authentication authentication) {
         try {
-            // Extract user ID from JWT/Authentication
-            // For now, using authentication principal name as user ID
-            Long userId = Long.valueOf(authentication.getName());
-            return membershipService.getMembershipInfo(userId);
+            if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
+            }
+            return membershipService.getMembershipInfo(authentication.getName());
+        } catch (ResponseStatusException ex) {
+            throw ex;
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
                     "Unable to load membership info.", ex);

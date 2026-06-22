@@ -1,0 +1,100 @@
+package com.oose.tech_store.payment.gateway;
+
+import com.oose.tech_store.config.VNPayProperties;
+import com.oose.tech_store.payment.PendingCheckout;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class VNPayPaymentGateway {
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    private final VNPayProperties properties;
+
+    public String createPaymentUrl(PendingCheckout checkout, String clientIp) {
+        Map<String, String> params = new TreeMap<>();
+        params.put("vnp_Version", "2.1.0");
+        params.put("vnp_Command", "pay");
+        params.put("vnp_TmnCode", properties.getTmnCode());
+        params.put("vnp_Amount", String.valueOf(
+                checkout.getAmount().multiply(BigDecimal.valueOf(100)).longValue()));
+        params.put("vnp_CurrCode", "VND");
+        params.put("vnp_TxnRef", checkout.getTxnRef());
+        params.put("vnp_OrderInfo", "Payment for order " + checkout.getTxnRef());
+        params.put("vnp_OrderType", "other");
+        params.put("vnp_Locale", "vn");
+        params.put("vnp_ReturnUrl", properties.getReturnUrl());
+        params.put("vnp_IpAddr", clientIp != null && !clientIp.isBlank() ? clientIp : "127.0.0.1");
+        params.put("vnp_CreateDate", LocalDateTime.now().format(DATE_FMT));
+
+        String hashData = params.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("&"));
+        String secureHash = hmacSHA512(hashData, properties.getHashSecret());
+
+        String queryString = params.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                        + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+
+        return properties.getPaymentUrl() + "?" + queryString + "&vnp_SecureHash=" + secureHash;
+    }
+
+    public boolean verifySignature(Map<String, String> params) {
+        String receivedHash = params.get("vnp_SecureHash");
+        if (receivedHash == null) {
+            return false;
+        }
+
+        Map<String, String> filteredParams = new TreeMap<>(params);
+        filteredParams.remove("vnp_SecureHash");
+        filteredParams.remove("vnp_SecureHashType");
+
+        String hashData = filteredParams.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining("&"));
+
+        return hmacSHA512(hashData, properties.getHashSecret()).equalsIgnoreCase(receivedHash);
+    }
+
+    public boolean isSuccessful(Map<String, String> params) {
+        return "00".equals(params.get("vnp_TransactionStatus"));
+    }
+
+    public boolean isCancelled(Map<String, String> params) {
+        return "02".equals(params.get("vnp_TransactionStatus"));
+    }
+
+    private String hmacSHA512(String data, String key) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA512");
+            mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA512"));
+            return toHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException("Failed to compute HMAC-SHA512", e);
+        }
+    }
+
+    private String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+}

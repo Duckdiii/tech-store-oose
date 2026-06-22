@@ -1,37 +1,44 @@
 package com.oose.tech_store.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "export_log_items")
-public class ExportLogItem {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ExportLogItem extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
 
-    @Column(nullable = false)
+    @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "export_log_id", nullable = false)
-    private ExportLog exportLog;
-
-    // Quan hệ Aggregation hướng tới Product ngoài phân vùng [cite: 515, 520]
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
-
-    public ExportLogItem() { // [cite: 142]
+    public ExportLogItem(ExportLog exportLog, ProductVariant productVariant, Integer quantity) {
+        if (exportLog == null) {
+            throw new IllegalArgumentException("exportLog must not be null");
+        }
+        if (productVariant == null) {
+            throw new IllegalArgumentException("productVariant must not be null");
+        }
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
+        this.productVariant = productVariant;
+        this.quantity = quantity;
+        exportLog.addItem(this);
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
-    public ExportLog getExportLog() { return exportLog; }
-    public void setExportLog(ExportLog exportLog) { this.exportLog = exportLog; }
-    public Product getProduct() { return product; }
-    public void setProduct(Product product) { this.product = product; }
+    public void changeQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
+        this.quantity = quantity;
+    }
 }

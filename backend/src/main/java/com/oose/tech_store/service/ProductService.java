@@ -31,7 +31,7 @@ public class ProductService {
         return productRepository.findByNameContainingIgnoreCase(keyword, pageable);
     }
 
-    public Product getProductById(Long id) {
+    public Product getProductById(String id) {
         return productRepository.findById(id).orElseThrow();
     }
 }

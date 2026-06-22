@@ -14,7 +14,14 @@ public class SecurityConfig {
 		return http
 			.csrf(csrf -> csrf.disable())
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/api/health", "/api/products/**", "/api/membership/**").permitAll()
+				.requestMatchers("/api/health").permitAll()
+				.requestMatchers("/api/products/**").permitAll()
+				.requestMatchers("/api/membership/**").permitAll()
+				.requestMatchers("/api/invoices/**").permitAll()
+				.requestMatchers("/api/payments/**").permitAll()
+				.requestMatchers("/api/bundle-services/**").permitAll()
+				.requestMatchers("/api/cart/**").permitAll()
+				.requestMatchers("/api/orders/**").permitAll()
 				.anyRequest().authenticated())
 			.httpBasic(Customizer.withDefaults())
 			.build();

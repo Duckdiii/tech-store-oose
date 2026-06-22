@@ -1,58 +1,109 @@
 package com.oose.tech_store.entity;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import com.oose.tech_store.entity.enums.ImportAndExportStatus;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "export_logs")
-public class ExportLog {
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ExportLog extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private LocalDateTime exportDate;
-
-    private String note;
-
-    // Quan hệ Composition: Ràng buộc chặt chẽ vòng đời của các item chi tiết phiếu xuất [cite: 11]
-    @OneToMany(mappedBy = "exportLog", cascade = CascadeType.ALL, orphanRemoval = true) // [cite: 413, 416, 417]
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "export_log_id", nullable = false)
     private List<ExportLogItem> items = new ArrayList<>();
 
-    // Quan hệ một-một hai chiều, phía không sở hữu khóa ngoại sử dụng mappedBy [cite: 220, 260]
-    @OneToOne(mappedBy = "exportLog") // [cite: 260]
-    private Receipt receipt;
+    @Column(name = "exported_at", nullable = false)
+    private LocalDateTime exportedAt;
 
-    public ExportLog() { // [cite: 142]
-    }
+    @Column(name = "performed_by", nullable = false, length = 120)
+    private String performedBy;
+
+    @Column(name = "reason", columnDefinition = "TEXT")
+    private String reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private ImportAndExportStatus status = ImportAndExportStatus.PENDING;
 
     @PrePersist
-    public void prePersist() {
-        this.exportDate = LocalDateTime.now();
+    protected void prePersistExportLog() {
+        if (exportedAt == null) {
+            exportedAt = LocalDateTime.now();
+        }
+    }
+
+    public ExportLog(String performedBy, String reason, ImportAndExportStatus status) {
+        if (performedBy == null || performedBy.isBlank()) {
+            throw new IllegalArgumentException("performedBy must not be blank");
+        }
+        if (status == null) {
+            throw new IllegalArgumentException("status must not be null");
+        }
+        this.performedBy = performedBy;
+        this.reason = reason;
+        this.status = status;
     }
 
     public void addItem(ExportLogItem item) {
-        items.add(item);
-        item.setExportLog(this);
+        if (item == null) {
+            throw new IllegalArgumentException("item must not be null");
+        }
+        if (!items.contains(item)) {
+            items.add(item);
+        }
     }
 
     public void removeItem(ExportLogItem item) {
         items.remove(item);
-        item.setExportLog(null);
     }
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public LocalDateTime getExportDate() { return exportDate; }
-    public void setExportDate(LocalDateTime exportDate) { this.exportDate = exportDate; }
-    public String getNote() { return note; }
-    public void setNote(String note) { this.note = note; }
-    public List<ExportLogItem> getItems() { return items; }
-    public void setItems(List<ExportLogItem> items) { this.items = items; }
-    public Receipt getReceipt() { return receipt; }
-    public void setReceipt(Receipt receipt) { this.receipt = receipt; }
+    public void approve() {
+        status = ImportAndExportStatus.SUCCESS;
+    }
+
+    public void reject(String reason) {
+        status = ImportAndExportStatus.FAILURE;
+        this.reason = reason;
+    }
+
+    public boolean isApproved() {
+        return ImportAndExportStatus.SUCCESS.equals(status);
+    }
+
+    public boolean isPending() {
+        return ImportAndExportStatus.PENDING.equals(status);
+    }
+
+    public boolean isFailed() {
+        return ImportAndExportStatus.FAILURE.equals(status);
+    }
+
+    public boolean canBeModified() {
+        return isPending();
+    }
+
+    public int calculateTotalQuantity() {
+        int totalQuantity = 0;
+        for (ExportLogItem item : items) {
+            if (item == null) {
+                throw new IllegalStateException("export log item must not be null");
+            }
+            if (item.getQuantity() == null) {
+                throw new IllegalStateException("export log item quantity must not be null");
+            }
+            totalQuantity += item.getQuantity();
+        }
+        return totalQuantity;
+    }
+
 }
