@@ -58,6 +58,9 @@ public class Promotion extends BaseEntity {
                 if (endAt == null) {
                         throw new IllegalArgumentException("endAt must not be null");
                 }
+                if (!endAt.isAfter(startAt)) {
+                        throw new IllegalArgumentException("endAt must be after startAt");
+                }
                 if (active == null) {
                         throw new IllegalArgumentException("active must not be null");
                 }
@@ -115,6 +118,30 @@ public class Promotion extends BaseEntity {
                 }
                 return amount.multiply(BigDecimal.valueOf(discountPercent))
                                 .divide(BigDecimal.valueOf(100));
+        }
+
+        public void changeDiscountPercent(Double discountPercent) {
+                if (discountPercent == null) {
+                        throw new IllegalArgumentException("discountPercent must not be null");
+                }
+                if (discountPercent < 0 || discountPercent > 100) {
+                        throw new IllegalArgumentException("discountPercent must be between 0 and 100");
+                }
+                this.discountPercent = discountPercent;
+        }
+
+        public void changeDates(LocalDateTime startAt, LocalDateTime endAt) {
+                if (startAt == null) {
+                        throw new IllegalArgumentException("startAt must not be null");
+                }
+                if (endAt == null) {
+                        throw new IllegalArgumentException("endAt must not be null");
+                }
+                if (!endAt.isAfter(startAt)) {
+                        throw new IllegalArgumentException("endAt must be after startAt");
+                }
+                this.startAt = startAt;
+                this.endAt = endAt;
         }
 
         public void activate() {

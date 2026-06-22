@@ -92,4 +92,8 @@ public class BundleService extends BaseEntity {
         return BundleServiceType.WARRANTY.equals(type);
     }
 
+    public boolean isScreenProtection() {
+        return BundleServiceType.SCREEN_PROTECTION.equals(type);
+    }
+
 }

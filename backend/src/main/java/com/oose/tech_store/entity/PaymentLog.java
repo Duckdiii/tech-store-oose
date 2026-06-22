@@ -75,4 +75,24 @@ public class PaymentLog extends BaseEntity {
     public boolean isFailed() {
         return PaymentLogStatus.FAILED.equals(status);
     }
+
+    public void markRefunded() {
+        this.status = PaymentLogStatus.REFUNDED;
+    }
+
+    public void markCancelled() {
+        this.status = PaymentLogStatus.CANCELLED;
+    }
+
+    public boolean isPending() {
+        return PaymentLogStatus.PENDING.equals(status);
+    }
+
+    public boolean isRefunded() {
+        return PaymentLogStatus.REFUNDED.equals(status);
+    }
+
+    public boolean isCancelled() {
+        return PaymentLogStatus.CANCELLED.equals(status);
+    }
 }

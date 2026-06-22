@@ -11,24 +11,32 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
-	@Bean
-	SecurityFilterChain securityFilterChain(
-			HttpSecurity http, AccountUserDetailsService accountUserDetailsService) throws Exception {
-		return http
-			.csrf(csrf -> csrf.disable())
-			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/api/health").permitAll()
-				.requestMatchers("/api/warehouse/logs/**").hasRole("MANAGER")
-				.requestMatchers("/api/warehouse/imports/**", "/api/warehouse/exports/**", "/api/warehouse/receipts/**")
-					.hasAnyRole("STAFF", "MANAGER")
-				.anyRequest().authenticated())
-			.userDetailsService(accountUserDetailsService)
-			.httpBasic(Customizer.withDefaults())
-			.build();
-	}
+    @Bean
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http, AccountUserDetailsService accountUserDetailsService) throws Exception {
+        return http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/api/warehouse/logs/**").hasRole("MANAGER")
+                        .requestMatchers(
+                                "/api/warehouse/imports/**",
+                                "/api/warehouse/exports/**",
+                                "/api/warehouse/receipts/**")
+                        .hasAnyRole("STAFF", "MANAGER")
+                        .requestMatchers("/api/invoices/**").permitAll()
+                        .requestMatchers("/api/payments/**").permitAll()
+                        .requestMatchers("/api/bundle-services/**").permitAll()
+                        .requestMatchers("/api/cart/**").permitAll()
+                        .requestMatchers("/api/orders/**").permitAll()
+                        .anyRequest().authenticated())
+                .userDetailsService(accountUserDetailsService)
+                .httpBasic(Customizer.withDefaults())
+                .build();
+    }
 
-	@Bean
-	PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }

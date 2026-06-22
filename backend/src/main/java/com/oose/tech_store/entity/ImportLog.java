@@ -77,12 +77,20 @@ public class ImportLog extends BaseEntity {
         note = reason;
     }
 
-    public void complete() {
-        status = ImportAndExportStatus.SUCCESS;
+    public boolean isApproved() {
+        return ImportAndExportStatus.SUCCESS.equals(status);
     }
 
-    public boolean isCompleted() {
-        return ImportAndExportStatus.SUCCESS.equals(status);
+    public boolean isPending() {
+        return ImportAndExportStatus.PENDING.equals(status);
+    }
+
+    public boolean isFailed() {
+        return ImportAndExportStatus.FAILURE.equals(status);
+    }
+
+    public boolean canBeModified() {
+        return isPending();
     }
 
     public int calculateTotalQuantity() {

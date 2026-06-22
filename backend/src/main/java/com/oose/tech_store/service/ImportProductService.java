@@ -90,7 +90,7 @@ public class ImportProductService {
             ProductVariantImportItemDTO item = request.items().get(index);
             new ImportLogItem(importLog, savedVariants.get(index), 1, item.importPrice());
         }
-        importLog.complete();
+        importLog.approve();
         ImportLog savedImportLog = importLogRepository.save(importLog);
 
         return new ImportProductResponseDTO(

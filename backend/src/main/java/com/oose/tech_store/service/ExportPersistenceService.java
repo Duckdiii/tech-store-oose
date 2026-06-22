@@ -48,7 +48,7 @@ public class ExportPersistenceService {
         for (ProductVariant variant : savedVariants) {
             new ExportLogItem(exportLog, variant, 1);
         }
-        exportLog.complete();
+        exportLog.approve();
         ExportLog savedExportLog = exportLogRepository.save(exportLog);
 
         Map<String, AffectedProductDTO> products = new LinkedHashMap<>();
