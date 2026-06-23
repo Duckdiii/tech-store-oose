@@ -1,5 +1,6 @@
 package com.oose.tech_store.entity;
 
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -33,6 +34,10 @@ public class ProductVariant extends BaseEntity {
     @Column(name = "price", precision = 15, scale = 2)
     private BigDecimal price;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private ProductVariantStatus status = ProductVariantStatus.AVAILABLE;
+
     @OneToMany(mappedBy = "productVariant", fetch = FetchType.LAZY)
     private List<ImportLogItem> importLogItems = new ArrayList<>();
 
@@ -48,6 +53,7 @@ public class ProductVariant extends BaseEntity {
         this.storageGb = storageGb;
         this.color = color;
         this.price = price;
+        this.status = ProductVariantStatus.AVAILABLE;
     }
 
     public void changePrice(BigDecimal newPrice) {
@@ -55,6 +61,17 @@ public class ProductVariant extends BaseEntity {
             throw new IllegalArgumentException("newPrice must not be null");
         }
         this.price = newPrice;
+    }
+
+    public boolean isAvailable() {
+        return ProductVariantStatus.AVAILABLE.equals(status);
+    }
+
+    public void markAsExported() {
+        if (!isAvailable()) {
+            throw new IllegalStateException("product variant is not available");
+        }
+        this.status = ProductVariantStatus.EXPORTED;
     }
 
     public String getDisplayName() {

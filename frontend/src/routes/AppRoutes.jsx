@@ -9,6 +9,7 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { SignInPage } from '../pages/SignInPage';
 import { SignUpPage } from '../pages/SignUpPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { AdminPortal } from '../admin/AdminPortal';
 
 export function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ export function AppRoutes() {
       {/* Auth pages — standalone (no navbar/footer) */}
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/sign-up" element={<SignUpPage />} />
+      <Route path="/admin/*" element={<AdminPortal />} />
 
       {/* Customer pages — with navbar/footer */}
       <Route element={<CustomerLayout />}>
