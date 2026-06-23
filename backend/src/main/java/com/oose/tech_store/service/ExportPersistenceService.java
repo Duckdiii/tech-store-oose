@@ -28,7 +28,7 @@ public class ExportPersistenceService {
 
     @Transactional
     public ExportPersistenceResult saveExport(ExportProductRequestDTO request, String performedBy) {
-        List<ProductVariant> variants = productVariantRepository.findAllById(request.serialIds().stream()
+        List<ProductVariant> variants = productVariantRepository.findAllByIdInForUpdate(request.serialIds().stream()
                 .map(String::trim)
                 .toList());
         if (variants.size() != request.serialIds().size()) {
