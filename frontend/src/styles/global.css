@@ -39,6 +39,7 @@ a { color: inherit; }
 .animate-fade-up  { animation: fadeUp 0.65s ease both; }
 .animate-fade-in  { animation: fadeIn 0.8s ease both 0.2s; }
 .animate-float    { animation: float 4s ease-in-out infinite; }
+<<<<<<< Updated upstream
 .animate-slide-down { animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
 
@@ -70,3 +71,9 @@ a { color: inherit; }
 @media (max-width: 1050px) { .admin-sidebar { width: 205px; flex-basis: 205px; }.admin-metrics { grid-template-columns: repeat(2,1fr); }.admin-grid--wide { grid-template-columns: 1fr; }.admin-topbar,.admin-content { padding-left: 26px; padding-right: 26px; } }
 @media (max-width: 1050px) { .warehouse-action-grid { grid-template-columns: 1fr; }.warehouse-item { grid-template-columns: repeat(3, 1fr); }.warehouse-filter-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 700px) { .admin-shell { display: block; }.admin-sidebar { width: 100%; min-height: auto; height: auto; position: relative; padding: 15px; }.admin-brand { padding: 0 4px 12px; }.admin-sidebar__label,.admin-sidebar__foot { display: none; }.admin-sidebar nav { display: flex; overflow-x: auto; gap: 5px; }.admin-nav-item { white-space: nowrap; padding: 8px 10px; margin: 0; }.admin-topbar { height: auto; padding: 20px; }.admin-topbar__actions { display: none; }.admin-content { padding: 24px 16px 40px; }.admin-page-intro { align-items: flex-start; }.admin-page-intro h2 { font-size: 21px; }.admin-page-intro > .admin-button,.admin-page-intro > .admin-button-group { flex: 0 0 auto; }.admin-metrics,.admin-metrics--three { grid-template-columns: 1fr; }.admin-card { padding: 16px; }.admin-form-grid { grid-template-columns: 1fr; }.admin-field--wide { grid-column: auto; }.admin-log-list > div { grid-template-columns: 58px 1fr; gap: 9px; }.admin-log-list button { display: none; }.admin-log-list p b { display: block; margin-bottom: 3px; }.admin-search { display: none; }.admin-row-actions { gap: 7px; }.admin-modal__toolbar { align-items: flex-start; flex-direction: column; }.warehouse-tabs { gap: 0; }.warehouse-tabs button { padding: 10px 8px; font-size: 11px; }.warehouse-access { display: grid; }.warehouse-access__form { display: grid; }.warehouse-access input { width: 100%; }.warehouse-item,.warehouse-filter-grid { grid-template-columns: 1fr; }.warehouse-section-head { align-items: start; gap: 10px; }.warehouse-preview > div,.warehouse-status-list div { align-items: start; flex-direction: column; } }
+
+/* ── Dark mode ── */
+html.dark { filter: invert(1) hue-rotate(180deg); }
+html.dark img,
+html.dark video,
+html.dark canvas { filter: invert(1) hue-rotate(180deg); }

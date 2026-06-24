@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
+import { useCart } from '../../../shared/context/CartContext';
+import { useAuth } from '../../../shared/context/AuthContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 const NAV_LINKS = [
   { to: '/', label: 'Trang chủ', exact: true },
   { to: '/products', label: 'Điện thoại' },
-  { to: '/products?cat=accessories', label: 'Phụ kiện' },
   { to: '/brands', label: 'Thương hiệu' },
   { to: '/flash-sale', label: 'Flash Sale ⚡' },
 ];
@@ -16,6 +16,7 @@ export function Navbar() {
   const navigate = useNavigate();
   const { count } = useCart();
   const { user, logout, isLoggedIn } = useAuth();
+  const { theme, setTheme, lang, setLang } = useTheme();
   const [search, setSearch] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
@@ -53,9 +54,9 @@ export function Navbar() {
           <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
             <Link to="/orders" style={{ fontSize: 12.5, color: '#475569', textDecoration: 'none' }}>Theo dõi đơn hàng</Link>
             <span style={{ color: '#1e293b' }}>|</span>
-            <a href="#" style={{ fontSize: 12.5, color: '#475569', textDecoration: 'none' }}>Hệ thống cửa hàng</a>
+            <button style={{ fontSize: 12.5, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Hệ thống cửa hàng</button>
             <span style={{ color: '#1e293b' }}>|</span>
-            <a href="#" style={{ fontSize: 12.5, color: '#475569', textDecoration: 'none' }}>Tuyển dụng</a>
+            <button style={{ fontSize: 12.5, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Tuyển dụng</button>
           </div>
         </div>
       </div>
@@ -160,6 +161,51 @@ export function Navbar() {
                         {item.label}
                       </Link>
                     ))}
+
+                    {/* System settings */}
+                    <div style={{ borderTop: '1px solid #f1f3f5', padding: '12px 16px 8px' }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, color: '#c4c9d4', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10 }}>
+                        Hệ thống
+                      </div>
+
+                      {/* Language */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                          <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                          Ngôn ngữ
+                        </div>
+                        <div style={{ display: 'flex', background: '#f0f1f3', borderRadius: 6, padding: 2, gap: 1 }}>
+                          {['VI', 'EN'].map(l => (
+                            <button key={l} onClick={() => setLang(l.toLowerCase())}
+                              style={{ padding: '3px 9px', borderRadius: 4, border: 'none', background: lang === l.toLowerCase() ? '#0d1117' : 'transparent', color: lang === l.toLowerCase() ? '#fff' : '#6b7280', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                              {l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Theme */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#374151', fontWeight: 500 }}>
+                          {theme === 'dark'
+                            ? <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                            : <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                          }
+                          Giao diện
+                        </div>
+                        <div style={{ display: 'flex', background: '#f0f1f3', borderRadius: 6, padding: 2, gap: 1 }}>
+                          <button onClick={() => setTheme('light')} title="Sáng"
+                            style={{ width: 30, height: 24, borderRadius: 4, border: 'none', background: theme === 'light' ? '#0d1117' : 'transparent', color: theme === 'light' ? '#fff' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                            <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                          </button>
+                          <button onClick={() => setTheme('dark')} title="Tối"
+                            style={{ width: 30, height: 24, borderRadius: 4, border: 'none', background: theme === 'dark' ? '#0d1117' : 'transparent', color: theme === 'dark' ? '#fff' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                            <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     <div style={{ borderTop: '1px solid #f1f3f5' }}>
                       <button
                         onClick={() => { logout(); setShowMenu(false); navigate('/'); }}

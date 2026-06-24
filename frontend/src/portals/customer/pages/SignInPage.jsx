@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 export function SignInPage() {
   const navigate = useNavigate();
@@ -15,7 +15,6 @@ export function SignInPage() {
     if (!form.email || !form.password) { setError('Vui lòng điền đầy đủ thông tin.'); return; }
     setLoading(true);
     await new Promise(r => setTimeout(r, 800));
-    // Mock login — replace with real API call
     login({ id: 1, name: 'Nguyễn Văn An', email: form.email, phone: '0901234567' });
     setLoading(false);
     navigate('/');
@@ -24,8 +23,6 @@ export function SignInPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
       <div style={{ width: '100%', maxWidth: 440 }}>
-
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <div style={{ width: 44, height: 44, background: '#0d1117', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -40,7 +37,6 @@ export function SignInPage() {
           <p style={{ fontSize: 14, color: '#6b7280' }}>Chào mừng bạn quay trở lại!</p>
         </div>
 
-        {/* Card */}
         <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #e9ecef', padding: '36px 32px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
           <form onSubmit={handleSubmit}>
             {error && (
@@ -51,33 +47,23 @@ export function SignInPage() {
 
             <div style={{ marginBottom: 18 }}>
               <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Email</label>
-              <input
-                type="email"
-                placeholder="ten@email.com"
-                value={form.email}
+              <input type="email" placeholder="ten@email.com" value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
-                style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', background: '#fff' }}
-              />
+                style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', background: '#fff' }}/>
             </div>
 
             <div style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Mật khẩu</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
+              <input type="password" placeholder="••••••••" value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
-                style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', background: '#fff' }}
-              />
+                style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', background: '#fff' }}/>
             </div>
 
             <div style={{ textAlign: 'right', marginBottom: 24 }}>
               <a href="#" style={{ fontSize: 13, color: '#6b7280', textDecoration: 'none' }}>Quên mật khẩu?</a>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
+            <button type="submit" disabled={loading}
               style={{ width: '100%', height: 48, background: loading ? '#374151' : '#0d1117', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.15s' }}>
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập →'}
             </button>

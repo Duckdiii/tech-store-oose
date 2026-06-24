@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../../../shared/context/CartContext';
 
 const CATEGORIES = [
   { id: 1, icon: '🍎', name: 'Apple', count: '43 sản phẩm' },
