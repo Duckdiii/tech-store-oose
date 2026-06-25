@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 function fmt(n) { return n.toLocaleString('vi-VN'); }
 
@@ -57,7 +57,6 @@ export function OrdersPage() {
   return (
     <div style={{ background: '#f4f5f7', minHeight: '80vh', padding: '32px 0 80px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 32px' }}>
-        {/* New order banner */}
         {params.get('new') === '1' && (
           <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 28 }}>🎉</span>
@@ -79,7 +78,6 @@ export function OrdersPage() {
           </div>
         </div>
 
-        {/* Tab filter */}
         <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 12, padding: 4, marginBottom: 20, border: '1.5px solid #f1f3f5' }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => setFilter(t.id)}
