@@ -13,6 +13,7 @@ import com.oose.tech_store.entity.ImportLogItem;
 import com.oose.tech_store.entity.enums.ImportAndExportStatus;
 import com.oose.tech_store.repository.ExportLogRepository;
 import com.oose.tech_store.repository.ImportLogRepository;
+import com.oose.tech_store.repository.AccountRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ public class WarehouseLogService {
 
     private final ImportLogRepository importLogRepository;
     private final ExportLogRepository exportLogRepository;
+    private final AccountRepository accountRepository;
 
     @Transactional(readOnly = true)
     public WarehouseLogResponseDTO getWarehouseLogs(WarehouseLogRequestDTO request) {
@@ -104,7 +106,9 @@ public class WarehouseLogService {
             return false;
         }
         if (request.performedBy() != null && !request.performedBy().isBlank()) {
-            return performedBy.equalsIgnoreCase(request.performedBy().trim());
+            String keyword = request.performedBy().trim();
+            return performedBy.equalsIgnoreCase(keyword)
+                    || displayActor(performedBy).equalsIgnoreCase(keyword);
         }
         return true;
     }
@@ -114,7 +118,7 @@ public class WarehouseLogService {
                 log.getId(),
                 WarehouseLogType.IMPORT,
                 log.getImportedAt(),
-                log.getPerformedBy(),
+                displayActor(log.getPerformedBy()),
                 log.getStatus(),
                 log.calculateTotalQuantity(),
                 productNames(log.getItems().stream()
@@ -127,7 +131,7 @@ public class WarehouseLogService {
                 log.getId(),
                 WarehouseLogType.EXPORT,
                 log.getExportedAt(),
-                log.getPerformedBy(),
+                displayActor(log.getPerformedBy()),
                 log.getStatus(),
                 log.calculateTotalQuantity(),
                 productNames(log.getItems().stream()
@@ -143,7 +147,7 @@ public class WarehouseLogService {
                 log.getId(),
                 WarehouseLogType.IMPORT,
                 log.getImportedAt(),
-                log.getPerformedBy(),
+                displayActor(log.getPerformedBy()),
                 log.getStatus(),
                 log.getNote(),
                 null,
@@ -158,7 +162,7 @@ public class WarehouseLogService {
                 log.getId(),
                 WarehouseLogType.EXPORT,
                 log.getExportedAt(),
-                log.getPerformedBy(),
+                displayActor(log.getPerformedBy()),
                 log.getStatus(),
                 null,
                 log.getReason(),
@@ -193,5 +197,11 @@ public class WarehouseLogService {
                 .map(variant -> variant.getProduct().getName())
                 .distinct()
                 .collect(Collectors.joining(", "));
+    }
+
+    private String displayActor(String userId) {
+        return accountRepository.findByUser_Id(userId)
+                .map(account -> account.getEmail())
+                .orElse(userId);
     }
 }
