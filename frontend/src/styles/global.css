@@ -39,7 +39,6 @@ a { color: inherit; }
 .animate-fade-up  { animation: fadeUp 0.65s ease both; }
 .animate-fade-in  { animation: fadeIn 0.8s ease both 0.2s; }
 .animate-float    { animation: float 4s ease-in-out infinite; }
-<<<<<<< Updated upstream
 .animate-slide-down { animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
 

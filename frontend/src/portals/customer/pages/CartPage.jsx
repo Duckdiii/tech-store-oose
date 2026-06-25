@@ -1,27 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect  } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
+import {httpClient } from '../../../api/httpClient';
 
 function fmt(n) { return n.toLocaleString('vi-VN'); }
 
-const BUNDLE_SERVICES = [
-  { id: 'warranty', icon: '🛡️', label: 'Bảo hành mở rộng 12 tháng', desc: 'Bao gồm lỗi phần cứng, hỗ trợ ưu tiên 24/7', price: 490000 },
-  { id: 'screen',   icon: '📱', label: 'Dán cường lực màn hình',     desc: 'Dán tại cửa hàng, bảo vệ chống xước & vỡ',  price: 99000 },
-  { id: 'setup',    icon: '⚙️', label: 'Cài đặt & chuyển dữ liệu',  desc: 'Chuyển danh bạ, ảnh, ứng dụng từ máy cũ',  price: 0 },
-  { id: 'insure',   icon: '🔒', label: 'Bảo hiểm điện thoại 1 năm', desc: 'Bồi thường vỡ màn hình, rơi vỡ, ngấm nước', price: 390000 },
-];
 
 export function CartPage() {
-  const { items, removeItem, updateQty, total, clearCart } = useCart();
+  const { items, removeItem, updateQty, total, clearCart, addBundleServiceToItem, removeBundleServiceFromItem} = useCart();
   const navigate = useNavigate();
-  const [selectedServices, setSelectedServices] = useState([]);
 
-  const toggleService = (id) =>
-    setSelectedServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  const [bundleServices , setBundleServices] = useState([]);
 
-  const bundleTotal = BUNDLE_SERVICES
-    .filter(s => selectedServices.includes(s.id))
-    .reduce((sum, s) => sum + s.price, 0);
+  useEffect(() => {
+    const fetchBundleServices = async () => {
+      try {
+        const response = await httpClient.get('/bundle-services');
+        setBundleServices(response.data);
+      } catch (error) {
+        console.error('Error fetching bundle services:', error);
+      }
+    };
+
+    fetchBundleServices();
+  }, []);
+
+  const bundleTotal = items.reduce((sum, item) => {
+    const itemBundles = item.bundleServices || [];
+    return sum + itemBundles.reduce((s, b) => s + b.price, 0);
+  }, 0);
 
   if (items.length === 0) {
     return (
@@ -52,68 +59,76 @@ export function CartPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {items.map(item => (
-              <div key={item.id} style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '20px 22px', display: 'flex', gap: 18, alignItems: 'center' }}>
-                <div style={{ width: 88, height: 88, background: 'linear-gradient(148deg,#f4f5f7,#eaecf0)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="40" height="66" viewBox="0 0 72 120" fill="none">
-                    <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
-                    <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
-                    <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
-                  </svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{item.brand}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0d1117', lineHeight: 1.35, marginBottom: 8 }}>{item.name}</div>
-                  <div style={{ fontSize: 17, fontWeight: 900, color: '#0d1117' }}>{fmt(item.price)}₫</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e9ecef', borderRadius: 9, overflow: 'hidden' }}>
-                    <button onClick={() => updateQty(item.id, item.qty - 1)}
-                      style={{ width: 36, height: 36, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                    <span style={{ width: 36, textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#0d1117' }}>{item.qty}</span>
-                    <button onClick={() => updateQty(item.id, item.qty + 1)}
-                      style={{ width: 36, height: 36, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+            {items.map(item => {
+              const itemBundles = item.bundleServices || [];
+              return (
+                <div key={item.id} style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+                    <div style={{ width: 88, height: 88, background: 'linear-gradient(148deg,#f4f5f7,#eaecf0)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="40" height="66" viewBox="0 0 72 120" fill="none">
+                        <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
+                        <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
+                        <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {item.brand && <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{item.brand}</div>}
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#0d1117', lineHeight: 1.35, marginBottom: 8 }}>{item.name}</div>
+                      {item.variantDisplay && <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>{item.variantDisplay}</div>}
+                      <div style={{ fontSize: 17, fontWeight: 900, color: '#0d1117' }}>{fmt(item.price)}₫</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e9ecef', borderRadius: 9, overflow: 'hidden' }}>
+                        <button onClick={() => updateQty(item.id, item.qty - 1)}
+                          style={{ width: 36, height: 36, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                        <span style={{ width: 36, textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#0d1117' }}>{item.qty}</span>
+                        <button onClick={() => updateQty(item.id, item.qty + 1)}
+                          style={{ width: 36, height: 36, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#0d1117', minWidth: 120, textAlign: 'right' }}>
+                        {fmt(item.price * item.qty)}₫
+                      </div>
+                      <button onClick={() => removeItem(item.id)}
+                        style={{ width: 36, height: 36, background: '#fef2f2', border: 'none', borderRadius: 8, cursor: 'pointer', color: '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: '#0d1117', minWidth: 120, textAlign: 'right' }}>
-                    {fmt(item.price * item.qty)}₫
-                  </div>
-                  <button onClick={() => removeItem(item.id)}
-                    style={{ width: 36, height: 36, background: '#fef2f2', border: 'none', borderRadius: 8, cursor: 'pointer', color: '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>
-                  </button>
-                </div>
-              </div>
-            ))}
 
-            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '20px 22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <span style={{ fontSize: 15, fontWeight: 800, color: '#0d1117' }}>Dịch vụ đi kèm</span>
-                <span style={{ fontSize: 11.5, fontWeight: 600, color: '#6b7280', background: '#f4f5f7', padding: '2px 8px', borderRadius: 20 }}>Tùy chọn</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {BUNDLE_SERVICES.map(svc => {
-                  const checked = selectedServices.includes(svc.id);
-                  return (
-                    <label key={svc.id}
-                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', borderRadius: 12, border: `1.5px solid ${checked ? '#0d1117' : '#e9ecef'}`, background: checked ? '#f8f9fa' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleService(svc.id)}
-                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
-                      <div style={{ width: 18, height: 18, border: `1.5px solid ${checked ? '#0d1117' : '#d1d5db'}`, borderRadius: 4, background: checked ? '#0d1117' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                        {checked && <svg width="10" height="10" fill="none" stroke="#fff" strokeWidth="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>}
+                  {bundleServices.length > 0 && (
+                    <div style={{ borderTop: '1px solid #f1f3f5', paddingTop: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Dịch vụ đi kèm sản phẩm này:</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+                        {bundleServices.map(svc => {
+                          const checked = itemBundles.some(b => b.id === svc.id);
+                          const handleToggle = () => {
+                            if (checked) {
+                              removeBundleServiceFromItem(item.id, svc.id);
+                            } else {
+                              addBundleServiceToItem(item.id, svc.id);
+                            }
+                          };
+                          return (
+                            <label key={svc.id}
+                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${checked ? '#0d1117' : '#e9ecef'}`, background: checked ? '#f8f9fa' : '#fff', cursor: 'pointer', transition: 'all 0.15s', fontSize: 13 }}>
+                              <input type="checkbox" checked={checked} onChange={handleToggle} style={{ cursor: 'pointer' }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, color: '#0d1117' }}>{svc.name}</div>
+                              </div>
+                              <div style={{ fontWeight: 800, color: svc.price === 0 ? '#16a34a' : '#0d1117' }}>
+                                {svc.price === 0 ? 'Miễn phí' : `+${fmt(svc.price)}₫`}
+                              </div>
+                            </label>
+                          );
+                        })}
                       </div>
-                      <span style={{ fontSize: 20, flexShrink: 0 }}>{svc.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0d1117' }}>{svc.label}</div>
-                        <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{svc.desc}</div>
-                      </div>
-                      <div style={{ fontSize: 13.5, fontWeight: 800, color: svc.price === 0 ? '#16a34a' : '#0d1117', flexShrink: 0 }}>
-                        {svc.price === 0 ? 'Miễn phí' : `+${fmt(svc.price)}₫`}
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Dịch vụ đi kèm đã được tích hợp trực tiếp vào từng sản phẩm ở trên */}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
               <Link to="/products" style={{ fontSize: 14, color: '#6b7280', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -145,7 +160,7 @@ export function CartPage() {
               )}
               {bundleTotal > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#6b7280' }}>
-                  <span>Dịch vụ đi kèm ({selectedServices.length})</span>
+                  <span>Dịch vụ đi kèm ({items.reduce((s, i) => s + (i.bundleServices?.length || 0), 0)})</span>
                   <span style={{ fontWeight: 600, color: '#374151' }}>+{fmt(bundleTotal)}₫</span>
                 </div>
               )}

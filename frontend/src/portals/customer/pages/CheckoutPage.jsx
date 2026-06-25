@@ -1,15 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { httpClient } from '../../../api/httpClient';
 
 function fmt(n) { return n.toLocaleString('vi-VN'); }
-function genOrderId() {
-  return 'TS' + new Date().getFullYear() +
-    String(new Date().getMonth() + 1).padStart(2, '0') +
-    String(new Date().getDate()).padStart(2, '0') +
-    String(Math.floor(Math.random() * 900) + 100);
-}
 
 const SAVED_ADDRESSES = [
   { id: 1, tag: 'Nhà riêng', name: 'Nguyễn Văn An', phone: '0901 234 567', address: '123 Lê Lợi, P. Bến Nghé, Q.1', province: 'TP. Hồ Chí Minh', isDefault: true },
@@ -18,16 +13,9 @@ const SAVED_ADDRESSES = [
 
 const PROVINCES = ['TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng', 'Biên Hòa', 'Nha Trang'];
 
-const PAYMENT_METHODS = [
-  { id: 'cod',     label: 'Thanh toán khi nhận hàng' },
-  { id: 'momo',    label: 'Ví MoMo' },
-  { id: 'zalopay', label: 'ZaloPay' },
-  { id: 'card',    label: 'Thẻ Visa / Mastercard' },
-  { id: 'bank',    label: 'Chuyển khoản ngân hàng' },
-];
-
 function PaymentIcon({ id }) {
-  if (id === 'cod') return (
+  const normalizedId = String(id).toLowerCase();
+  if (normalizedId === 'cod') return (
     <div style={{ width: 48, height: 34, background: '#fef9c3', border: '1.5px solid #fde047', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width="20" height="20" fill="none" stroke="#854d0e" strokeWidth="1.8" viewBox="0 0 24 24">
         <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>
@@ -35,27 +23,18 @@ function PaymentIcon({ id }) {
       </svg>
     </div>
   );
-  if (id === 'momo') return (
+  if (normalizedId === 'momo') return (
     <div style={{ width: 48, height: 34, background: '#be185d', border: '1.5px solid #9d174d', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <span style={{ fontWeight: 900, fontSize: 12, color: '#fff', fontFamily: 'Arial' }}>MoMo</span>
     </div>
   );
-  if (id === 'zalopay') return (
+  if (normalizedId === 'vnpay') return (
     <div style={{ width: 48, height: 34, background: '#1d4ed8', border: '1.5px solid #1e40af', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', lineHeight: 1.15, flexShrink: 0 }}>
-      <span style={{ fontWeight: 900, fontSize: 9, color: '#fff', fontFamily: 'Arial' }}>ZALO</span>
+      <span style={{ fontWeight: 900, fontSize: 9, color: '#fff', fontFamily: 'Arial' }}>VN</span>
       <span style={{ fontWeight: 900, fontSize: 9, color: '#4ade80', fontFamily: 'Arial' }}>PAY</span>
     </div>
   );
-  if (id === 'card') return (
-    <div style={{ width: 48, height: 34, background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flexShrink: 0 }}>
-      <span style={{ fontWeight: 900, fontSize: 10, color: '#1a1f71', fontStyle: 'italic', fontFamily: 'Arial' }}>VISA</span>
-      <div style={{ position: 'relative', width: 16, height: 11 }}>
-        <div style={{ position: 'absolute', left: 0, width: 11, height: 11, borderRadius: '50%', background: '#eb001b' }}/>
-        <div style={{ position: 'absolute', right: 0, width: 11, height: 11, borderRadius: '50%', background: '#f79e1b', opacity: 0.9 }}/>
-      </div>
-    </div>
-  );
-  if (id === 'bank') return (
+  return (
     <div style={{ width: 48, height: 34, background: '#ede9fe', border: '1.5px solid #ddd6fe', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <svg width="20" height="18" fill="none" stroke="#5b21b6" strokeWidth="1.8" viewBox="0 0 24 22">
         <path d="M3 10l9-7 9 7"/><path d="M5 10v7M9 10v7M15 10v7M19 10v7"/>
@@ -63,26 +42,108 @@ function PaymentIcon({ id }) {
       </svg>
     </div>
   );
-  return null;
 }
 
 export function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
-  const [method, setMethod] = useState('cod');
+  const [method, setMethod] = useState('');
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(null);
   const [showAddrPicker, setShowAddrPicker] = useState(false);
   const [selectedAddr, setSelectedAddr] = useState(null);
   const addrRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [summary, setSummary] = useState(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+
   const [form, setForm] = useState({
     name: user?.name || '', phone: user?.phone || '', email: user?.email || '',
     address: '', province: '', note: '',
   });
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-  const shipping = total >= 500000 ? 0 : 30000;
-  const finalTotal = total + shipping;
+
+  // Fetch Checkout Summary on mount
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const customerId = user?.id || '1';
+        const response = await httpClient.get(`/payments/checkout/summary?customerId=${customerId}`);
+        setSummary(response.data);
+      } catch (error) {
+        console.error('Error fetching checkout summary:', error);
+      }
+    };
+    fetchSummary();
+  }, [user]);
+
+  // Set default method when summary loads
+  useEffect(() => {
+    if (summary?.availablePaymentMethods?.length > 0) {
+      setMethod(summary.availablePaymentMethods[0].id);
+    }
+  }, [summary]);
+
+  // Check online payment redirect return parameters
+  const isVnPayReturn = searchParams.has('vnp_TxnRef');
+  const isMomoReturn = searchParams.has('partnerCode');
+
+  useEffect(() => {
+    const verifyPayment = async () => {
+      const params = Object.fromEntries(searchParams.entries());
+      setVerifyingPayment(true);
+      try {
+        let response;
+        if (isVnPayReturn) {
+          response = await httpClient.get('/payments/vnpay/return', { params });
+        } else if (isMomoReturn) {
+          response = await httpClient.get('/payments/momo/return', { params });
+        }
+
+        if (response && response.data.success) {
+          const result = response.data;
+          const customerId = user?.id || '1';
+          clearCart();
+
+          // Fetch full order details
+          const orderResponse = await httpClient.get(`/orders/${result.orderId}?customerId=${customerId}`);
+          const orderDetail = orderResponse.data;
+
+          setSuccess({
+            orderId: orderDetail.orderId,
+            items: orderDetail.items.map(item => ({
+              name: item.productName + (item.variantDisplay ? ` - ${item.variantDisplay}` : ''),
+              qty: item.quantity,
+              price: item.unitPrice
+            })),
+            total: Number(orderDetail.originalAmount),
+            finalTotal: Number(orderDetail.finalAmount),
+            method: orderDetail.paymentMethod,
+            address: 'Địa chỉ đăng ký',
+            name: user?.name || ''
+          });
+        } else {
+          alert(response?.data?.message || 'Thanh toán trực tuyến thất bại hoặc đã bị hủy.');
+        }
+      } catch (error) {
+        console.error('Error verifying payment:', error);
+        alert('Có lỗi xảy ra khi xác nhận giao dịch thanh toán.');
+      } finally {
+        setVerifyingPayment(false);
+        setSearchParams({});
+      }
+    };
+
+    if (isVnPayReturn || isMomoReturn) {
+      verifyPayment();
+    }
+  }, [isVnPayReturn, isMomoReturn, user]);
+
+  const checkoutTotal = summary ? summary.subtotal : total;
+  const shipping = checkoutTotal >= 500000 ? 0 : 30000;
+  const finalTotal = checkoutTotal + shipping;
 
   useEffect(() => {
     const handler = e => {
@@ -106,23 +167,61 @@ export function CheckoutPage() {
       alert('Vui lòng điền đầy đủ thông tin giao hàng.');
       return;
     }
+    
     setPlacing(true);
-    await new Promise(r => setTimeout(r, 1400));
-    const orderId = genOrderId();
-    const methodLabel = PAYMENT_METHODS.find(m => m.id === method)?.label || method;
-    const orderItems = [...items];
-    const snap = { total, finalTotal };
-    clearCart();
-    setPlacing(false);
-    setSuccess({ orderId, items: orderItems, total: snap.total, finalTotal: snap.finalTotal, method: methodLabel, address: addrStr, name: form.name });
+    try {
+      const customerId = user?.id || '1';
+      const addressId = String(selectedAddr?.id || '1');
+      const selectedCartItemIds = summary?.items?.map(item => item.id) || [];
+
+      const payload = {
+        addressId,
+        paymentMethodId: method,
+        selectedCartItemIds
+      };
+
+      const response = await httpClient.post(`/payments/checkout?customerId=${customerId}`, payload);
+      const initResponse = response.data;
+
+      if (initResponse.paymentType === 'COD') {
+        const orderId = initResponse.orderId;
+        const methodLabel = summary?.availablePaymentMethods?.find(m => m.id === method)?.name || 'COD';
+        
+        clearCart();
+        setSuccess({
+          orderId,
+          items: summary.items.map(item => ({
+            name: item.productName + (item.variantDisplayName ? ` - ${item.variantDisplayName}` : ''),
+            qty: item.quantity,
+            price: item.unitPrice
+          })),
+          total: summary.subtotal,
+          finalTotal: summary.subtotal + (summary.subtotal >= 500000 ? 0 : 30000),
+          method: methodLabel,
+          address: addrStr,
+          name: form.name
+        });
+      } else if (initResponse.paymentType === 'REDIRECT') {
+        window.location.href = initResponse.paymentUrl;
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      alert('Đặt hàng không thành công. Vui lòng thử lại.');
+    } finally {
+      setPlacing(false);
+    }
   };
 
-  const printInvoice = () => {
+  const printInvoice = async () => {
     if (!success) return;
-    const win = window.open('', '_blank', 'width=820,height=680');
-    win.document.write(`<!DOCTYPE html>
+    try {
+      const response = await httpClient.get(`/invoices/order/${success.orderId}`);
+      const invoice = response.data;
+      
+      const win = window.open('', '_blank', 'width=820,height=680');
+      win.document.write(`<!DOCTYPE html>
 <html lang="vi"><head><meta charset="utf-8">
-<title>Hóa đơn ${success.orderId} — TechStore</title>
+<title>Hóa đơn ${invoice.invoiceId} — TechStore</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:Arial,sans-serif;padding:48px;color:#0d1117;font-size:14px}
@@ -142,27 +241,61 @@ export function CheckoutPage() {
   .tr{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:#6b7280}
   .tf{display:flex;justify-content:space-between;font-size:16px;font-weight:900;border-top:2px solid #0d1117;padding-top:10px;margin-top:6px}
   .foot{margin-top:40px;border-top:1px solid #e9ecef;padding-top:14px;text-align:center;font-size:11px;color:#9ca3af}
+  .btn-pdf {display: inline-block; margin-bottom: 20px; padding: 8px 14px; background: #0d1117; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px;}
 </style></head><body>
+<div style="text-align: right;">
+  <a href="/api/invoices/order/${invoice.orderId}/pdf" target="_blank" class="btn-pdf">📥 Tải PDF Hóa Đơn Gốc</a>
+</div>
 <div class="hd">
   <div class="brand">TechStore<small>Điện thoại chính hãng</small></div>
-  <div class="meta"><h2>HÓA ĐƠN BÁN HÀNG</h2><p>Mã đơn: #${success.orderId}<br>Ngày: ${new Date().toLocaleDateString('vi-VN')}<br>Thanh toán: ${success.method}</p></div>
+  <div class="meta"><h2>HÓA ĐƠN BÁN HÀNG</h2><p>Số hóa đơn: #${invoice.invoiceId}<br>Mã đơn: #${invoice.orderId}<br>Ngày lập: ${new Date(invoice.issuedAt).toLocaleDateString('vi-VN')}<br>Thanh toán: ${invoice.paymentMethod}</p></div>
 </div>
 <div class="info">
   <div class="ib"><h4>Khách hàng</h4><p><strong>${success.name}</strong></p></div>
   <div class="ib"><h4>Địa chỉ giao hàng</h4><p>${success.address}</p></div>
 </div>
 <table><thead><tr><th>#</th><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
-<tbody>${success.items.map((item, i) => `<tr><td>${i + 1}</td><td>${item.name}</td><td>${item.qty}</td><td>${item.price.toLocaleString('vi-VN')}₫</td><td>${(item.price * item.qty).toLocaleString('vi-VN')}₫</td></tr>`).join('')}</tbody></table>
+<tbody>${invoice.items.map((item, i) => `
+  <tr>
+    <td>${i + 1}</td>
+    <td>
+      <strong>${item.productName}</strong>
+      ${item.variantDisplay ? `<br><small style="color: #6b7280;">Màu sắc/Phiên bản: ${item.variantDisplay}</small>` : ''}
+      ${item.bundleServices && item.bundleServices.length > 0 ? `
+        <div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #ddd; font-size: 11.5px; color: #4b5563;">
+          Dịch vụ đi kèm: ${item.bundleServices.map(s => `${s.name} (+${s.price.toLocaleString('vi-VN')}₫)`).join(', ')}
+        </div>
+      ` : ''}
+    </td>
+    <td>${item.quantity}</td>
+    <td>${item.unitPrice.toLocaleString('vi-VN')}₫</td>
+    <td>${item.subtotal.toLocaleString('vi-VN')}₫</td>
+  </tr>`).join('')}</tbody></table>
 <div class="tot">
-  <div class="tr"><span>Tạm tính</span><span>${success.total.toLocaleString('vi-VN')}₫</span></div>
-  <div class="tr"><span>Phí vận chuyển</span><span>${(success.finalTotal - success.total) === 0 ? 'Miễn phí' : (success.finalTotal - success.total).toLocaleString('vi-VN') + '₫'}</span></div>
-  <div class="tf"><span>TỔNG CỘNG</span><span>${success.finalTotal.toLocaleString('vi-VN')}₫</span></div>
+  <div class="tr"><span>Tạm tính</span><span>${Number(invoice.originalAmount).toLocaleString('vi-VN')}₫</span></div>
+  <div class="tr"><span>Giảm giá</span><span>-${Number(invoice.discountAmount).toLocaleString('vi-VN')}₫</span></div>
+  <div class="tr"><span>Thuế VAT</span><span>+${Number(invoice.vatAmount).toLocaleString('vi-VN')}₫</span></div>
+  <div class="tf"><span>TỔNG CỘNG</span><span>${Number(invoice.finalAmount).toLocaleString('vi-VN')}₫</span></div>
 </div>
 <div class="foot">Cảm ơn quý khách đã tin tưởng mua hàng tại TechStore — Hotline: 1800 6789</div>
 </body></html>`);
-    win.document.close();
-    setTimeout(() => win.print(), 400);
+      win.document.close();
+      setTimeout(() => win.print(), 400);
+    } catch (error) {
+      console.error('Error fetching invoice details:', error);
+      alert('Không thể lấy thông tin hóa đơn từ máy chủ.');
+    }
   };
+
+  if (verifyingPayment) {
+    return (
+      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f4f5f7' }}>
+        <div style={{ fontSize: 56, animation: 'spin 2s linear infinite' }}>🔄</div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0d1117' }}>Đang xác thực giao dịch...</h2>
+        <p style={{ fontSize: 14, color: '#6b7280' }}>Vui lòng không đóng hoặc tải lại trang web này.</p>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -216,6 +349,10 @@ export function CheckoutPage() {
                 style={{ flex: 1, height: 46, background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Xem hóa đơn
+              </button>
+              <button onClick={() => window.open(`/api/invoices/order/${success.orderId}/pdf`, '_blank')}
+                style={{ flex: 1, height: 46, background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                📥 Tải PDF
               </button>
               <Link to="/orders"
                 style={{ flex: 1, height: 46, background: '#0d1117', borderRadius: 10, fontSize: 14, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, textDecoration: 'none' }}>
@@ -355,12 +492,12 @@ export function CheckoutPage() {
             <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '24px' }}>
               <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', marginBottom: 20, letterSpacing: -0.3 }}>💳 Phương thức thanh toán</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {PAYMENT_METHODS.map(m => (
+                {(summary?.availablePaymentMethods || []).map(m => (
                   <label key={m.id}
                     style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', border: `1.5px solid ${method === m.id ? '#0d1117' : '#e9ecef'}`, borderRadius: 11, cursor: 'pointer', background: method === m.id ? '#f8f9fa' : '#fff', transition: 'all 0.15s' }}>
                     <input type="radio" name="method" value={m.id} checked={method === m.id} onChange={() => setMethod(m.id)} style={{ accentColor: '#0d1117', width: 16, height: 16 }}/>
-                    <PaymentIcon id={m.id}/>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0d1117' }}>{m.label}</span>
+                    <PaymentIcon id={m.type}/>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0d1117' }}>{m.name}</span>
                   </label>
                 ))}
               </div>
@@ -370,24 +507,25 @@ export function CheckoutPage() {
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '24px', position: 'sticky', top: 88 }}>
             <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', marginBottom: 18, letterSpacing: -0.3 }}>Đơn hàng của bạn</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              {items.map(item => (
+              {(summary?.items || []).map(item => (
                 <div key={item.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ width: 52, height: 52, background: '#f4f5f7', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
                     <svg width="24" height="40" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/></svg>
-                    <span style={{ position: 'absolute', top: -6, right: -6, background: '#0d1117', color: '#fff', fontSize: 10, fontWeight: 800, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{item.qty}</span>
+                    <span style={{ position: 'absolute', top: -6, right: -6, background: '#0d1117', color: '#fff', fontSize: 10, fontWeight: 800, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{item.quantity}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0d1117', lineHeight: 1.3, marginBottom: 2 }}>{item.name}</div>
-                    <div style={{ fontSize: 12, color: '#9ca3af' }}>{fmt(item.price)}₫ × {item.qty}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0d1117', lineHeight: 1.3, marginBottom: 2 }}>{item.productName}</div>
+                    {item.variantDisplayName && <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>{item.variantDisplayName}</div>}
+                    <div style={{ fontSize: 12, color: '#9ca3af' }}>{fmt(item.unitPrice)}₫ × {item.quantity}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0d1117', flexShrink: 0 }}>{fmt(item.price * item.qty)}₫</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0d1117', flexShrink: 0 }}>{fmt(item.subtotal)}₫</div>
                 </div>
               ))}
             </div>
             <div style={{ height: 1, background: '#f1f3f5', marginBottom: 16 }}/>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#6b7280' }}>
-                <span>Tạm tính</span><span style={{ fontWeight: 600, color: '#374151' }}>{fmt(total)}₫</span>
+                <span>Tạm tính</span><span style={{ fontWeight: 600, color: '#374151' }}>{fmt(checkoutTotal)}₫</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#6b7280' }}>
                 <span>Vận chuyển</span>

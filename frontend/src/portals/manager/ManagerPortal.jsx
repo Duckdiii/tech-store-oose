@@ -203,16 +203,6 @@ export function ManagerPortal() {
               ['Mã đơn', 'Khách hàng', 'Ngày tạo', 'Thanh toán', 'Tổng tiền', 'Trạng thái'],
               data.orders.map((o) => [o.id, o.customer, o.date, o.payment, o.total, o.status])
             )}
-            onExportPaymentLog={() => downloadCsv(
-              'nhat-ky-thanh-toan-techstore.csv',
-              ['Mã GD', 'Mã đơn', 'Khách hàng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Thời gian'],
-              [['TXN-001','TS20250615001','Nguyễn Thị Hoa',34990000,'VNPay','Success','15/06/2025 10:32'],
-               ['TXN-002','TS20250615002','Trần Văn Minh',28990000,'COD','Pending','15/06/2025 11:08'],
-               ['TXN-003','TS20250614017','Lê Thị Lan',7490000,'MoMo','Success','14/06/2025 09:14'],
-               ['TXN-004','TS20250614016','Phạm Quốc Bảo',19990000,'VNPay','Cancelled','14/06/2025 08:55'],
-               ['TXN-005','TS20250613009','Hoàng Minh Tú',22990000,'MoMo','Failed','13/06/2025 16:41'],
-               ['TXN-006','TS20250613008','Đặng Thu Hương',39990000,'VNPay','Success','13/06/2025 14:22']]
-            )}
           />
         )}
         {activeSection === 'warehouse' && (

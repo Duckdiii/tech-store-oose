@@ -1,20 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Status, DataTable, EmptyState } from '../components/index';
-import { money, sortRows } from '../utils';
+import { money, sortRows, downloadCsv } from '../utils';
+import { httpClient } from '../../../api/httpClient';
 
 const ORDER_STATUSES = ['Chờ xác nhận', 'Đang giao', 'Hoàn thành', 'Đã hủy'];
 
 const PAYMENT_LOG_STATUSES = ['Tất cả', 'Success', 'Failed', 'Pending', 'Cancelled'];
-const PAYMENT_METHODS      = ['Tất cả', 'VNPay', 'MoMo', 'COD'];
-
-const MOCK_PAYMENT_LOGS = [
-  { txId: 'TXN-001', orderId: 'TS20250615001', customer: 'Nguyễn Thị Hoa',  amount: 34990000, method: 'VNPay', status: 'Success',   time: '15/06/2025 10:32', failReason: '' },
-  { txId: 'TXN-002', orderId: 'TS20250615002', customer: 'Trần Văn Minh',   amount: 28990000, method: 'COD',   status: 'Pending',   time: '15/06/2025 11:08', failReason: '' },
-  { txId: 'TXN-003', orderId: 'TS20250614017', customer: 'Lê Thị Lan',      amount: 7490000,  method: 'MoMo',  status: 'Success',   time: '14/06/2025 09:14', failReason: '' },
-  { txId: 'TXN-004', orderId: 'TS20250614016', customer: 'Phạm Quốc Bảo',  amount: 19990000, method: 'VNPay', status: 'Cancelled', time: '14/06/2025 08:55', failReason: 'Người dùng hủy giao dịch' },
-  { txId: 'TXN-005', orderId: 'TS20250613009', customer: 'Hoàng Minh Tú',   amount: 22990000, method: 'MoMo',  status: 'Failed',    time: '13/06/2025 16:41', failReason: 'Số dư ví không đủ' },
-  { txId: 'TXN-006', orderId: 'TS20250613008', customer: 'Đặng Thu Hương',  amount: 39990000, method: 'VNPay', status: 'Success',   time: '13/06/2025 14:22', failReason: '' },
-];
 
 const STATUS_STYLE = {
   Success:   { label: 'Success',   cls: 'Hoàn thành' },
@@ -23,18 +14,102 @@ const STATUS_STYLE = {
   Failed:    { label: 'Failed',    cls: 'Đã hủy' },
 };
 
-function PaymentLogTab({ onExport }) {
+function PaymentLogTab() {
   const [filterStatus, setFilterStatus] = useState('Tất cả');
   const [filterMethod, setFilterMethod] = useState('Tất cả');
   const [filterDate,   setFilterDate]   = useState('');
   const [detail,       setDetail]       = useState(null);
 
-  const rows = MOCK_PAYMENT_LOGS.filter((tx) => {
-    if (filterStatus !== 'Tất cả' && tx.status  !== filterStatus) return false;
-    if (filterMethod !== 'Tất cả' && tx.method  !== filterMethod) return false;
-    if (filterDate   && !tx.time.startsWith(filterDate.split('-').reverse().join('/'))) return false;
-    return true;
-  });
+  const [logs, setLogs] = useState([]);
+  const [availableMethods, setAvailableMethods] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Load available payment methods dynamically on mount
+  useEffect(() => {
+    httpClient.get('/payments/checkout/summary?customerId=1')
+      .then(res => {
+        setAvailableMethods(res.data.availablePaymentMethods || []);
+      })
+      .catch(err => console.error('Error fetching payment methods:', err));
+  }, []);
+
+  // Fetch payment logs on filter changes
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLoading(true);
+      try {
+        let status = null;
+        if (filterStatus !== 'Tất cả') {
+          status = filterStatus.toUpperCase();
+        }
+
+        let paymentMethodId = null;
+        if (filterMethod !== 'Tất cả') {
+          paymentMethodId = filterMethod;
+        }
+
+        let startDate = null;
+        let endDate = null;
+        if (filterDate) {
+          startDate = `${filterDate}T00:00:00`;
+          endDate = `${filterDate}T23:59:59`;
+        }
+
+        const response = await httpClient.get('/payment-logs', {
+          params: { status, paymentMethodId, startDate, endDate }
+        });
+        setLogs(response.data || []);
+      } catch (err) {
+        console.error('Error fetching payment logs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [filterStatus, filterMethod, filterDate]);
+
+  // Fetch log detail
+  const handleViewDetail = async (logId) => {
+    try {
+      const response = await httpClient.get(`/payment-logs/${logId}`);
+      setDetail(response.data);
+    } catch (err) {
+      console.error('Error fetching payment log detail:', err);
+    }
+  };
+
+  const formatTime = (isoString) => {
+    if (!isoString) return '';
+    try {
+      const d = new Date(isoString);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
+      return isoString;
+    }
+  };
+
+  const getStatusCls = (statusStr) => {
+    if (!statusStr) return 'Đã hủy';
+    const norm = statusStr.charAt(0).toUpperCase() + statusStr.slice(1).toLowerCase();
+    return STATUS_STYLE[norm]?.cls || statusStr;
+  };
+
+  const handleExportCsv = () => {
+    downloadCsv(
+      'nhat-ky-thanh-toan-techstore.csv',
+      ['Mã GD', 'Mã đơn', 'Khách hàng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Thời gian'],
+      logs.map((tx) => [
+        tx.logId,
+        tx.orderId,
+        tx.customerName,
+        tx.amount,
+        tx.paymentMethod,
+        tx.status,
+        formatTime(tx.createdAt)
+      ])
+    );
+  };
 
   return (
     <>
@@ -43,7 +118,7 @@ function PaymentLogTab({ onExport }) {
           <p>Lịch sử giao dịch thanh toán</p>
           <h2>Nhật ký thanh toán</h2>
         </div>
-        <button className="admin-button admin-button--secondary" onClick={onExport}>
+        <button className="admin-button admin-button--secondary" onClick={handleExportCsv}>
           Xuất nhật ký
         </button>
       </div>
@@ -67,7 +142,8 @@ function PaymentLogTab({ onExport }) {
               value={filterMethod}
               onChange={(e) => setFilterMethod(e.target.value)}
             >
-              {PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}
+              <option value="Tất cả">Tất cả</option>
+              {availableMethods.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary, #64748b)' }}>
@@ -90,19 +166,21 @@ function PaymentLogTab({ onExport }) {
         </div>
 
         <DataTable columns={['Mã giao dịch', 'Mã đơn', 'Khách hàng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Thời gian', '']}>
-          {rows.length === 0 ? (
+          {loading ? (
+            <tr><td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải dữ liệu...</td></tr>
+          ) : logs.length === 0 ? (
             <tr><td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Không có giao dịch phù hợp</td></tr>
-          ) : rows.map((tx) => (
-            <tr key={tx.txId}>
-              <td><b>{tx.txId}</b></td>
+          ) : logs.map((tx) => (
+            <tr key={tx.logId}>
+              <td><b>{tx.logId}</b></td>
               <td>{tx.orderId}</td>
-              <td>{tx.customer}</td>
-              <td><b>{money(tx.amount)}</b></td>
-              <td>{tx.method}</td>
-              <td><Status>{STATUS_STYLE[tx.status]?.cls || tx.status}</Status></td>
-              <td style={{ color: '#64748b', fontSize: 12 }}>{tx.time}</td>
+              <td>{tx.customerName}</td>
+              <td><b>{money(Number(tx.amount || 0))}</b></td>
+              <td>{tx.paymentMethod}</td>
+              <td><Status>{getStatusCls(tx.status)}</Status></td>
+              <td style={{ color: '#64748b', fontSize: 12 }}>{formatTime(tx.createdAt)}</td>
               <td>
-                <button className="admin-row-action admin-row-action--primary" onClick={() => setDetail(tx)}>
+                <button className="admin-row-action admin-row-action--primary" onClick={() => handleViewDetail(tx.logId)}>
                   Chi tiết
                 </button>
               </td>
@@ -122,18 +200,21 @@ function PaymentLogTab({ onExport }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                ['Mã giao dịch',    detail.txId],
+                ['Mã giao dịch',    detail.logId],
                 ['Mã đơn hàng',     detail.orderId],
-                ['Khách hàng',      detail.customer],
-                ['Số tiền',         money(detail.amount)],
-                ['Phương thức',     detail.method],
-                ['Trạng thái',      detail.status],
-                ['Thời gian',       detail.time],
-                ...(detail.failReason ? [['Lý do thất bại', detail.failReason]] : []),
+                ['Tên khách hàng',  detail.customerName],
+                ['Số điện thoại',   detail.customerPhone],
+                ['Email',           detail.customerEmail],
+                ['Số tiền',         money(Number(detail.amount || 0))],
+                ['Phương thức',     detail.paymentMethod],
+                ['Trạng thái',      getStatusCls(detail.status)],
+                ['Thời gian tạo',   formatTime(detail.createdAt)],
+                ...(detail.paidAt ? [['Thời gian thanh toán', formatTime(detail.paidAt)]] : []),
+                ...(detail.failureReason ? [['Lý do thất bại', detail.failureReason]] : []),
               ].map(([label, value]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13.5 }}>
                   <span style={{ color: '#6b7280', flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontWeight: 600, color: '#0d1117', textAlign: 'right' }}>{value}</span>
+                  <span style={{ fontWeight: 600, color: '#0d1117', textAlign: 'right' }}>{value || '-'}</span>
                 </div>
               ))}
             </div>
@@ -151,7 +232,7 @@ function PaymentLogTab({ onExport }) {
   );
 }
 
-export function OrdersPage({ orders, onStatus, onExport, onExportPaymentLog }) {
+export function OrdersPage({ orders, onStatus, onExport }) {
   const [tab,        setTab]        = useState('orders');
   const [sortKey,    setSortKey]    = useState('');
   const [sortDir,    setSortDir]    = useState('asc');
@@ -300,7 +381,7 @@ export function OrdersPage({ orders, onStatus, onExport, onExportPaymentLog }) {
       )}
 
       {tab === 'payment-log' && (
-        <PaymentLogTab onExport={onExportPaymentLog} />
+        <PaymentLogTab />
       )}
     </>
   );
