@@ -4,6 +4,7 @@ import com.oose.tech_store.dto.warehouse.ImportProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductResponseDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductPreviewResponseDTO;
 import com.oose.tech_store.service.ImportProductService;
+import com.oose.tech_store.service.WarehouseActorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,11 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 
 @RestController
-@RequestMapping("/api/warehouse/imports")
+@RequestMapping({"/api/warehouse/imports", "/api/admin/warehouse/import"})
 @RequiredArgsConstructor
 public class ImportProductController {
 
     private final ImportProductService importProductService;
+    private final WarehouseActorService warehouseActorService;
 
     @PostMapping("/validate")
     public ImportProductPreviewResponseDTO validateImport(
@@ -32,6 +34,7 @@ public class ImportProductController {
             @Valid @RequestBody ImportProductRequestDTO request,
             Principal principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(importProductService.confirmImport(request, principal.getName()));
+                .body(importProductService.confirmImport(
+                        request, warehouseActorService.getCurrentUserId(principal)));
     }
 }
