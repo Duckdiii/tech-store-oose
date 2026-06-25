@@ -18,8 +18,15 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/api/warehouse/logs/**").hasRole("MANAGER")
                         .requestMatchers(
+                                "/api/warehouse/logs/**",
+                                "/api/admin/warehouse/logs/**")
+                        .hasRole("MANAGER")
+                        .requestMatchers(
+                                "/api/admin/warehouse",
+                                "/api/admin/warehouse/import/**",
+                                "/api/admin/warehouse/export/**",
+                                "/api/warehouse/inventory/**",
                                 "/api/warehouse/imports/**",
                                 "/api/warehouse/exports/**",
                                 "/api/warehouse/receipts/**")
