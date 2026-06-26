@@ -50,7 +50,7 @@ public class PaymentLogServiceImpl implements PaymentLogService {
                 log.getOrder().getId(),
                 customer.getFullName(),
                 log.getAmount(),
-                log.getPaymentMethod().getName(),
+                log.getOrder().getSelectedPaymentMethod().getName(),
                 log.getStatus().name(),
                 log.getCreatedAt()
         );
@@ -67,7 +67,7 @@ public class PaymentLogServiceImpl implements PaymentLogService {
                 customer.getPhone(),
                 email,
                 log.getAmount(),
-                log.getPaymentMethod().getName(),
+                log.getOrder().getSelectedPaymentMethod().getName(),
                 log.getStatus().name(),
                 log.getPaidAt(),
                 log.getFailureReason(),

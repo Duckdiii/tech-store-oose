@@ -82,7 +82,6 @@ public class FavoriteProduct extends BaseEntity {
         this.product = product;
         this.customer = customer;
         this.status = status;
-        product.getFavoriteProducts().add(this);
         customer.getFavoriteProducts().add(this);
     }
 }
