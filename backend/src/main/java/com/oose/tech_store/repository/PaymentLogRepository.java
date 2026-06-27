@@ -18,7 +18,7 @@ public interface PaymentLogRepository extends JpaRepository<PaymentLog, String> 
 	@Query("SELECT p FROM PaymentLog p " +
 		   "JOIN FETCH p.order o " +
 		   "JOIN FETCH o.customer c " +
-		   "JOIN FETCH p.paymentMethod pm " +
+		   "JOIN FETCH o.selectedPaymentMethod pm " +
 		   "WHERE (:status IS NULL OR p.status = :status) " +
 		   "AND (:paymentMethodId IS NULL OR pm.id = :paymentMethodId) " +
 		   "AND (:startDate IS NULL OR p.createdAt >= :startDate) " +

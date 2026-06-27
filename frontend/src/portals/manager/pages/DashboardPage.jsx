@@ -1,0 +1,284 @@
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Status, DataTable } from '../components/index';
+import { money } from '../utils';
+
+const GREET_HOUR = new Date().getHours();
+const GREET = GREET_HOUR < 12 ? 'Chào buổi sáng' : GREET_HOUR < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+const TODAY = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const chart = [45, 68, 54, 82, 61, 92, 75, 96, 88, 72, 100, 84];
+
+function ClickableMetric({ label, value, hint, tone = 'dark', to, navigate }) {
+  const mark = { dark: '#0d1117', blue: '#3b82f6', purple: '#7c3aed', amber: '#f59e0b' }[tone] || '#0d1117';
+  return (
+    <article
+      className="admin-metric"
+      onClick={() => navigate(to)}
+      style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.08)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+      title={`Đến trang ${label}`}
+    >
+      <div className={`admin-metric__mark`} style={{ background: mark }} />
+      <p>{label}</p>
+      <strong>{value}</strong>
+      <small>{hint}</small>
+      <span style={{ fontSize: 10, color: '#94a3b8', marginTop: 4, display: 'block' }}>Nhấn để xem →</span>
+    </article>
+  );
+}
+
+function TodoSection({ pendingOrders, lowStockItems, navigate }) {
+  const totalItems = pendingOrders.length + lowStockItems.length;
+
+  if (totalItems === 0) {
+    return (
+      <article className="admin-card" style={{ marginBottom: 20 }}>
+        <div className="admin-card__head">
+          <div><p>VIỆC CẦN LÀM HÔM NAY</p><h3>Tất cả đã hoàn thành</h3></div>
+        </div>
+        <p style={{ color: '#6b7280', fontSize: 13, padding: '8px 0' }}>Không có việc tồn đọng. Hôm nay suôn sẻ!</p>
+      </article>
+    );
+  }
+
+  return (
+    <article className="admin-card" style={{ marginBottom: 20 }}>
+      <div className="admin-card__head">
+        <div>
+          <p>VIỆC CẦN LÀM HÔM NAY</p>
+          <h3>{totalItems} mục cần xử lý</h3>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        {pendingOrders.map((order) => (
+          <div
+            key={order.id}
+            onClick={() => navigate('/manager/orders')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px', borderRadius: 10,
+              border: '1.5px solid #e0f2fe', background: '#f0f9ff',
+              cursor: 'pointer', transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#e0f2fe'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#f0f9ff'}
+          >
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontSize: 13, color: '#0d1117', display: 'block' }}>Đơn hàng {order.id} — {order.customer}</b>
+              <span style={{ fontSize: 12, color: '#6b7280' }}>{money(order.total)} · {order.payment}</span>
+            </div>
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
+              background: '#dbeafe', color: '#1d4ed8', flexShrink: 0,
+            }}>Chờ xác nhận</span>
+            <span style={{ color: '#94a3b8', fontSize: 12, flexShrink: 0 }}>→</span>
+          </div>
+        ))}
+
+        {lowStockItems.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => navigate('/manager/warehouse')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px', borderRadius: 10,
+              border: `1.5px solid ${item.stock === 0 ? '#fee2e2' : '#fef3c7'}`,
+              background: item.stock === 0 ? '#fff5f5' : '#fffbeb',
+              cursor: 'pointer', transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = item.stock === 0 ? '#fee2e2' : '#fef3c7'}
+            onMouseLeave={(e) => e.currentTarget.style.background = item.stock === 0 ? '#fff5f5' : '#fffbeb'}
+          >
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.stock === 0 ? '#ef4444' : '#f59e0b', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontSize: 13, color: '#0d1117', display: 'block' }}>{item.name}</b>
+              <span style={{ fontSize: 12, color: '#6b7280' }}>
+                {item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} serial`}
+              </span>
+            </div>
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
+              background: item.stock === 0 ? '#fee2e2' : '#fef3c7',
+              color: item.stock === 0 ? '#b91c1c' : '#92400e',
+              flexShrink: 0,
+            }}>
+              {item.stock === 0 ? 'Hết hàng' : 'Sắp hết'}
+            </span>
+            <span style={{ color: '#94a3b8', fontSize: 12, flexShrink: 0 }}>→</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+export function DashboardPage({ data }) {
+  const navigate = useNavigate();
+
+  const pendingOrders = useMemo(
+    () => data.orders.filter((o) => o.status === 'Chờ xác nhận'),
+    [data.orders]
+  );
+
+  const lowStockItems = useMemo(
+    () => data.products
+      .map((p) => ({
+        ...p,
+        stock: data.variants.filter((v) => v.productId === p.id && v.status === 'AVAILABLE').length,
+      }))
+      .filter((p) => p.stock < 6)
+      .sort((a, b) => a.stock - b.stock),
+    [data.products, data.variants]
+  );
+
+  const totalRevenue = useMemo(
+    () => data.orders.filter((o) => o.status === 'Hoàn thành').reduce((s, o) => s + o.total, 0),
+    [data.orders]
+  );
+
+  const availableVariants = useMemo(
+    () => data.variants.filter((v) => v.status === 'AVAILABLE').length,
+    [data.variants]
+  );
+
+  const todoCount = pendingOrders.length + lowStockItems.length;
+
+  return (
+    <>
+      <div className="admin-page-intro">
+        <div>
+          <p>{TODAY}</p>
+          <h2>{GREET}, Đức Duy.</h2>
+        </div>
+        <button className="admin-button" onClick={() => navigate('/manager/products')}>
+          + Thêm sản phẩm
+        </button>
+      </div>
+
+      {/* Clickable metric cards */}
+      <div className="admin-metrics">
+        <ClickableMetric
+          label="Doanh thu tháng"
+          value={totalRevenue > 0 ? `${(totalRevenue / 1_000_000).toFixed(0)} triệu` : '428,5 triệu'}
+          hint="↑ 12,8% so với tháng trước"
+          tone="dark"
+          to="/manager/reports"
+          navigate={navigate}
+        />
+        <ClickableMetric
+          label="Đơn hàng mới"
+          value={String(data.orders.length)}
+          hint={`${pendingOrders.length} đơn đang chờ xác nhận`}
+          tone="blue"
+          to="/manager/orders"
+          navigate={navigate}
+        />
+        <ClickableMetric
+          label="Khách hàng"
+          value={String(data.customers.length)}
+          hint={`${data.customers.filter((c) => c.active).length} đang hoạt động`}
+          tone="purple"
+          to="/manager/customers"
+          navigate={navigate}
+        />
+        <ClickableMetric
+          label="Tồn kho có sẵn"
+          value={String(availableVariants)}
+          hint={lowStockItems.length > 0 ? `${lowStockItems.length} sản phẩm sắp hết` : 'Kho đang ổn định'}
+          tone={lowStockItems.length > 0 ? 'amber' : 'dark'}
+          to="/manager/warehouse"
+          navigate={navigate}
+        />
+      </div>
+
+      {/* Todo section */}
+      {todoCount > 0 && (
+        <TodoSection
+          pendingOrders={pendingOrders}
+          lowStockItems={lowStockItems}
+          navigate={navigate}
+        />
+      )}
+
+      {/* Charts row */}
+      <div className="admin-grid admin-grid--wide">
+        <article className="admin-card admin-chart-card">
+          <div className="admin-card__head">
+            <div><p>HIỆU QUẢ KINH DOANH</p><h3>Doanh thu theo tháng</h3></div>
+            <span className="admin-text-button">Năm 2025</span>
+          </div>
+          <div className="admin-chart">
+            {chart.map((height, i) => (
+              <div key={i} className="admin-chart__item">
+                <div style={{ height: `${height}%` }} />
+                <span>T{i + 1}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="admin-card">
+          <div className="admin-card__head">
+            <div><p>TRẠNG THÁI ĐƠN</p><h3>Phân bổ đơn hàng</h3></div>
+          </div>
+          <div className="admin-donut">
+            <div><strong>{data.orders.length}</strong><span>đơn hàng</span></div>
+          </div>
+          <div className="admin-legend">
+            <span><i className="dot dot--dark" />Hoàn thành <b>62%</b></span>
+            <span><i className="dot dot--blue" />Đang xử lý <b>28%</b></span>
+            <span><i className="dot dot--muted" />Đã hủy <b>10%</b></span>
+          </div>
+        </article>
+      </div>
+
+      {/* Recent orders + warehouse alerts */}
+      <div className="admin-grid admin-grid--wide">
+        <article className="admin-card">
+          <div className="admin-card__head">
+            <div><p>ĐƠN HÀNG</p><h3>Đơn hàng gần đây</h3></div>
+            <button className="admin-text-button" onClick={() => navigate('/manager/orders')}>
+              Xem tất cả →
+            </button>
+          </div>
+          <DataTable columns={['Mã đơn', 'Khách hàng', 'Tổng tiền', 'Trạng thái']}>
+            {data.orders.slice(0, 4).map((order) => (
+              <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/manager/orders')}>
+                <td><b>{order.id}</b></td>
+                <td>{order.customer}</td>
+                <td>{money(order.total)}</td>
+                <td><Status>{order.status}</Status></td>
+              </tr>
+            ))}
+          </DataTable>
+        </article>
+
+        <article className="admin-card">
+          <div className="admin-card__head">
+            <div><p>KHO HÀNG</p><h3>Cần chú ý</h3></div>
+            <button className="admin-text-button" onClick={() => navigate('/manager/warehouse')}>
+              Xem kho →
+            </button>
+          </div>
+          {lowStockItems.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: 13, padding: '8px 0' }}>Tồn kho đang ổn định.</p>
+          ) : (
+            <div className="admin-alert-list">
+              {lowStockItems.slice(0, 4).map((item) => (
+                <div key={item.id}>
+                  <b>{item.name}</b>
+                  <span>{item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} serial`}</span>
+                  <Status>{item.stock === 0 ? 'Hết hàng' : 'Sắp hết hàng'}</Status>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+      </div>
+    </>
+  );
+}

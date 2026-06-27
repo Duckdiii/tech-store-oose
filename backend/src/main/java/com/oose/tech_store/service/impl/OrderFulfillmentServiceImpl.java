@@ -69,7 +69,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
 
         Order savedOrder = orderRepository.save(order);
 
-        PaymentLog paymentLog = new PaymentLog(savedOrder, totalAmount, paymentMethod, paymentStatus);
+        PaymentLog paymentLog = new PaymentLog(savedOrder, totalAmount, paymentStatus);
         if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
             paymentLog.markSuccess();
         }

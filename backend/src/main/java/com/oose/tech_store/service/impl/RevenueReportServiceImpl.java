@@ -1,31 +1,20 @@
 package com.oose.tech_store.service.impl;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.temporal.WeekFields;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.oose.tech_store.dto.report.GroupBy;
 import com.oose.tech_store.dto.report.RevenueReportResponse;
-import com.oose.tech_store.dto.report.RevenueReportResponse.BrandRevenueItem;
-import com.oose.tech_store.dto.report.RevenueReportResponse.CategoryRevenueItem;
-import com.oose.tech_store.dto.report.RevenueReportResponse.PaymentMethodRevenueItem;
-import com.oose.tech_store.dto.report.RevenueReportResponse.RevenueTrendPoint;
-import com.oose.tech_store.dto.report.RevenueReportResponse.TopProductItem;
+import com.oose.tech_store.dto.report.RevenueReportResponse.*;
 import com.oose.tech_store.entity.Order;
 import com.oose.tech_store.entity.OrderItem;
 import com.oose.tech_store.repository.OrderRepository;
 import com.oose.tech_store.service.RevenueReportService;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.temporal.WeekFields;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
