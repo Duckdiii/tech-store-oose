@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
@@ -64,6 +65,12 @@ const ALL_PRODUCTS = [
     specs: { 'Màn hình': '6.71" IPS LCD, 60Hz', 'Chip': 'MediaTek Helio G85', 'RAM': '4 GB', 'Camera': '50MP + 2MP', 'Pin': '5.000 mAh', 'Hệ điều hành': 'Android 12, MIUI 13', 'Kết nối': 'USB-C, Wi-Fi 5, Bluetooth 5.1', 'Trọng lượng': '192 g' },
     desc: 'Redmi 12C là lựa chọn giá rẻ thông minh với pin 5.000 mAh sử dụng cả ngày, camera 50MP chất lượng và màn hình lớn 6.71 inch. Phù hợp cho người dùng phổ thông.' },
 ];
+=======
+import { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useCart } from '../../../shared/context/CartContext';
+import { productApi } from '../../../api/productApi';
+>>>>>>> origin/anhvansuy
 
 const REVIEWS_MOCK = [
   { name: 'Nguyễn Văn An', avatar: 'NA', rating: 5, date: '10/06/2025', text: 'Sản phẩm đúng như mô tả, giao hàng nhanh, đóng gói cẩn thận. Máy chạy mượt, pin trâu. Rất hài lòng!', helpful: 24 },
@@ -71,21 +78,76 @@ const REVIEWS_MOCK = [
   { name: 'Lê Hoàng Nam', avatar: 'LN', rating: 4, date: '01/06/2025', text: 'Máy đẹp, chạy tốt. Chỉ tiếc là không có tặng kèm phụ kiện. Nhưng giá tốt nên cũng ok.', helpful: 7 },
 ];
 
+<<<<<<< HEAD
 function fmt(n) { return n.toLocaleString('vi-VN'); }
 
 export function ProductDetailPage() {
+=======
+function fmt(n) { return n ? n.toLocaleString('vi-VN') : '0'; }
+
+>>>>>>> origin/anhvansuy
   const { id } = useParams();
   const navigate = useNavigate();
   const { addItem } = useCart();
 
+<<<<<<< HEAD
   const product = ALL_PRODUCTS.find(p => p.id === Number(id));
 
   const [selectedColor, setSelectedColor] = useState(0);
   const [selectedStorage, setSelectedStorage] = useState(product?.storage || '');
+=======
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [selectedColor, setSelectedColor] = useState(0);
+  const [selectedStorage, setSelectedStorage] = useState(0);
+>>>>>>> origin/anhvansuy
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState('specs');
   const [added, setAdded] = useState(false);
 
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const data = await productApi.getProductDetail(id);
+        
+        // Transform the backend data into a format suitable for the UI
+        const colors = [...new Set(data.variants.map(v => v.color))].filter(Boolean);
+        const storages = [...new Set(data.variants.map(v => v.capacity))].filter(Boolean);
+        
+        setProduct({
+          ...data,
+          colors: colors.length ? colors : ['Mặc định'],
+          storages: storages.length ? storages : ['Mặc định'],
+          rating: 5.0, // Mock for now
+          reviews: '2.4K', // Mock for now
+        });
+        
+        setSelectedColor(0);
+        setSelectedStorage(0);
+      } catch (err) {
+        console.error('Failed to fetch product detail', err);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDetail();
+    window.scrollTo(0, 0);
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f5f7' }}>
+        <h2 style={{ fontSize: 20, color: '#374151' }}>Đang tải thông tin sản phẩm...</h2>
+      </div>
+    );
+  }
+
+>>>>>>> origin/anhvansuy
   if (!product) {
     return (
       <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#f4f5f7' }}>
@@ -96,21 +158,54 @@ export function ProductDetailPage() {
     );
   }
 
+<<<<<<< HEAD
   const currentPrice = product.prices?.[selectedStorage] ?? product.price;
   const discount = Math.round((1 - currentPrice / product.oldPrice) * 100);
 
   const handleAddToCart = () => {
     addItem({ ...product, id: `${product.id}-${selectedStorage}`, name: `${product.name.replace(/\d+GB$/, '').trim()} ${selectedStorage}`, price: currentPrice, storage: selectedStorage }, qty);
+=======
+  // Find the selected variant to get the correct price
+  const selectedVariantColor = product.colors[selectedColor] !== 'Mặc định' ? product.colors[selectedColor] : null;
+  const selectedVariantCapacity = product.storages[selectedStorage] !== 'Mặc định' ? product.storages[selectedStorage] : null;
+  
+  const currentVariant = product.variants?.find(v => 
+    (!selectedVariantColor || v.color === selectedVariantColor) &&
+    (!selectedVariantCapacity || v.capacity === selectedVariantCapacity)
+  ) || product.variants?.[0];
+
+  const currentPrice = currentVariant ? currentVariant.price : (product.price || 0);
+  const oldPrice = currentPrice * 1.1; // Mock old price
+  const discount = 10; // Mock discount
+
+  const handleAddToCart = () => {
+    addItem({ 
+      id: `${product.id}-${selectedVariantColor}-${selectedVariantCapacity}`, 
+      name: `${product.name} ${selectedVariantCapacity || ''}`.trim(), 
+      price: currentPrice, 
+      storage: selectedVariantCapacity,
+      brand: product.brandName,
+      thumbnailUrl: product.thumbnailUrl
+    }, qty);
+>>>>>>> origin/anhvansuy
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
 
   const handleBuyNow = () => {
+<<<<<<< HEAD
     addItem({ ...product, id: `${product.id}-${selectedStorage}`, name: `${product.name.replace(/\d+GB$/, '').trim()} ${selectedStorage}`, price: currentPrice, storage: selectedStorage }, qty);
     navigate('/checkout');
   };
 
   const relatedProducts = ALL_PRODUCTS.filter(p => p.brand === product.brand && p.id !== product.id).slice(0, 4);
+=======
+    handleAddToCart();
+    navigate('/checkout');
+  };
+
+  const relatedProducts = []; // ALL_PRODUCTS.filter(p => p.brand === product.brand && p.id !== product.id).slice(0, 4);
+>>>>>>> origin/anhvansuy
 
   return (
     <div style={{ background: '#f4f5f7', minHeight: '80vh', paddingBottom: 80 }}>
@@ -120,7 +215,11 @@ export function ProductDetailPage() {
           <span style={{ color: '#d1d5db' }}>/</span>
           <Link to="/products" style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>Điện thoại</Link>
           <span style={{ color: '#d1d5db' }}>/</span>
+<<<<<<< HEAD
           <Link to={`/products?brand=${product.brand}`} style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>{product.brand}</Link>
+=======
+          <Link to={`/products?brand=${product.brandName}`} style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>{product.brandName}</Link>
+>>>>>>> origin/anhvansuy
           <span style={{ color: '#d1d5db' }}>/</span>
           <span style={{ fontSize: 13, color: '#0d1117', fontWeight: 600 }}>{product.name}</span>
         </div>
@@ -136,10 +235,15 @@ export function ProductDetailPage() {
                 <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
                 <rect x="7" y="7" width="58" height="106" rx="13" stroke="#c4c9d4" strokeWidth="1.5"/>
                 <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.5"/>
+<<<<<<< HEAD
+=======
+                {product.images && product.images[0] && <image href={product.images[0].url} x="13" y="23" width="46" height="70" preserveAspectRatio="xMidYMid slice" />}
+>>>>>>> origin/anhvansuy
                 <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
                 <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
               </svg>
             </div>
+<<<<<<< HEAD
             <div style={{ display: 'flex', gap: 10 }}>
               {[1,2,3].map(i => (
                 <div key={i} style={{ flex: 1, background: '#fff', borderRadius: 12, border: `1.5px solid ${i===1 ? '#0d1117' : '#f1f3f5'}`, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', height: 72 }}>
@@ -154,6 +258,25 @@ export function ProductDetailPage() {
 
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10 }}>{product.brand}</div>
+=======
+            {product.images && product.images.length > 0 && (
+              <div style={{ display: 'flex', gap: 10 }}>
+                {product.images.slice(0,3).map((img, i) => (
+                  <div key={i} style={{ flex: 1, background: '#fff', borderRadius: 12, border: `1.5px solid ${i===0 ? '#0d1117' : '#f1f3f5'}`, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', height: 72 }}>
+                    <svg width="28" height="48" viewBox="0 0 72 120" fill="none">
+                      <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
+                      <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
+                      <image href={img.url} x="13" y="23" width="46" height="70" preserveAspectRatio="xMidYMid slice" />
+                    </svg>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10 }}>{product.brandName}</div>
+>>>>>>> origin/anhvansuy
             <h1 style={{ fontSize: 26, fontWeight: 900, color: '#0d1117', letterSpacing: -0.8, lineHeight: 1.25, marginBottom: 14 }}>{product.name}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #f1f3f5' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -168,10 +291,17 @@ export function ProductDetailPage() {
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
                 <span style={{ fontSize: 34, fontWeight: 900, color: '#e11d48', letterSpacing: -1 }}>{fmt(currentPrice)}₫</span>
+<<<<<<< HEAD
                 <span style={{ fontSize: 16, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(product.oldPrice)}₫</span>
               </div>
               <span style={{ display: 'inline-block', background: '#fef2f2', color: '#e11d48', fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 6 }}>
                 Tiết kiệm {fmt(product.oldPrice - currentPrice)}₫
+=======
+                <span style={{ fontSize: 16, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(oldPrice)}₫</span>
+              </div>
+              <span style={{ display: 'inline-block', background: '#fef2f2', color: '#e11d48', fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 6 }}>
+                Tiết kiệm {fmt(oldPrice - currentPrice)}₫
+>>>>>>> origin/anhvansuy
               </span>
             </div>
             <div style={{ marginBottom: 20 }}>
@@ -189,6 +319,7 @@ export function ProductDetailPage() {
             </div>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: '#374151', marginBottom: 10 }}>
+<<<<<<< HEAD
                 Dung lượng: <span style={{ fontWeight: 800, color: '#0d1117' }}>{selectedStorage}</span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -201,6 +332,25 @@ export function ProductDetailPage() {
                     )}
                   </button>
                 ))}
+=======
+                Dung lượng: <span style={{ fontWeight: 800, color: '#0d1117' }}>{product.storages[selectedStorage]}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {product.storages.map((s, i) => {
+                  // Find the variant for this storage and the selected color
+                  const v = product.variants?.find(v => v.capacity === s && (!selectedVariantColor || v.color === selectedVariantColor));
+                  const sPrice = v ? v.price : null;
+                  return (
+                    <button key={i} onClick={() => setSelectedStorage(i)}
+                      style={{ padding: '10px 20px', border: `2px solid ${selectedStorage===i ? '#0d1117' : '#e9ecef'}`, borderRadius: 9, background: selectedStorage===i ? '#0d1117' : '#fff', fontSize: 13.5, fontWeight: 700, color: selectedStorage===i ? '#fff' : '#374151', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                      {s}
+                      {sPrice && i !== selectedStorage && (
+                        <span style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#9ca3af', marginTop: 2 }}>{fmt(sPrice)}₫</span>
+                      )}
+                    </button>
+                  );
+                })}
+>>>>>>> origin/anhvansuy
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -255,9 +405,15 @@ export function ProductDetailPage() {
             ))}
           </div>
           <div style={{ padding: '28px 32px' }}>
+<<<<<<< HEAD
             {tab === 'specs' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 40px' }}>
                 {Object.entries(product.specs).map(([key, val]) => (
+=======
+            {tab === 'specs' && product.attributes && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 40px' }}>
+                {Object.entries(product.attributes).map(([key, val]) => (
+>>>>>>> origin/anhvansuy
                   <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '14px 0', borderBottom: '1px solid #f4f5f7', gap: 16 }}>
                     <span style={{ fontSize: 13.5, color: '#9ca3af', fontWeight: 500, flexShrink: 0 }}>{key}</span>
                     <span style={{ fontSize: 13.5, color: '#0d1117', fontWeight: 600, textAlign: 'right' }}>{val}</span>
@@ -267,6 +423,7 @@ export function ProductDetailPage() {
             )}
             {tab === 'desc' && (
               <div style={{ maxWidth: 720 }}>
+<<<<<<< HEAD
                 <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, marginBottom: 20 }}>{product.desc}</p>
                 <ul style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {Object.entries(product.specs).slice(0, 4).map(([k, v]) => (
@@ -275,6 +432,18 @@ export function ProductDetailPage() {
                     </li>
                   ))}
                 </ul>
+=======
+                <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, marginBottom: 20 }}>{product.description}</p>
+                {product.attributes && (
+                  <ul style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {Object.entries(product.attributes).slice(0, 4).map(([k, v]) => (
+                      <li key={k} style={{ fontSize: 14.5, color: '#4b5563', lineHeight: 1.6 }}>
+                        <strong style={{ color: '#0d1117' }}>{k}:</strong> {v}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+>>>>>>> origin/anhvansuy
               </div>
             )}
             {tab === 'reviews' && (
