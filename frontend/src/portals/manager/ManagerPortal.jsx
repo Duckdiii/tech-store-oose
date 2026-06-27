@@ -13,6 +13,8 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WarehousePage } from './pages/WarehousePage';
 
+const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
+
 export function ManagerPortal() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -80,7 +82,6 @@ export function ManagerPortal() {
     };
   }, [data.orders, data.products, data.variants]);
 
-  const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Warehouse Log' };
   const breadcrumbs = useMemo(() => {
     const manager = { label: 'Manager', to: '/manager/dashboard' };
     if (activeSection === 'warehouse') {

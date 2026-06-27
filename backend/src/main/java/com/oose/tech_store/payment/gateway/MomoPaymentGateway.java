@@ -1,6 +1,7 @@
 package com.oose.tech_store.payment.gateway;
 
 import com.oose.tech_store.config.MomoProperties;
+import com.oose.tech_store.dto.payment.MomoIpnRequest;
 import com.oose.tech_store.exception.PaymentServiceUnavailableException;
 import com.oose.tech_store.payment.PendingCheckout;
 import lombok.RequiredArgsConstructor;
@@ -89,6 +90,29 @@ public class MomoPaymentGateway {
         }
     }
 
+    /** Verifies the HMAC-SHA256 signature on a server-to-server IPN callback from MoMo. */
+    public boolean verifyIpnSignature(MomoIpnRequest request) {
+        if (request.signature() == null) {
+            return false;
+        }
+
+        String rawSignature = "accessKey=" + properties.getAccessKey()
+                + "&amount=" + orEmpty(request.amount())
+                + "&extraData=" + orEmpty(request.extraData())
+                + "&message=" + orEmpty(request.message())
+                + "&orderId=" + orEmpty(request.orderId())
+                + "&orderInfo=" + orEmpty(request.orderInfo())
+                + "&orderType=" + orEmpty(request.orderType())
+                + "&partnerCode=" + orEmpty(request.partnerCode())
+                + "&payType=" + orEmpty(request.payType())
+                + "&requestId=" + orEmpty(request.requestId())
+                + "&responseTime=" + orEmpty(request.responseTime())
+                + "&resultCode=" + request.resultCode()
+                + "&transId=" + orEmpty(request.transId());
+
+        return hmacSHA256(rawSignature, properties.getSecretKey()).equals(request.signature());
+    }
+
     public boolean verifyReturnSignature(Map<String, String> params) {
         String receivedSignature = params.get("signature");
         if (receivedSignature == null) {
@@ -128,5 +152,9 @@ public class MomoPaymentGateway {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    private String orEmpty(Object value) {
+        return value == null ? "" : value.toString();
     }
 }

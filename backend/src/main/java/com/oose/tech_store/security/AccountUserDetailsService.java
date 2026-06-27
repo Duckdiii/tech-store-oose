@@ -1,9 +1,9 @@
 package com.oose.tech_store.security;
 
 import com.oose.tech_store.entity.Account;
-import com.oose.tech_store.entity.Manager;
-import com.oose.tech_store.entity.Staff;
 import com.oose.tech_store.repository.AccountRepository;
+import com.oose.tech_store.repository.ManagerRepository;
+import com.oose.tech_store.repository.StaffRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountUserDetailsService implements UserDetailsService {
 
     private final AccountRepository accountRepository;
+    private final ManagerRepository managerRepository;
+    private final StaffRepository staffRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -28,8 +30,9 @@ public class AccountUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Account is not active");
         }
 
-        String role = account.getUser() instanceof Manager ? "MANAGER"
-                : account.getUser() instanceof Staff ? "STAFF"
+        String userId = account.getUser().getId();
+        String role = managerRepository.existsById(userId) ? "MANAGER"
+                : staffRepository.existsById(userId) ? "STAFF"
                 : "CUSTOMER";
 
         return org.springframework.security.core.userdetails.User
