@@ -33,6 +33,18 @@ public class CheckoutSessionStore {
         store.remove(txnRef);
     }
 
+    /**
+     * Atomically removes and returns the session for txnRef.
+     * Returns null if absent or expired — guarantees only one caller wins.
+     */
+    public PendingCheckout getAndRemove(String txnRef) {
+        PendingCheckout checkout = store.remove(txnRef);
+        if (checkout != null && isExpired(checkout)) {
+            return null;
+        }
+        return checkout;
+    }
+
     private boolean isExpired(PendingCheckout checkout) {
         return checkout.getCreatedAt() != null
                 && Duration.between(checkout.getCreatedAt(), LocalDateTime.now()).compareTo(TTL) > 0;

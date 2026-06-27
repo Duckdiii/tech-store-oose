@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 
 @RestController
-@RequestMapping({"/api/warehouse/exports", "/api/admin/warehouse/export"})
+@RequestMapping("/api/admin/warehouse/export")
 @RequiredArgsConstructor
 public class ExportProductController {
 

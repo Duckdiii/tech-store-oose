@@ -14,10 +14,14 @@ export function SignInPage() {
     setError('');
     if (!form.email || !form.password) { setError('Vui lòng điền đầy đủ thông tin.'); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    login({ id: 1, name: 'Nguyễn Văn An', email: form.email, phone: '0901234567' });
-    setLoading(false);
-    navigate('/');
+    try {
+      await login(form.email, form.password);
+      navigate('/');
+    } catch {
+      setError('Email hoặc mật khẩu không đúng.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

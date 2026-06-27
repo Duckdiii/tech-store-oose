@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping({"/api/warehouse/logs", "/api/admin/warehouse/logs"})
+@RequestMapping("/api/admin/warehouse/logs")
 @RequiredArgsConstructor
 public class WarehouseLogController {
 
