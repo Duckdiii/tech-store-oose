@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { getHomePathForRole, isManagerRole, normalizeRole } from '../../../routes/RouteGuards';
 
 export function SignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -15,8 +17,15 @@ export function SignInPage() {
     if (!form.email || !form.password) { setError('Vui lòng điền đầy đủ thông tin.'); return; }
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/');
+      const loggedInUser = await login(form.email, form.password);
+      const requestedPath = location.state?.from;
+      const role = normalizeRole(loggedInUser.role);
+      const canReturnToRequestedPath =
+        requestedPath
+        && ((requestedPath.startsWith('/manager') && isManagerRole(role))
+          || (!requestedPath.startsWith('/manager') && role === 'CUSTOMER'));
+
+      navigate(canReturnToRequestedPath ? requestedPath : getHomePathForRole(role), { replace: true });
     } catch {
       setError('Email hoặc mật khẩu không đúng.');
     } finally {

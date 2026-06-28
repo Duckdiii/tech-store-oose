@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../shared/context/AuthContext';
 import { Status, DataTable } from '../components/index';
 import { money } from '../utils';
 
@@ -118,6 +119,8 @@ function TodoSection({ pendingOrders, lowStockItems, navigate }) {
 
 export function DashboardPage({ data }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const displayName = user?.name || user?.email || 'Manager';
 
   const pendingOrders = useMemo(
     () => data.orders.filter((o) => o.status === 'Chờ xác nhận'),
@@ -152,7 +155,7 @@ export function DashboardPage({ data }) {
       <div className="admin-page-intro">
         <div>
           <p>{TODAY}</p>
-          <h2>{GREET}, Đức Duy.</h2>
+          <h2>{GREET}, {displayName}.</h2>
         </div>
         <button className="admin-button" onClick={() => navigate('/manager/products')}>
           + Thêm sản phẩm

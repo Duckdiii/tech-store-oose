@@ -1,7 +1,29 @@
 import { Link } from 'react-router-dom';
 import { NAV_ITEMS, adminStyles, LAST_BACKUP } from '../constants';
+import { useAuth } from '../../../shared/context/AuthContext';
+
+function getInitials(name, email) {
+  const source = (name || email || 'Manager').trim();
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
+}
+
+function getRoleLabel(role) {
+  const normalizedRole = String(role || '').replace(/^ROLE_/, '').toUpperCase();
+  if (normalizedRole === 'MANAGER') return 'Quản lý hệ thống';
+  if (normalizedRole === 'STAFF') return 'Nhân viên cửa hàng';
+  return 'Tài khoản TechStore';
+}
 
 export function ManagerLayout({ activeSection, title, query, onQueryChange, breadcrumbs, badges, children }) {
+  const { user } = useAuth();
+  const displayName = user?.name || user?.email || 'Manager';
+  const initials = getInitials(user?.name, user?.email);
+  const roleLabel = getRoleLabel(user?.role);
+
   return (
     <div className="admin-shell">
       <style>{adminStyles}</style>
@@ -45,8 +67,8 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
         </nav>
         <div className="admin-sidebar__foot">
           <div className="admin-user">
-            <span>DD</span>
-            <div><strong>Đức Duy</strong><small>Quản lý hệ thống</small></div>
+            <span>{initials}</span>
+            <div><strong>{displayName}</strong><small>{roleLabel}</small></div>
           </div>
           <Link to="/" className="admin-back">← Về cửa hàng</Link>
           <div style={{
@@ -98,7 +120,7 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
                 placeholder="Tìm trong trang..."
               />
             </label>
-            <div className="admin-profile">DD</div>
+            <div className="admin-profile" title={displayName}>{initials}</div>
           </div>
         </header>
         <section className="admin-content">

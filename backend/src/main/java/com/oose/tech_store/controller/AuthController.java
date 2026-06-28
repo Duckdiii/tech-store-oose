@@ -38,7 +38,7 @@ public class AuthController {
         String role = auth.getAuthorities().iterator().next()
                 .getAuthority().replace("ROLE_", "");
 
-        var account = accountRepository.findByEmailIgnoreCase(request.email())
+        var account = accountRepository.findByEmailIgnoreCaseWithUser(request.email())
                 .orElseThrow();
         String userId = account.getUser().getId();
         String name   = account.getUser().getFullName();
