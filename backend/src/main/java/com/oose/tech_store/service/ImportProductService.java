@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,16 @@ public class ImportProductService {
                     "Import information is valid. Please confirm the import.");
         }
 
+        if (hasItemProducts(request)) {
+            List<Product> products = resolveItemProducts(request);
+            String productName = products.size() == 1
+                    ? products.get(0).getName()
+                    : products.size() + " existing products";
+            return new ImportProductPreviewResponseDTO(
+                    null, productName, false, request.items().size(), serialIds(request.items()),
+                    "Import information is valid. Please confirm the import.");
+        }
+
         NewProductRequestDTO newProduct = requireNewProduct(request);
         validateNewProductDoesNotExist(newProduct);
         return new ImportProductPreviewResponseDTO(
@@ -65,14 +77,23 @@ public class ImportProductService {
         // Revalidate here because data may have changed after the preview was shown.
         validateProductChoice(request);
         validateSerialIds(request.items());
-        Product product = hasExistingProduct(request)
-                ? findProduct(request.productId())
-                : createNewProduct(requireNewProduct(request));
+        Product product = null;
+        Map<String, Product> itemProducts = Map.of();
+        if (hasExistingProduct(request)) {
+            product = findProduct(request.productId());
+        } else if (hasItemProducts(request)) {
+            itemProducts = resolveItemProductsById(request);
+        } else {
+            product = createNewProduct(requireNewProduct(request));
+        }
 
         List<ProductVariant> variants = new ArrayList<>();
         for (ProductVariantImportItemDTO item : request.items()) {
+            Product targetProduct = product != null
+                    ? product
+                    : itemProducts.get(normalizeRequiredProductId(item.productId()));
             ProductVariant variant = new ProductVariant(
-                    product,
+                    targetProduct,
                     item.ramGb(),
                     item.storageGb(),
                     normalizeNullable(item.color()),
@@ -133,18 +154,58 @@ public class ImportProductService {
     }
 
     private void validateProductChoice(ImportProductRequestDTO request) {
-        if (hasExistingProduct(request) && request.newProduct() != null) {
+        boolean hasRequestProduct = hasExistingProduct(request);
+        boolean hasNewProduct = request.newProduct() != null;
+        boolean hasItemProducts = hasItemProducts(request);
+
+        if ((hasRequestProduct || hasItemProducts) && hasNewProduct) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Use either productId or newProduct, not both");
+                    HttpStatus.BAD_REQUEST, "Use either existing products or new product information, not both");
         }
-        if (!hasExistingProduct(request) && request.newProduct() == null) {
+        if (hasRequestProduct && hasItemProducts) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Use either productId for all items or productId per item, not both");
+        }
+        if (!hasRequestProduct && !hasItemProducts && !hasNewProduct) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Select an existing product or enter new product information");
+        }
+        if (hasItemProducts && request.items().stream().anyMatch(item -> !hasItemProduct(item))) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Each imported item must select a product");
         }
     }
 
     private boolean hasExistingProduct(ImportProductRequestDTO request) {
         return request.productId() != null && !request.productId().isBlank();
+    }
+
+    private boolean hasItemProducts(ImportProductRequestDTO request) {
+        return request.items() != null && request.items().stream().anyMatch(this::hasItemProduct);
+    }
+
+    private boolean hasItemProduct(ProductVariantImportItemDTO item) {
+        return item.productId() != null && !item.productId().isBlank();
+    }
+
+    private List<Product> resolveItemProducts(ImportProductRequestDTO request) {
+        return new ArrayList<>(resolveItemProductsById(request).values());
+    }
+
+    private Map<String, Product> resolveItemProductsById(ImportProductRequestDTO request) {
+        Map<String, Product> productsById = new LinkedHashMap<>();
+        for (ProductVariantImportItemDTO item : request.items()) {
+            String productId = normalizeRequiredProductId(item.productId());
+            productsById.computeIfAbsent(productId, this::findProduct);
+        }
+        return productsById;
+    }
+
+    private String normalizeRequiredProductId(String productId) {
+        if (productId == null || productId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Each imported item must select a product");
+        }
+        return productId.trim();
     }
 
     private void validateSerialIds(List<ProductVariantImportItemDTO> items) {

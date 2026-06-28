@@ -1,4 +1,5 @@
 export const blankItem = () => ({
+  productId: '',
   serialId: '',
   ramGb: '',
   storageGb: '',

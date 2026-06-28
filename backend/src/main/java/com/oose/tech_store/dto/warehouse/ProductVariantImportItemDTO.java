@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public record ProductVariantImportItemDTO(
+        @Size(max = 36) String productId,
         @NotBlank @Size(max = 36) String serialId,
         @PositiveOrZero Integer ramGb,
         @PositiveOrZero Integer storageGb,
