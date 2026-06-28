@@ -24,7 +24,9 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health", "/api/auth/**").permitAll()
-                        .requestMatchers("/api/admin/warehouse/logs/**")
+                        .requestMatchers(
+                                "/api/admin/warehouse/logs",
+                                "/api/admin/warehouse/logs/**")
                         .hasRole("MANAGER")
                         .requestMatchers(
                                 "/api/admin/warehouse",

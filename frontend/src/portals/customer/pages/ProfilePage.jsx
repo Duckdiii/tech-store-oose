@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
@@ -18,18 +17,6 @@ const MOCK_RECENT_ORDERS = [
   },
 ];
 
-=======
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../shared/context/AuthContext';
-import { orderApi } from '../../../api/orderApi';
-import { membershipApi } from '../../../api/membershipApi';
-
-function fmt(n) { return n ? n.toLocaleString('vi-VN') : '0'; }
-
-const RED = '#CC0000';
-
->>>>>>> origin/anhvansuy
 const MOCK_WISHLIST = [
   { id: 1, name: 'iPhone 15 128GB',           price: 22990000, oldPrice: 25000000 },
   { id: 2, name: 'Samsung Galaxy Z Fold 5',   price: 43990000, oldPrice: 48000000 },
@@ -96,45 +83,6 @@ export function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(null);
 
-<<<<<<< HEAD
-=======
-  const [orders, setOrders] = useState([]);
-  const [tierInfo, setTierInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    
-    const fetchProfileData = async () => {
-      setLoading(true);
-      try {
-        // Fetch membership tier
-        try {
-          const tierData = await membershipApi.getMyTier();
-          setTierInfo(tierData);
-        } catch (err) {
-          console.error("Failed to fetch tier", err);
-          // Fallback if not implemented
-        }
-        
-        // Fetch orders
-        try {
-          // Assume user.id exists, or default to some ID if mock auth
-          const customerId = user?.id || 'CUST001'; 
-          const ordersData = await orderApi.getOrderHistory(customerId);
-          setOrders(ordersData || []);
-        } catch (err) {
-          console.error("Failed to fetch orders", err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProfileData();
-  }, [isLoggedIn, user]);
-
->>>>>>> origin/anhvansuy
   if (!isLoggedIn) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f4f5f7' }}>
@@ -161,16 +109,9 @@ export function ProfilePage() {
     setTimeout(() => setCopied(null), 1500);
   };
 
-<<<<<<< HEAD
   const totalSpend = MOCK_RECENT_ORDERS.reduce((s, o) => s + o.total, 0);
   const tierTarget = 50000000;
   const tierProgress = Math.min(100, Math.round((totalSpend / tierTarget) * 100));
-=======
-  const totalSpend = tierInfo ? tierInfo.accumulatedSpending : orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
-  const tierTarget = tierInfo ? tierInfo.nextTierRequirement : 50000000;
-  const tierProgress = tierTarget > 0 ? Math.min(100, Math.round((totalSpend / tierTarget) * 100)) : 100;
-  const currentTierName = tierInfo ? tierInfo.tierName : 'Thành viên';
->>>>>>> origin/anhvansuy
 
   const SectionTitle = ({ children }) => (
     <div style={{ fontSize: 16, fontWeight: 800, color: '#0d1117', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f3f5' }}>{children}</div>
@@ -197,13 +138,8 @@ export function ProfilePage() {
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-<<<<<<< HEAD
           {MOCK_RECENT_ORDERS.map(order => {
             const st = STATUS_MAP[order.status];
-=======
-          {orders.slice(0, 3).map(order => {
-            const st = STATUS_MAP[order.status.toLowerCase()] || STATUS_MAP.pending;
->>>>>>> origin/anhvansuy
             return (
               <div key={order.id} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
@@ -220,7 +156,6 @@ export function ProfilePage() {
                     <svg width="32" height="52" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/><circle cx="36" cy="105" r="5" fill="#b8bdc8"/></svg>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-<<<<<<< HEAD
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 4, lineHeight: 1.3 }}>{order.items[0].name}</div>
                     <div style={{ fontSize: 12.5, color: '#9ca3af' }}>{fmt(order.items[0].price)}₫</div>
                     {order.items.length > 1 && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Cùng {order.items.length - 1} sản phẩm khác</div>}
@@ -228,15 +163,6 @@ export function ProfilePage() {
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 3 }}>Tổng thanh toán:</div>
                     <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.total)}₫</div>
-=======
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 4, lineHeight: 1.3 }}>{order.items && order.items.length > 0 ? order.items[0].productName : 'Đơn hàng'}</div>
-                    <div style={{ fontSize: 12.5, color: '#9ca3af' }}>{order.items && order.items.length > 0 ? fmt(order.items[0].unitPrice) : 0}₫</div>
-                    {order.items && order.items.length > 1 && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Cùng {order.items.length - 1} sản phẩm khác</div>}
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 3 }}>Tổng thanh toán:</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.totalAmount)}₫</div>
->>>>>>> origin/anhvansuy
                     <button onClick={() => navigate('/orders')} style={{ marginTop: 6, fontSize: 12.5, color: '#374151', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
                       Xem chi tiết
                       <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
@@ -280,13 +206,8 @@ export function ProfilePage() {
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
       <SectionTitle>Lịch sử mua hàng</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-<<<<<<< HEAD
         {MOCK_RECENT_ORDERS.map(order => {
           const st = STATUS_MAP[order.status];
-=======
-        {orders.map(order => {
-          const st = STATUS_MAP[order.status.toLowerCase()] || STATUS_MAP.pending;
->>>>>>> origin/anhvansuy
           return (
             <div key={order.id} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
               <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
@@ -298,24 +219,14 @@ export function ProfilePage() {
               </div>
               <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-<<<<<<< HEAD
                   {order.items.map((item, i) => (
                     <div key={i} style={{ fontSize: 13.5, color: '#374151', marginBottom: 2 }}>
                       {item.name} <span style={{ color: '#9ca3af' }}>×{item.qty}</span>
-=======
-                  {order.items && order.items.map((item, i) => (
-                    <div key={i} style={{ fontSize: 13.5, color: '#374151', marginBottom: 2 }}>
-                      {item.productName} <span style={{ color: '#9ca3af' }}>×{item.quantity}</span>
->>>>>>> origin/anhvansuy
                     </div>
                   ))}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-<<<<<<< HEAD
                   <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.total)}₫</div>
-=======
-                  <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.totalAmount)}₫</div>
->>>>>>> origin/anhvansuy
                   <button onClick={() => navigate('/orders')} style={{ marginTop: 4, fontSize: 12.5, color: '#374151', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Xem chi tiết →</button>
                 </div>
               </div>
@@ -459,12 +370,8 @@ export function ProfilePage() {
                   <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
-<<<<<<< HEAD
                   <span style={{ fontSize: 11, fontWeight: 800, background: '#16a34a', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>S-MEM</span>
                   <span style={{ fontSize: 11, fontWeight: 800, background: '#16a34a', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>Thành viên</span>
-=======
-                  <span style={{ fontSize: 11, fontWeight: 800, background: '#16a34a', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{currentTierName}</span>
->>>>>>> origin/anhvansuy
                 </div>
               </div>
             </div>
@@ -475,11 +382,7 @@ export function ProfilePage() {
                   <div style={{ width: 40, height: 40, background: '#fff5f5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="18" height="18" fill="none" stroke={RED} strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
                   </div>
-<<<<<<< HEAD
                   <span style={{ fontSize: 26, fontWeight: 900, color: '#0d1117' }}>{MOCK_RECENT_ORDERS.length}</span>
-=======
-                  <span style={{ fontSize: 26, fontWeight: 900, color: '#0d1117' }}>{orders.length}</span>
->>>>>>> origin/anhvansuy
                 </div>
                 <div style={{ fontSize: 12.5, color: '#6b7280', fontWeight: 500 }}>Tổng số đơn hàng đã mua</div>
               </div>
@@ -496,15 +399,7 @@ export function ProfilePage() {
                   <span style={{ fontSize: 11.5, color: '#9ca3af', whiteSpace: 'nowrap' }}>{tierProgress}%</span>
                 </div>
                 <div style={{ fontSize: 11.5, color: '#9ca3af', marginTop: 4 }}>
-<<<<<<< HEAD
                   Cần chi tiêu thêm <strong style={{ color: RED }}>{fmt(tierTarget - totalSpend)}đ</strong> để lên hạng S-VIP
-=======
-                  {tierInfo && tierInfo.nextTierRequirement > tierInfo.accumulatedSpending ? (
-                    <>Cần chi tiêu thêm <strong style={{ color: RED }}>{fmt(tierInfo.nextTierRequirement - tierInfo.accumulatedSpending)}đ</strong> để thăng hạng</>
-                  ) : (
-                    <>Bạn đã đạt hạng cao nhất</>
-                  )}
->>>>>>> origin/anhvansuy
                 </div>
               </div>
 
