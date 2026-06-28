@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 
@@ -15,6 +16,13 @@ const ALL_PRODUCTS = [
   { id: 11, brand: 'Apple', name: 'iPhone 14 128GB', price: 18990000, oldPrice: 22990000, rating: 4.7, reviews: '2.1K', discount: '-17%', tag: 'Sale', tagBg: '#f59e0b', ram: '6GB', storage: '128GB' },
   { id: 12, brand: 'Xiaomi', name: 'Xiaomi Redmi 12C 128GB', price: 3490000, oldPrice: 4290000, rating: 4.4, reviews: '2.3K', discount: '-19%', tag: 'Sale', tagBg: '#f59e0b', ram: '4GB', storage: '128GB' },
 ];
+=======
+import { useState, useEffect } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { productApi } from '../../../api/productApi';
+import { notificationApi } from '../../../api/notificationApi';
+import { useAuth } from '../../../shared/context/AuthContext';
+>>>>>>> origin/duc
 
 const FILTER_BRANDS = ['Apple','Samsung','Xiaomi','OPPO','Vivo','Realme'];
 const FILTER_PRICES = [
@@ -39,8 +47,26 @@ function getPageNumbers(current, total) {
   return pages;
 }
 
+function HeartIcon({ broken = false }) {
+  if (broken) {
+    return (
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12.6 6.15 10.9 9.2l2.3 2.1-2.1 3.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function ProductListingPage() {
   const [params] = useSearchParams();
+  const { isLoggedIn } = useAuth();
   const [brands, setBrands] = useState([]);
   const [prices, setPrices] = useState([]);
   const [rams, setRams] = useState([]);
@@ -51,6 +77,7 @@ export function ProductListingPage() {
   const navigate = useNavigate();
   const PER_PAGE = 8;
 
+<<<<<<< HEAD
   const toggle = (list, setList, val) =>
     setList(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
 
@@ -68,6 +95,74 @@ export function ProductListingPage() {
   const total = products.length;
   const pages = Math.ceil(total / PER_PAGE);
   const displayed = products.slice((page-1)*PER_PAGE, page*PER_PAGE);
+=======
+  const [products, setProducts] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [subscribedProductIds, setSubscribedProductIds] = useState(() => new Set());
+  const [subscriptionBusyId, setSubscriptionBusyId] = useState('');
+
+  const toggle = (list, setList, val) =>
+    setList(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const q = params.get('q') || '';
+        const brandQuery = brands.length > 0 ? brands[0] : '';
+        const minPrice = prices.length > 0 ? prices[0].min : '';
+        const maxPrice = prices.length > 0 ? prices[0].max : '';
+        
+        let sortQuery = '';
+        if (sort === 'price-asc') sortQuery = 'price,asc';
+        if (sort === 'price-desc') sortQuery = 'price,desc';
+
+        const data = await productApi.searchProducts({
+          keyword: q,
+          brand: brandQuery,
+          minPrice: minPrice !== '' && minPrice !== Infinity ? minPrice : undefined,
+          maxPrice: maxPrice !== '' && maxPrice !== Infinity ? maxPrice : undefined,
+          page: page - 1,
+          size: PER_PAGE,
+          sort: sortQuery || undefined
+        });
+        
+        setProducts(data.content);
+        setTotalElements(data.totalElements);
+        setTotalPages(data.totalPages);
+      } catch (err) {
+        console.error('Failed to fetch products', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    // Simple debounce
+    const timer = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [params, brands, prices, sort, page]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setSubscribedProductIds(new Set());
+      return;
+    }
+
+    notificationApi.getSubscriptions()
+      .then((subscriptions) => {
+        setSubscribedProductIds(new Set(
+          subscriptions
+            .filter((item) => item.status === 'SUBSCRIBED')
+            .map((item) => item.productId),
+        ));
+      })
+      .catch(() => setSubscribedProductIds(new Set()));
+  }, [isLoggedIn]);
+>>>>>>> origin/duc
 
   const clearAll = () => { setBrands([]); setPrices([]); setRams([]); setStorages([]); };
   const hasFilter = brands.length || prices.length || rams.length || storages.length;
@@ -87,6 +182,33 @@ export function ProductListingPage() {
       {label}
     </div>
   );
+
+  const handleToggleSubscription = async (event, productId) => {
+    event.stopPropagation();
+
+    if (!isLoggedIn) {
+      navigate('/sign-in');
+      return;
+    }
+
+    const next = new Set(subscribedProductIds);
+
+    setSubscriptionBusyId(productId);
+    try {
+      if (next.has(productId)) {
+        await notificationApi.unsubscribeProduct(productId);
+        next.delete(productId);
+      } else {
+        await notificationApi.subscribeProduct(productId);
+        next.add(productId);
+      }
+      setSubscribedProductIds(next);
+    } catch (err) {
+      console.error('Failed to update notification subscription', err);
+    } finally {
+      setSubscriptionBusyId('');
+    }
+  };
 
   return (
     <div style={{ background: '#f4f5f7' }}>
@@ -152,7 +274,11 @@ export function ProductListingPage() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #f1f3f5', padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
             <span style={{ fontSize: 13.5, color: '#6b7280', flex: 1 }}>
+<<<<<<< HEAD
               Hiển thị <strong style={{ color: '#0d1117' }}>{(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE,total)}</strong> trong <strong style={{ color: '#0d1117' }}>{total}</strong> sản phẩm
+=======
+              Hiển thị <strong style={{ color: '#0d1117' }}>{totalElements > 0 ? (page-1)*PER_PAGE+1 : 0}–{Math.min(page*PER_PAGE,totalElements)}</strong> trong <strong style={{ color: '#0d1117' }}>{totalElements}</strong> sản phẩm
+>>>>>>> origin/duc
             </span>
             <span style={{ fontSize: 13, color: '#9ca3af' }}>Sắp xếp:</span>
             <select value={sort} onChange={e => setSort(e.target.value)}
@@ -164,7 +290,15 @@ export function ProductListingPage() {
             </select>
           </div>
 
+<<<<<<< HEAD
           {displayed.length === 0 ? (
+=======
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#374151' }}>Đang tải dữ liệu...</div>
+            </div>
+          ) : products.length === 0 ? (
+>>>>>>> origin/duc
             <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Không tìm thấy sản phẩm</div>
@@ -172,17 +306,48 @@ export function ProductListingPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+<<<<<<< HEAD
               {displayed.map(item => (
+=======
+              {products.map(item => (
+>>>>>>> origin/duc
                 <div key={item.id}
                   onClick={() => navigate(`/products/${item.id}`)}
                   style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.22s' }}
                   onMouseEnter={e => { e.currentTarget.style.boxShadow='0 10px 32px rgba(0,0,0,0.09)'; e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.borderColor='#e2e5ea'; }}
                   onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor='#f1f3f5'; }}>
                   <div style={{ background: 'linear-gradient(148deg,#f4f5f7 0%,#eaecf0 100%)', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <button
+                      type="button"
+                      onClick={(event) => handleToggleSubscription(event, item.id)}
+                      disabled={subscriptionBusyId === item.id}
+                      title={subscribedProductIds.has(item.id) ? 'Huy dang ky thong bao' : 'Dang ky nhan thong bao'}
+                      aria-label={subscribedProductIds.has(item.id) ? 'Huy dang ky thong bao' : 'Dang ky nhan thong bao'}
+                      style={{
+                        position: 'absolute',
+                        top: 11,
+                        right: 11,
+                        zIndex: 2,
+                        width: 42,
+                        height: 42,
+                        borderRadius: '50%',
+                        border: `1.5px solid ${subscribedProductIds.has(item.id) ? '#e11d48' : '#d8c9e4'}`,
+                        background: subscribedProductIds.has(item.id) ? '#fff1f2' : '#fff',
+                        color: subscribedProductIds.has(item.id) ? '#e11d48' : '#7c6a86',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 8px 18px rgba(17,24,39,0.12)',
+                        cursor: subscriptionBusyId === item.id ? 'wait' : 'pointer',
+                      }}
+                    >
+                      <HeartIcon broken={subscribedProductIds.has(item.id)} />
+                    </button>
                     <svg width="72" height="120" viewBox="0 0 72 120" fill="none">
                       <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
                       <rect x="7" y="7" width="58" height="106" rx="13" stroke="#c4c9d4" strokeWidth="1.5"/>
                       <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
+<<<<<<< HEAD
                       <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
                       <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
                     </svg>
@@ -203,6 +368,31 @@ export function ProductListingPage() {
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                       <span style={{ fontSize: 18, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.price)}₫</span>
                       <span style={{ fontSize: 12, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(item.oldPrice)}₫</span>
+=======
+                      {item.thumbnailUrl && <image href={item.thumbnailUrl} x="13" y="23" width="46" height="70" preserveAspectRatio="xMidYMid slice" />}
+                      <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
+                      <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
+                    </svg>
+                    {item.discount && <span style={{ position: 'absolute', top: 58, right: 11, background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 5 }}>{item.discount}</span>}
+                    <span style={{ position: 'absolute', top: 11, left: 11, background: '#0d1117', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 5 }}>Mới</span>
+                  </div>
+                  <div style={{ padding: '16px 18px 20px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>{item.brandName || 'Thương hiệu'}</div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 10, lineHeight: 1.35 }}>{item.name}</h3>
+                    {(item.ram || item.storage) && (
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                        {item.ram && <span style={{ background: '#f4f5f7', fontSize: 11, color: '#6b7280', padding: '3px 9px', borderRadius: 5, fontWeight: 600 }}>{item.ram}</span>}
+                        {item.storage && <span style={{ background: '#f4f5f7', fontSize: 11, color: '#6b7280', padding: '3px 9px', borderRadius: 5, fontWeight: 600 }}>{item.storage}</span>}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 12 }}>
+                      <span style={{ fontSize: 12.5, color: '#f59e0b', letterSpacing: 1 }}>★★★★★</span>
+                      <span style={{ fontSize: 12, color: '#9ca3af' }}>5.0 (200+)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontSize: 18, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.lowestPrice)}₫</span>
+                      <span style={{ fontSize: 12, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(item.lowestPrice * 1.1)}₫</span>
+>>>>>>> origin/duc
                     </div>
                   </div>
                 </div>
@@ -210,13 +400,21 @@ export function ProductListingPage() {
             </div>
           )}
 
+<<<<<<< HEAD
           {pages > 1 && (
+=======
+          {!loading && totalPages > 1 && (
+>>>>>>> origin/duc
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 40, flexWrap: 'wrap' }}>
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                 style={{ height: 40, padding: '0 14px', borderRadius: 9, border: '1.5px solid #e9ecef', background: '#fff', color: page === 1 ? '#c4c9d4' : '#374151', fontSize: 13, fontWeight: 700, cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
                 ← Trước
               </button>
+<<<<<<< HEAD
               {getPageNumbers(page, pages).map((p, i) =>
+=======
+              {getPageNumbers(page, totalPages).map((p, i) =>
+>>>>>>> origin/duc
                 p === '...'
                   ? <span key={`dots-${i}`} style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 16, userSelect: 'none' }}>…</span>
                   : <button key={p} onClick={() => setPage(p)}
@@ -224,6 +422,7 @@ export function ProductListingPage() {
                       {p}
                     </button>
               )}
+<<<<<<< HEAD
               <button onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={page === pages}
                 style={{ height: 40, padding: '0 14px', borderRadius: 9, border: '1.5px solid #e9ecef', background: '#fff', color: page === pages ? '#c4c9d4' : '#374151', fontSize: 13, fontWeight: 700, cursor: page === pages ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
                 Sau →
@@ -232,6 +431,16 @@ export function ProductListingPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
                 <span style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>Đến trang</span>
                 <input type="number" min={1} max={pages} value={goTo} onChange={e => setGoTo(e.target.value)} placeholder={page}
+=======
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                style={{ height: 40, padding: '0 14px', borderRadius: 9, border: '1.5px solid #e9ecef', background: '#fff', color: page === totalPages ? '#c4c9d4' : '#374151', fontSize: 13, fontWeight: 700, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
+                Sau →
+              </button>
+              <form onSubmit={e => { e.preventDefault(); const v = parseInt(goTo); if (v >= 1 && v <= totalPages) { setPage(v); setGoTo(''); } }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+                <span style={{ fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap' }}>Đến trang</span>
+                <input type="number" min={1} max={totalPages} value={goTo} onChange={e => setGoTo(e.target.value)} placeholder={page}
+>>>>>>> origin/duc
                   style={{ width: 60, height: 40, border: '1.5px solid #e9ecef', borderRadius: 9, textAlign: 'center', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', color: '#0d1117', background: '#fff' }}/>
                 <button type="submit"
                   style={{ height: 40, padding: '0 14px', borderRadius: 9, border: 'none', background: '#0d1117', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>

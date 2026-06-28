@@ -50,7 +50,7 @@ public class InventoryNotificationService {
     }
 
     private int notifySubscribedCustomers(AffectedProductDTO product) {
-        List<FavoriteProduct> subscriptions = favoriteProductRepository.findByProductIdAndStatus(
+        List<FavoriteProduct> subscriptions = favoriteProductRepository.findByProduct_IdAndStatus(
                 product.productId(), SubscriptionStatus.SUBSCRIBED);
         List<Notification> notifications = new ArrayList<>();
 

@@ -19,4 +19,5 @@ public class CustomerSecurityHelper {
                 .map(account -> account.getUser().getId())
                 .orElseThrow(() -> new AccessDeniedException("Authenticated account not found"));
     }
+
 }

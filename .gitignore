@@ -20,4 +20,5 @@ frontend/.env.local
 backend/target/
 backend/.env
 backend/data/
+backend/recovery-storage/
 

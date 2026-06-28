@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useTheme } from '../../../shared/context/ThemeContext';
+import { notificationApi } from '../../../api/notificationApi';
 
 const NAV_LINKS = [
   { to: '/', label: 'Trang chủ', exact: true },
@@ -19,7 +20,12 @@ export function Navbar() {
   const { theme, setTheme, lang, setLang } = useTheme();
   const [search, setSearch] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [favoriteProducts, setFavoriteProducts] = useState([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [favoritesError, setFavoritesError] = useState('');
   const menuRef = useRef(null);
+  const favoritesRef = useRef(null);
 
   const isActive = (link) => {
     if (link.exact) return location.pathname === '/';
@@ -29,15 +35,50 @@ export function Navbar() {
   useEffect(() => {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+      if (favoritesRef.current && !favoritesRef.current.contains(e.target)) setShowFavorites(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setShowFavorites(false);
+      setFavoriteProducts([]);
+      setFavoritesError('');
+    }
+  }, [isLoggedIn]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     const q = search.trim();
     if (q) navigate(`/products?q=${encodeURIComponent(q)}`);
+  };
+
+  const loadFavorites = async () => {
+    setFavoritesLoading(true);
+    setFavoritesError('');
+    try {
+      const subscriptions = await notificationApi.getSubscriptions();
+      setFavoriteProducts(subscriptions.filter((item) => item.status === 'SUBSCRIBED'));
+    } catch (err) {
+      setFavoriteProducts([]);
+      setFavoritesError('Khong tai duoc danh sach da tim.');
+    } finally {
+      setFavoritesLoading(false);
+    }
+  };
+
+  const handleFavoritesClick = () => {
+    if (!isLoggedIn) {
+      navigate('/sign-in');
+      return;
+    }
+
+    const nextOpen = !showFavorites;
+    setShowFavorites(nextOpen);
+    setShowMenu(false);
+    if (nextOpen) loadFavorites();
   };
 
   return (
@@ -121,9 +162,68 @@ export function Navbar() {
 
           {/* Action icons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-            <button style={{ width: 40, height: 40, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563' }}>
-              <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </button>
+            <div ref={favoritesRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={handleFavoritesClick}
+                title="San pham da tim"
+                aria-label="San pham da tim"
+                style={{ width: 40, height: 40, background: showFavorites ? '#f4f5f7' : 'none', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: showFavorites ? '#0d1117' : '#4b5563' }}
+              >
+                <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </button>
+
+              {showFavorites && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: -46, width: 320, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 1001 }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>San pham da tim</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{favoriteProducts.length} san pham dang theo doi</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={loadFavorites}
+                      disabled={favoritesLoading}
+                      style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e9ecef', background: '#fff', color: '#6b7280', cursor: favoritesLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Tai lai"
+                      aria-label="Tai lai"
+                    >
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.53 6.21M3 12A9 9 0 0 1 18.53 5.79"/><path d="M21 3v6h-6M3 21v-6h6"/></svg>
+                    </button>
+                  </div>
+
+                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {favoritesLoading ? (
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>Dang tai danh sach...</div>
+                    ) : favoritesError ? (
+                      <div style={{ padding: '22px 16px', color: '#e11d48', fontSize: 13.5 }}>{favoritesError}</div>
+                    ) : favoriteProducts.length === 0 ? (
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>Chua co san pham nao duoc tim.</div>
+                    ) : (
+                      favoriteProducts.map((item) => (
+                        <button
+                          key={item.id || item.productId}
+                          type="button"
+                          onClick={() => {
+                            setShowFavorites(false);
+                            navigate(`/products/${item.productId}`);
+                          }}
+                          style={{ width: '100%', padding: '12px 16px', background: '#fff', border: 'none', borderBottom: '1px solid #f4f5f7', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 11, fontFamily: 'inherit' }}
+                        >
+                          <span style={{ width: 34, height: 34, borderRadius: 9, background: '#fff1f2', color: '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          </span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#0d1117', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName || 'San pham'}</span>
+                            <span style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Dang theo doi thong bao</span>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Link to="/cart" style={{ width: 40, height: 40, background: 'none', border: 'none', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563', position: 'relative', textDecoration: 'none' }}>
               <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
