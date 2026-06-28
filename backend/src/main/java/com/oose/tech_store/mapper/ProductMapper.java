@@ -1,0 +1,152 @@
+package com.oose.tech_store.mapper;
+
+import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.oose.tech_store.dto.ProductDetailResponseDTO;
+import com.oose.tech_store.dto.ProductResponseDTO;
+import com.oose.tech_store.dto.ProductSearchResponseDTO;
+import com.oose.tech_store.entity.Product;
+import com.oose.tech_store.entity.ProductImage;
+import com.oose.tech_store.entity.ProductVariant;
+
+public class ProductMapper {
+
+    private ProductMapper() {
+        // utility class
+    }
+
+    /**
+     * Map to simple response DTO (legacy/basic).
+     */
+    public static ProductResponseDTO toResponse(Product p, List<ProductVariant> variants) {
+        ProductResponseDTO dto = new ProductResponseDTO();
+        dto.setId(p.getId());
+        dto.setName(p.getName());
+        BigDecimal price = (variants == null || variants.isEmpty()) ? BigDecimal.ZERO : variants.get(0).getPrice();
+        dto.setPrice(price);
+        return dto;
+    }
+
+    /**
+     * Map to search result summary DTO with brand, category, lowest price, thumbnail.
+     */
+    public static ProductSearchResponseDTO toSearchResponse(Product p, List<ProductVariant> availableVariants) {
+        ProductSearchResponseDTO dto = new ProductSearchResponseDTO();
+        dto.setId(p.getId());
+        dto.setName(p.getName());
+        dto.setDescription(truncateDescription(p.getDescription(), 150));
+
+        // Brand
+        if (p.getBrand() != null) {
+            dto.setBrandName(p.getBrand().getName());
+            dto.setBrandLogoUrl(p.getBrand().getLogoUrl());
+        }
+
+        // Category
+        if (p.getCategory() != null) {
+            dto.setCategoryName(p.getCategory().getName());
+        }
+
+        // Lowest price from available variants
+        if (availableVariants != null && !availableVariants.isEmpty()) {
+            BigDecimal lowest = availableVariants.stream()
+                    .map(ProductVariant::getPrice)
+                    .filter(price -> price != null)
+                    .min(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
+            dto.setLowestPrice(lowest);
+            dto.setAvailableVariantCount(availableVariants.size());
+        } else {
+            dto.setLowestPrice(BigDecimal.ZERO);
+            dto.setAvailableVariantCount(0);
+        }
+
+        // Thumbnail (first image)
+        if (p.getImages() != null && !p.getImages().isEmpty()) {
+            dto.setThumbnailUrl(p.getImages().get(0).getImageUrl());
+        }
+
+        return dto;
+    }
+
+    /**
+     * Map to full detail DTO with all specs, variants, images.
+     */
+    public static ProductDetailResponseDTO toDetailResponse(Product p, List<ProductVariant> variants) {
+        ProductDetailResponseDTO dto = new ProductDetailResponseDTO();
+        dto.setId(p.getId());
+        dto.setName(p.getName());
+        dto.setDescription(p.getDescription());
+
+        // Brand
+        if (p.getBrand() != null) {
+            dto.setBrandId(p.getBrand().getId());
+            dto.setBrandName(p.getBrand().getName());
+            dto.setBrandLogoUrl(p.getBrand().getLogoUrl());
+        }
+
+        // Category
+        if (p.getCategory() != null) {
+            dto.setCategoryId(p.getCategory().getId());
+            dto.setCategoryName(p.getCategory().getName());
+        }
+
+        // Specs
+        dto.setScreenSize(p.getScreenSize());
+        dto.setRearCamera(p.getRearCamera());
+        dto.setFrontCamera(p.getFrontCamera());
+        dto.setChipset(p.getChipset());
+        dto.setNfcSupported(p.getNfcSupported());
+        dto.setBatteryCapacity(p.getBatteryCapacity());
+        dto.setSimType(p.getSimType());
+        dto.setOperatingSystem(p.getOperatingSystem());
+        dto.setScreenResolution(p.getScreenResolution());
+
+        // Variants
+        if (variants != null) {
+            List<ProductDetailResponseDTO.VariantDTO> variantDTOs = variants.stream()
+                    .sorted(Comparator.comparing(ProductVariant::getPrice, Comparator.nullsLast(BigDecimal::compareTo)))
+                    .map(v -> {
+                        ProductDetailResponseDTO.VariantDTO vDto = new ProductDetailResponseDTO.VariantDTO();
+                        vDto.setId(v.getId());
+                        vDto.setRamGb(v.getRamGb());
+                        vDto.setStorageGb(v.getStorageGb());
+                        vDto.setColor(v.getColor());
+                        vDto.setPrice(v.getPrice());
+                        vDto.setStatus(v.getStatus() != null ? v.getStatus().name() : null);
+                        return vDto;
+                    })
+                    .collect(Collectors.toList());
+            dto.setVariants(variantDTOs);
+        }
+
+        // Images
+        if (p.getImages() != null) {
+            List<ProductDetailResponseDTO.ImageDTO> imageDTOs = p.getImages().stream()
+                    .map(img -> {
+                        ProductDetailResponseDTO.ImageDTO iDto = new ProductDetailResponseDTO.ImageDTO();
+                        iDto.setId(img.getId());
+                        iDto.setName(img.getName());
+                        iDto.setImageUrl(img.getImageUrl());
+                        return iDto;
+                    })
+                    .collect(Collectors.toList());
+            dto.setImages(imageDTOs);
+        }
+
+        return dto;
+    }
+
+    private static String truncateDescription(String description, int maxLength) {
+        if (description == null) {
+            return null;
+        }
+        if (description.length() <= maxLength) {
+            return description;
+        }
+        return description.substring(0, maxLength) + "...";
+    }
+}

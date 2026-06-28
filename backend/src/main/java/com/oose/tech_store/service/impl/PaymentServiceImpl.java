@@ -121,16 +121,18 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         String txnRef = params.get("orderId");
-        int resultCode = Integer.parseInt(params.getOrDefault("resultCode", "-1"));
+        int resultCode;
+        try {
+            resultCode = Integer.parseInt(params.getOrDefault("resultCode", "-1"));
+        } catch (NumberFormatException e) {
+            return new PaymentResultResponse(false, null, null, "Invalid payment response from MoMo");
+        }
 
-        Optional<PendingCheckout> checkoutOpt = sessionStore.findByTxnRef(txnRef);
-        if (checkoutOpt.isEmpty()) {
+        PendingCheckout checkout = sessionStore.getAndRemove(txnRef);
+        if (checkout == null) {
             return new PaymentResultResponse(false, null, null,
                     "Payment session not found or already processed");
         }
-
-        PendingCheckout checkout = checkoutOpt.get();
-        sessionStore.remove(txnRef);
 
         if (resultCode == 0) {
             OrderFulfillmentService.OrderFulfillmentResult result =
@@ -157,14 +159,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         String txnRef = params.get("vnp_TxnRef");
 
-        Optional<PendingCheckout> checkoutOpt = sessionStore.findByTxnRef(txnRef);
-        if (checkoutOpt.isEmpty()) {
+        PendingCheckout checkout = sessionStore.getAndRemove(txnRef);
+        if (checkout == null) {
             return new PaymentResultResponse(false, null, null,
                     "Payment session not found or already processed");
         }
-
-        PendingCheckout checkout = checkoutOpt.get();
-        sessionStore.remove(txnRef);
 
         if (vnpayGateway.isSuccessful(params)) {
             OrderFulfillmentService.OrderFulfillmentResult result =

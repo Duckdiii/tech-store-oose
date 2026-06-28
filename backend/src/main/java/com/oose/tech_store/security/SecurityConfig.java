@@ -24,8 +24,11 @@ public class SecurityConfig {
                         .securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health", "/api/auth/login").permitAll()
-                        .requestMatchers("/api/invoices/**", "/api/payments/**", "/api/bundle-services/**",
-                                "/api/cart/**", "/api/orders/**").permitAll()
+                        .requestMatchers(
+                                "/api/payments/momo/return",
+                                "/api/payments/momo/ipn",
+                                "/api/payments/vnpay/return",
+                                "/api/payments/vnpay/ipn").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("MANAGER")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session

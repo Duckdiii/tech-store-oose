@@ -2,9 +2,11 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.cart.BundleServiceResponse;
 import com.oose.tech_store.dto.cart.CartResponse;
+import com.oose.tech_store.security.CustomerSecurityHelper;
 import com.oose.tech_store.service.CartBundleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.List;
 public class CartItemController {
 
     private final CartBundleService cartBundleService;
+    private final CustomerSecurityHelper securityHelper;
 
     @GetMapping("/api/bundle-services")
     public ResponseEntity<List<BundleServiceResponse>> getActiveBundleServices() {
@@ -22,18 +25,20 @@ public class CartItemController {
 
     @PostMapping("/api/cart/items/{cartItemId}/bundle-services/{bundleServiceId}")
     public ResponseEntity<CartResponse> addBundleService(
-            @RequestParam String customerId,
+            Authentication authentication,
             @PathVariable String cartItemId,
             @PathVariable String bundleServiceId) {
+        String customerId = securityHelper.resolveCustomerId(authentication);
         return ResponseEntity.ok(
                 cartBundleService.addBundleService(customerId, cartItemId, bundleServiceId));
     }
 
     @DeleteMapping("/api/cart/items/{cartItemId}/bundle-services/{bundleServiceId}")
     public ResponseEntity<CartResponse> removeBundleService(
-            @RequestParam String customerId,
+            Authentication authentication,
             @PathVariable String cartItemId,
             @PathVariable String bundleServiceId) {
+        String customerId = securityHelper.resolveCustomerId(authentication);
         return ResponseEntity.ok(
                 cartBundleService.removeBundleService(customerId, cartItemId, bundleServiceId));
     }

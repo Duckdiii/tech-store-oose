@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -69,13 +70,18 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
 
         Order savedOrder = orderRepository.save(order);
 
-        PaymentLog paymentLog = new PaymentLog(savedOrder, totalAmount, paymentMethod, paymentStatus);
+        PaymentLog paymentLog = new PaymentLog(savedOrder, totalAmount, paymentStatus);
         if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
             paymentLog.markSuccess();
         }
         paymentLogRepository.save(paymentLog);
 
-        Invoice invoice = new Invoice(savedOrder, totalAmount, BigDecimal.ZERO, BigDecimal.ZERO, totalAmount);
+        BigDecimal discountAmount = customer.getMembership().getBenefit()
+                .calculateDiscount(totalAmount)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal finalAmount = totalAmount.subtract(discountAmount);
+
+        Invoice invoice = new Invoice(savedOrder, totalAmount, BigDecimal.ZERO, discountAmount, finalAmount);
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
         selectedItems.forEach(cart::removeItem);

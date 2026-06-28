@@ -9,6 +9,7 @@ import com.oose.tech_store.repository.InvoiceRepository;
 import com.oose.tech_store.service.InvoiceService;
 import com.oose.tech_store.util.InvoicePdfGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +23,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         private final InvoiceRepository invoiceRepository;
 
         @Override
-        public InvoiceResponse getInvoiceByOrderId(String orderId) {
+        public InvoiceResponse getInvoiceByOrderId(String orderId, String customerId) {
                 Invoice invoice = invoiceRepository.findByOrderId(orderId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Invoice not found for order: " + orderId));
+
+                verifyOwnership(invoice, customerId);
 
                 List<InvoiceItemResponse> items = invoice.getOrder().getItems().stream()
                                 .map(this::toItemResponse)
@@ -46,9 +49,17 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
 
         @Override
-        public byte[] generateInvoicePdf(String orderId) {
-                InvoiceResponse invoice = getInvoiceByOrderId(orderId);
+        public byte[] generateInvoicePdf(String orderId, String customerId) {
+                InvoiceResponse invoice = getInvoiceByOrderId(orderId, customerId);
                 return InvoicePdfGenerator.generate(invoice);
+        }
+
+        private void verifyOwnership(Invoice invoice, String customerId) {
+                String orderOwnerId = invoice.getOrder().getCustomer().getId();
+                if (!orderOwnerId.equals(customerId)) {
+                        throw new AccessDeniedException("Access denied to invoice for order: "
+                                        + invoice.getOrder().getId());
+                }
         }
 
         private InvoiceItemResponse toItemResponse(OrderItem item) {

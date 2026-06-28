@@ -13,5 +13,7 @@ public interface AccountRepository extends JpaRepository<Account, String>, JpaSp
 
     Optional<Account> findByUserId(String userId);
 
+    Optional<Account> findByUser_Id(String userId);
+
     boolean existsByEmailIgnoreCase(String email);
 }
