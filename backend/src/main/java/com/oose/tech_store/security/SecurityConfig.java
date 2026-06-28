@@ -24,6 +24,13 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health", "/api/auth/**").permitAll()
+                        .requestMatchers("/api/products/*/notifications/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/products", "/api/products/*").permitAll()
+                        .requestMatchers(
+                                "/api/admin/recovery-points",
+                                "/api/admin/recovery-points/**",
+                                "/api/admin/recovery-audit-logs")
+                        .permitAll()
                         .requestMatchers("/api/admin/warehouse/logs/**")
                         .hasRole("MANAGER")
                         .requestMatchers(
@@ -43,6 +50,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/orders/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/invoices/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/membership/**").hasRole("CUSTOMER")
+                        .requestMatchers(
+                                "/api/users/me/notification-subscriptions",
+                                "/api/users/me/notifications",
+                                "/api/users/me/notifications/**")
+                        .hasRole("CUSTOMER")
                         .anyRequest().authenticated())
                 .userDetailsService(accountUserDetailsService)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

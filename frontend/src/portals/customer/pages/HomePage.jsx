@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
-<<<<<<< HEAD
-=======
 import { productApi } from '../../../api/productApi';
->>>>>>> origin/anhvansuy
 
 const CATEGORIES = [
   { id: 1, icon: '🍎', name: 'Apple', count: '43 sản phẩm' },
@@ -15,20 +12,6 @@ const CATEGORIES = [
   { id: 6, icon: '🎯', name: 'Realme', count: '24 sản phẩm' },
 ];
 
-<<<<<<< HEAD
-const PRODUCTS = [
-  { id: 1, brand: 'Apple', name: 'iPhone 15 Pro Max 256GB', price: 34990000, oldPrice: 38000000, rating: 4.9, reviews: '2.4K', discount: '-8%', tag: 'Mới', tagBg: '#0d1117' },
-  { id: 2, brand: 'Samsung', name: 'Samsung Galaxy S24 Ultra 512GB', price: 28990000, oldPrice: 33000000, rating: 4.8, reviews: '1.8K', discount: '-12%', tag: 'Hot', tagBg: '#e11d48' },
-  { id: 3, brand: 'Xiaomi', name: 'Xiaomi 14 Pro 512GB', price: 18990000, oldPrice: 21000000, rating: 4.7, reviews: '956', discount: '-10%', tag: 'Mới', tagBg: '#0d1117' },
-  { id: 4, brand: 'OPPO', name: 'OPPO Find X7 Pro 256GB', price: 24990000, oldPrice: 27000000, rating: 4.6, reviews: '743', discount: '-7%', tag: 'Sale', tagBg: '#f59e0b' },
-  { id: 5, brand: 'Apple', name: 'iPhone 15 128GB', price: 22990000, oldPrice: 25000000, rating: 4.8, reviews: '3.1K', discount: '-8%', tag: 'Mới', tagBg: '#0d1117' },
-  { id: 6, brand: 'Samsung', name: 'Samsung Galaxy Z Fold 5 256GB', price: 43990000, oldPrice: 48000000, rating: 4.7, reviews: '621', discount: '-8%', tag: 'Hot', tagBg: '#e11d48' },
-  { id: 7, brand: 'Vivo', name: 'Vivo X100 Pro 256GB', price: 19990000, oldPrice: 22000000, rating: 4.6, reviews: '412', discount: '-9%', tag: 'Mới', tagBg: '#0d1117' },
-  { id: 8, brand: 'Xiaomi', name: 'Xiaomi Redmi Note 13 Pro 256GB', price: 7490000, oldPrice: 9000000, rating: 4.7, reviews: '1.5K', discount: '-17%', tag: 'Sale', tagBg: '#f59e0b' },
-];
-
-=======
->>>>>>> origin/anhvansuy
 const FLASH_PRODUCTS = [
   { id: 101, name: 'iPhone 14 128GB', price: 18990000, oldPrice: 22990000, discount: '-17%', sold: 87, total: 100, soldPct: 87 },
   { id: 102, name: 'Samsung S23 FE 256GB', price: 10990000, oldPrice: 14990000, discount: '-27%', sold: 64, total: 80, soldPct: 80 },
@@ -51,11 +34,7 @@ const BLOGS = [
   { category: 'Hướng dẫn', date: '10/06/2025', readTime: '7 phút đọc', tag: 'Tips', title: 'Top 5 mẹo tiết kiệm pin điện thoại Android hiệu quả nhất 2025', excerpt: 'Những cài đặt đơn giản nhưng cực kỳ hiệu quả giúp điện thoại Android của bạn sử dụng được lâu hơn mà không ảnh hưởng hiệu năng...' },
 ];
 
-<<<<<<< HEAD
-function fmt(n) { return n.toLocaleString('vi-VN'); }
-=======
 function fmt(n) { return n ? n.toLocaleString('vi-VN') : '0'; }
->>>>>>> origin/anhvansuy
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function useCountdown(h0 = 5) {
@@ -77,8 +56,6 @@ export function HomePage() {
   const [activeTab, setActiveTab] = useState('Mới nhất');
   const cd = useCountdown(5);
 
-<<<<<<< HEAD
-=======
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
@@ -100,7 +77,6 @@ export function HomePage() {
     fetchProducts();
   }, [activeTab]);
 
->>>>>>> origin/anhvansuy
   return (
     <main>
       {/* ===== HERO ===== */}
@@ -239,13 +215,9 @@ export function HomePage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
-<<<<<<< HEAD
-            {PRODUCTS.map(item => (
-=======
             {loadingProducts ? (
               <div style={{ gridColumn: 'span 4', textAlign: 'center', padding: '40px 0', color: '#9ca3af' }}>Đang tải...</div>
             ) : products.map(item => (
->>>>>>> origin/anhvansuy
               <div key={item.id}
                 style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.22s' }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow='0 10px 32px rgba(0,0,0,0.09)'; e.currentTarget.style.transform='translateY(-4px)'; }}
@@ -255,20 +227,6 @@ export function HomePage() {
                     <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
                     <rect x="7" y="7" width="58" height="106" rx="13" stroke="#c4c9d4" strokeWidth="1.5"/>
                     <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
-<<<<<<< HEAD
-                    <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
-                    <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
-                  </svg>
-                  <span style={{ position: 'absolute', top: 11, right: 11, background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 5 }}>{item.discount}</span>
-                  <span style={{ position: 'absolute', top: 11, left: 11, background: item.tagBg, color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 5 }}>{item.tag}</span>
-                </div>
-                <div style={{ padding: '16px 18px 18px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>{item.brand}</div>
-                  <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0d1117', marginBottom: 9, lineHeight: 1.35 }}>{item.name}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                    <span style={{ fontSize: 12.5, color: '#f59e0b', letterSpacing: 1 }}>★★★★★</span>
-                    <span style={{ fontSize: 12, color: '#9ca3af' }}>{item.rating} ({item.reviews})</span>
-=======
                     {item.thumbnailUrl && <image href={item.thumbnailUrl} x="13" y="23" width="46" height="70" preserveAspectRatio="xMidYMid slice" />}
                     <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
                     <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
@@ -282,7 +240,6 @@ export function HomePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                     <span style={{ fontSize: 12.5, color: '#f59e0b', letterSpacing: 1 }}>★★★★★</span>
                     <span style={{ fontSize: 12, color: '#9ca3af' }}>{item.rating || 5.0} ({item.reviews || 0})</span>
->>>>>>> origin/anhvansuy
                   </div>
                   <div style={{ marginBottom: 14 }}>
                     <span style={{ fontSize: 19, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.price)}₫</span>
