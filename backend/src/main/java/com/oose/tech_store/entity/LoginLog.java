@@ -16,8 +16,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class LoginLog extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "account_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id")
     private Account account;
 
     @Column(name = "email", nullable = false, length = 150)
@@ -48,7 +48,6 @@ public class LoginLog extends BaseEntity {
         this.roleName = roleName;
         this.loginStatus = loginStatus;
         this.loginTime = LocalDateTime.now();
-        account.getLoginLogs().add(this);
     }
 
     public static LoginLog success(Account account) {
@@ -77,6 +76,17 @@ public class LoginLog extends BaseEntity {
             throw new IllegalArgumentException("account must not be null");
         }
         return new LoginLog(account, account.getEmail(), resolveRoleName(account), LoginStatus.FAILED);
+    }
+
+    public static LoginLog failure(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("email must not be blank");
+        }
+        LoginLog log = new LoginLog();
+        log.email = email;
+        log.loginStatus = LoginStatus.FAILED;
+        log.loginTime = LocalDateTime.now();
+        return log;
     }
 
     public boolean isSuccess() {
