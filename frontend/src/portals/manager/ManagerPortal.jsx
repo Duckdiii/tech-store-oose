@@ -12,6 +12,13 @@ import { StaffPage } from './pages/StaffPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WarehousePage } from './pages/WarehousePage';
+import { SuppliersPage } from './pages/SuppliersPage';
+import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { SupplierForm } from './components/SupplierForm';
+import { PurchaseOrderForm } from './components/PurchaseOrderForm';
+import { supplierApi } from '../../api/supplierApi';
+import { purchaseOrderApi } from '../../api/purchaseOrderApi';
+import { useEffect } from 'react';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
 
@@ -35,9 +42,27 @@ export function ManagerPortal() {
   const [variantProductId, setVariantProductId] = useState(null);
   const [variantForm, setVariantForm] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
+  const [supplierFormOpen, setSupplierFormOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState(null);
+  const [poFormOpen, setPoFormOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [undoData, setUndoData] = useState(null);
   const toastTimerRef = useRef(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [sups, pos] = await Promise.all([
+          supplierApi.getAll(),
+          purchaseOrderApi.getAll()
+        ]);
+        setData(prev => ({ ...prev, suppliers: sups, purchaseOrders: pos }));
+      } catch (err) {
+        console.error("Failed to fetch from API", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   const showToast = (message, ttl = 2600) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -180,6 +205,58 @@ export function ManagerPortal() {
     'Đã xóa nhân viên'
   );
 
+  const saveSupplier = async (supplierData) => {
+    try {
+      if (supplierData.id) {
+        await supplierApi.update(supplierData.id, supplierData);
+        setToast('Đã cập nhật nhà cung cấp');
+      } else {
+        await supplierApi.create(supplierData);
+        setToast('Đã thêm nhà cung cấp mới');
+      }
+      const sups = await supplierApi.getAll();
+      setData(prev => ({ ...prev, suppliers: sups }));
+      setSupplierFormOpen(false);
+      setEditingSupplier(null);
+    } catch (err) {
+      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const deleteSupplier = async (id) => {
+    try {
+      await supplierApi.delete(id);
+      const sups = await supplierApi.getAll();
+      setData(prev => ({ ...prev, suppliers: sups }));
+      setToast('Đã xóa nhà cung cấp');
+    } catch (err) {
+      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const savePurchaseOrder = async (poData) => {
+    try {
+      await purchaseOrderApi.create(poData);
+      const pos = await purchaseOrderApi.getAll();
+      setData(prev => ({ ...prev, purchaseOrders: pos }));
+      setToast('Đã tạo đơn nhập hàng');
+      setPoFormOpen(false);
+    } catch (err) {
+      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const updatePOStatus = async (id, status) => {
+    try {
+      await purchaseOrderApi.updateStatus(id, status);
+      const pos = await purchaseOrderApi.getAll();
+      setData(prev => ({ ...prev, purchaseOrders: pos }));
+      setToast(`Đã cập nhật trạng thái đơn thành ${status}`);
+    } catch (err) {
+      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   return (
     <>
       <ManagerLayout activeSection={activeSection} title={title} query={query} onQueryChange={setQuery} breadcrumbs={breadcrumbs} badges={badges}>
@@ -222,7 +299,22 @@ export function ManagerPortal() {
             [['Doanh thu thuần', '428500000'], ['Giá trị đơn trung bình', '2840000'], ['Tỉ lệ hoàn tất', '94.2%']]
           )} />
         )}
-{activeSection === 'settings' && (
+        {activeSection === 'suppliers' && (
+          <SuppliersPage 
+            suppliers={data.suppliers} 
+            onAdd={() => { setEditingSupplier(null); setSupplierFormOpen(true); }}
+            onEdit={(sup) => { setEditingSupplier(sup); setSupplierFormOpen(true); }}
+            onDelete={deleteSupplier}
+          />
+        )}
+        {activeSection === 'purchase-orders' && (
+          <PurchaseOrdersPage 
+            purchaseOrders={data.purchaseOrders}
+            onAdd={() => setPoFormOpen(true)}
+            onUpdateStatus={updatePOStatus}
+          />
+        )}
+        {activeSection === 'settings' && (
           <SettingsPage settings={data.settings} onToggle={setSetting} />
         )}
       </ManagerLayout>
@@ -249,6 +341,8 @@ export function ManagerPortal() {
         />
       )}
       {staffFormOpen && <StaffForm onSave={addStaff} onClose={() => setStaffFormOpen(false)} />}
+      {supplierFormOpen && <SupplierForm supplier={editingSupplier} onSave={saveSupplier} onClose={() => { setSupplierFormOpen(false); setEditingSupplier(null); }} />}
+      {poFormOpen && <PurchaseOrderForm suppliers={data.suppliers} products={data.products} onSave={savePurchaseOrder} onClose={() => setPoFormOpen(false)} />}
       {toast && (
         <div className="admin-toast" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>✓ {toast}</span>
