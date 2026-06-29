@@ -1,6 +1,6 @@
 package com.oose.tech_store.entity.enums;
 
-public enum SupplyOrderStatus {
+public enum POStatus {
     PENDING,
     CONFIRMED,
     SHIPPING,

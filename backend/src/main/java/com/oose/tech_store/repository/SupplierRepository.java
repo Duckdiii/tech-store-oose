@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SupplierRepository extends JpaRepository<Supplier, String> {
-    boolean existsByNameOrTaxCode(String name, String taxCode);
+    boolean existsByName(String name);
 }

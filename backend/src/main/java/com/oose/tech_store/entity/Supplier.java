@@ -17,11 +17,19 @@ public class Supplier extends BaseEntity {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "tax_code", nullable = false, unique = true)
-    private String taxCode;
-    
-    public Supplier(String name, String taxCode) {
+    @Column(name = "email", unique = true)
+    private String email;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "address")
+    private String address;
+
+    public Supplier(String name, String email, String phone, String address) {
         this.name = name;
-        this.taxCode = taxCode;
+        this.email = email;
+        this.phone = phone;
+        this.address = address;
     }
 }

@@ -15,34 +15,18 @@ import java.math.BigDecimal;
 public class SupplyOrderItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "purchase_order_id", nullable = false)
-    private SupplyOrder supplyOrder;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant product;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "price", nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
+    @Column(name = "unit_price", nullable = false, precision = 15, scale = 2)
+    private BigDecimal unitPrice;
 
-    @Column(name = "ram_gb")
-    private Integer ramGb;
-
-    @Column(name = "storage_gb")
-    private Integer storageGb;
-
-    @Column(name = "color", length = 80)
-    private String color;
-
-    public SupplyOrderItem(Product product, Integer quantity, BigDecimal price, Integer ramGb, Integer storageGb, String color) {
+    public SupplyOrderItem(ProductVariant product, Integer quantity, BigDecimal unitPrice) {
         this.product = product;
         this.quantity = quantity;
-        this.price = price;
-        this.ramGb = ramGb;
-        this.storageGb = storageGb;
-        this.color = color;
+        this.unitPrice = unitPrice;
     }
 }

@@ -1,6 +1,5 @@
 package com.oose.tech_store.entity;
 
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,7 +15,8 @@ import java.util.UUID;
 
 @MappedSuperclass
 @Getter
-@Setter
+@Setter
+
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class BaseEntity {
 

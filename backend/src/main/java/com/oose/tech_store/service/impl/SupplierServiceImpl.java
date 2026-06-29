@@ -4,7 +4,7 @@ import com.oose.tech_store.dto.supplier.CreateSupplierRequestDTO;
 import com.oose.tech_store.dto.supplier.SupplierResponseDTO;
 import com.oose.tech_store.dto.supplier.UpdateSupplierRequestDTO;
 import com.oose.tech_store.entity.Supplier;
-import com.oose.tech_store.entity.enums.SupplyOrderStatus;
+import com.oose.tech_store.entity.enums.POStatus;
 import com.oose.tech_store.exception.DuplicateSupplierException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.exception.SupplierHasActivePOException;
@@ -28,21 +28,21 @@ public class SupplierServiceImpl implements SupplierService {
     @Transactional(readOnly = true)
     public List<SupplierResponseDTO> getAllSuppliers() {
         return supplierRepository.findAll().stream()
-                .map(s -> new SupplierResponseDTO(s.getId(), s.getName(), s.getTaxCode()))
+                .map(s -> new SupplierResponseDTO(s.getId(), s.getName(), s.getEmail(), s.getPhone(), s.getAddress()))
                 .toList();
     }
 
     @Override
     @Transactional
     public SupplierResponseDTO createSupplier(CreateSupplierRequestDTO request) {
-        if (supplierRepository.existsByNameOrTaxCode(request.name(), request.taxCode())) {
-            throw new DuplicateSupplierException("Supplier with given name or tax code already exists");
+        if (supplierRepository.existsByName(request.name())) {
+            throw new DuplicateSupplierException("Supplier with given name already exists");
         }
 
-        Supplier supplier = new Supplier(request.name(), request.taxCode());
+        Supplier supplier = new Supplier(request.name(), request.email(), request.phone(), request.address());
         supplier = supplierRepository.save(supplier);
 
-        return new SupplierResponseDTO(supplier.getId(), supplier.getName(), supplier.getTaxCode());
+        return new SupplierResponseDTO(supplier.getId(), supplier.getName(), supplier.getEmail(), supplier.getPhone(), supplier.getAddress());
     }
 
     @Override
@@ -56,11 +56,12 @@ public class SupplierServiceImpl implements SupplierService {
         }
 
         supplier.setName(request.name());
-        supplier.setTaxCode(request.taxCode());
+        supplier.setEmail(request.email());
+        supplier.setPhone(request.phone());
+        supplier.setAddress(request.address());
         supplier = supplierRepository.save(supplier);
 
-        return new SupplierResponseDTO(supplier.getId(), supplier.getName(), supplier.getTaxCode(), 
-                "Supplier updated successfully");
+        return new SupplierResponseDTO(supplier.getId(), supplier.getName(), supplier.getEmail(), supplier.getPhone(), supplier.getAddress(), "Supplier updated successfully");
     }
 
     @Override
@@ -77,10 +78,10 @@ public class SupplierServiceImpl implements SupplierService {
     }
 
     private boolean hasActiveSupplyOrders(String supplierId) {
-        List<SupplyOrderStatus> activeStatuses = List.of(
-                SupplyOrderStatus.PENDING,
-                SupplyOrderStatus.CONFIRMED,
-                SupplyOrderStatus.SHIPPING
+        List<POStatus> activeStatuses = List.of(
+                POStatus.PENDING,
+                POStatus.CONFIRMED,
+                POStatus.SHIPPING
         );
         return supplyOrderRepository.countBySupplierIdAndStatusIn(supplierId, activeStatuses) > 0;
     }

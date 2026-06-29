@@ -12,6 +12,6 @@ public record NotificationResponse(
         NotificationStatus status,
         LocalDateTime sentAt,
         LocalDateTime readAt,
-        String productId,
-        String productName) {
+        String productVariantId,
+        String productVariantName) {
 }

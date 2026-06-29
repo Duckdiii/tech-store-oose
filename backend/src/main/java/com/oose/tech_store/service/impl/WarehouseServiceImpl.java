@@ -30,23 +30,24 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Transactional
     public void importProducts(SupplyOrder supplyOrder, String performedBy) {
         supplyOrder.getItems().stream()
-                .collect(java.util.stream.Collectors.groupingBy(item -> item.getProduct().getId()))
+                .collect(java.util.stream.Collectors.groupingBy(item -> item.getProduct().getProduct().getId()))
                 .forEach((productId, items) -> {
                     BigDecimal sellingPrice = resolveSellingPrice(productId);
                     List<ProductVariantImportItemDTO> importItems = new ArrayList<>();
 
                     for (SupplyOrderItem item : items) {
-                        BigDecimal effectiveSellingPrice = sellingPrice != null ? sellingPrice : item.getPrice();
+                        ProductVariant variant = item.getProduct();
+                        BigDecimal effectiveSellingPrice = sellingPrice != null ? sellingPrice : item.getUnitPrice();
                         for (int i = 0; i < item.getQuantity(); i++) {
                             String serialId = deterministicSerial(supplyOrder.getId(), item.getId(), i);
                             importItems.add(new ProductVariantImportItemDTO(
                                     null,
                                     serialId,
-                                    item.getRamGb(),
-                                    item.getStorageGb(),
-                                    item.getColor(),
+                                    variant.getRamGb(),
+                                    variant.getStorageGb(),
+                                    variant.getColor(),
                                     effectiveSellingPrice,
-                                    item.getPrice()
+                                    item.getUnitPrice()
                             ));
                         }
                     }

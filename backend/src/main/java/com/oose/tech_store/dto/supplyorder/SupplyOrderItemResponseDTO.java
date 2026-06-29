@@ -4,12 +4,9 @@ import java.math.BigDecimal;
 
 public record SupplyOrderItemResponseDTO(
         String id,
-        String productId,
-        String productName,
+        String productVariantId,
+        String productVariantName,
         Integer quantity,
-        BigDecimal price,
-        Integer ramGb,
-        Integer storageGb,
-        String color
+        BigDecimal unitPrice
 ) {
 }

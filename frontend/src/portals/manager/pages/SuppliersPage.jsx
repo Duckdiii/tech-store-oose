@@ -43,7 +43,6 @@ export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
 
   const columns = [
     { label: 'Tên nhà cung cấp', key: 'name' },
-    'Mã số thuế',
     'ID',
     '',
   ];
@@ -70,7 +69,6 @@ export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
           ) : visible.map((supplier) => (
             <tr key={supplier.id}>
               <td><b>{supplier.name}</b></td>
-              <td>{supplier.taxCode}</td>
               <td><small style={{ color: '#94a3b8' }}>{supplier.id}</small></td>
               <td>
                 <div className="admin-row-actions">

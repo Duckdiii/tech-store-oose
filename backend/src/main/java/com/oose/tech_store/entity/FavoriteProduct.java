@@ -13,16 +13,16 @@ import java.util.List;
 
 @Entity
 @Table(name = "favorite_products", uniqueConstraints = @UniqueConstraint(
-        name = "uk_favorite_products_customer_product",
-        columnNames = { "customer_id", "product_id" }))
+        name = "uk_favorite_products_customer_variant",
+        columnNames = { "customer_id", "product_variant_id" }))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FavoriteProduct extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false)
@@ -69,19 +69,16 @@ public class FavoriteProduct extends BaseEntity {
         return SubscriptionStatus.SUBSCRIBED.equals(status);
     }
 
-    public FavoriteProduct(Product product, Customer customer, SubscriptionStatus status) {
-        if (product == null) {
-            throw new IllegalArgumentException("product must not be null");
+    public FavoriteProduct(ProductVariant productVariant, Customer customer) {
+        if (productVariant == null) {
+            throw new IllegalArgumentException("productVariant must not be null");
         }
         if (customer == null) {
             throw new IllegalArgumentException("customer must not be null");
         }
-        if (status == null) {
-            throw new IllegalArgumentException("status must not be null");
-        }
-        this.product = product;
+        this.productVariant = productVariant;
         this.customer = customer;
-        this.status = status;
+        this.status = SubscriptionStatus.SUBSCRIBED;
         customer.getFavoriteProducts().add(this);
     }
 }

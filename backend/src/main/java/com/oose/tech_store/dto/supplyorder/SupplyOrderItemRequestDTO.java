@@ -7,19 +7,15 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 public record SupplyOrderItemRequestDTO(
-        @NotBlank(message = "Product ID is required")
-        String productId,
+        @NotBlank(message = "Product variant ID is required")
+        String productVariantId,
 
         @NotNull(message = "Quantity is required")
         @Positive(message = "Quantity must be greater than zero")
         Integer quantity,
 
-        @NotNull(message = "Price is required")
-        @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than zero")
-        BigDecimal price,
-
-        Integer ramGb,
-        Integer storageGb,
-        String color
+        @NotNull(message = "Unit price is required")
+        @DecimalMin(value = "0.0", inclusive = false, message = "Unit price must be greater than zero")
+        BigDecimal unitPrice
 ) {
 }

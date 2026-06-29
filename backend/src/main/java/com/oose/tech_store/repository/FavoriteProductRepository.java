@@ -8,9 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FavoriteProductRepository extends JpaRepository<FavoriteProduct, String> {
 
-    List<FavoriteProduct> findByProduct_IdAndStatus(String productId, SubscriptionStatus status);
+    List<FavoriteProduct> findByProductVariant_IdAndStatus(String productVariantId, SubscriptionStatus status);
+
+    List<FavoriteProduct> findByProductVariant_Product_IdAndStatus(String productId, SubscriptionStatus status);
 
     List<FavoriteProduct> findByCustomer_IdOrderByUpdatedAtDesc(String customerId);
 
-    Optional<FavoriteProduct> findByCustomer_IdAndProduct_Id(String customerId, String productId);
+    Optional<FavoriteProduct> findByCustomer_IdAndProductVariant_Id(String customerId, String productVariantId);
 }

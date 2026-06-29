@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 
 public record NotificationSubscriptionResponse(
         String id,
-        String productId,
-        String productName,
+        String productVariantId,
+        String productVariantName,
         SubscriptionStatus status,
         LocalDateTime subscribedAt,
         LocalDateTime unsubscribedAt) {

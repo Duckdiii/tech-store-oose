@@ -5,13 +5,12 @@ import com.oose.tech_store.dto.notification.NotificationSubscriptionResponse;
 import com.oose.tech_store.entity.Customer;
 import com.oose.tech_store.entity.FavoriteProduct;
 import com.oose.tech_store.entity.Notification;
-import com.oose.tech_store.entity.Product;
-import com.oose.tech_store.entity.enums.SubscriptionStatus;
+import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.repository.CustomerRepository;
 import com.oose.tech_store.repository.FavoriteProductRepository;
 import com.oose.tech_store.repository.NotificationRepository;
-import com.oose.tech_store.repository.ProductRepository;
+import com.oose.tech_store.repository.ProductVariantRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,30 +21,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationSubscriptionService {
 
     private final CustomerRepository customerRepository;
-    private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final FavoriteProductRepository favoriteProductRepository;
     private final NotificationRepository notificationRepository;
 
     @Transactional
-    public NotificationSubscriptionResponse subscribe(String customerId, String productId) {
+    public NotificationSubscriptionResponse subscribe(String customerId, String productVariantId) {
         Customer customer = findCustomer(customerId);
-        Product product = findProduct(productId);
+        ProductVariant productVariant = findProductVariant(productVariantId);
 
         FavoriteProduct subscription = favoriteProductRepository
-                .findByCustomer_IdAndProduct_Id(customerId, productId)
+                .findByCustomer_IdAndProductVariant_Id(customerId, productVariantId)
                 .map(existing -> {
                     existing.subscribe();
                     return existing;
                 })
-                .orElseGet(() -> new FavoriteProduct(product, customer, SubscriptionStatus.SUBSCRIBED));
+                .orElseGet(() -> new FavoriteProduct(productVariant, customer));
 
         return toSubscriptionResponse(favoriteProductRepository.save(subscription));
     }
 
     @Transactional
-    public NotificationSubscriptionResponse unsubscribe(String customerId, String productId) {
+    public NotificationSubscriptionResponse unsubscribe(String customerId, String productVariantId) {
         FavoriteProduct subscription = favoriteProductRepository
-                .findByCustomer_IdAndProduct_Id(customerId, productId)
+                .findByCustomer_IdAndProductVariant_Id(customerId, productVariantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification subscription not found"));
 
         subscription.unsubscribe();
@@ -84,17 +83,17 @@ public class NotificationSubscriptionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
     }
 
-    private Product findProduct(String productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+    private ProductVariant findProductVariant(String productVariantId) {
+        return productVariantRepository.findById(productVariantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
     }
 
     private NotificationSubscriptionResponse toSubscriptionResponse(FavoriteProduct subscription) {
-        Product product = subscription.getProduct();
+        ProductVariant productVariant = subscription.getProductVariant();
         return new NotificationSubscriptionResponse(
                 subscription.getId(),
-                product.getId(),
-                product.getName(),
+                productVariant.getId(),
+                productVariant.getDisplayName(),
                 subscription.getStatus(),
                 subscription.getSubscribedAt(),
                 subscription.getUnsubscribedAt());
@@ -102,7 +101,7 @@ public class NotificationSubscriptionService {
 
     private NotificationResponse toNotificationResponse(Notification notification) {
         FavoriteProduct favoriteProduct = notification.getFavoriteProduct();
-        Product product = favoriteProduct == null ? null : favoriteProduct.getProduct();
+        ProductVariant productVariant = favoriteProduct == null ? null : favoriteProduct.getProductVariant();
         return new NotificationResponse(
                 notification.getId(),
                 notification.getTitle(),
@@ -111,7 +110,7 @@ public class NotificationSubscriptionService {
                 notification.getStatus(),
                 notification.getSentAt(),
                 notification.getReadAt(),
-                product == null ? null : product.getId(),
-                product == null ? null : product.getName());
+                productVariant == null ? null : productVariant.getId(),
+                productVariant == null ? null : productVariant.getDisplayName());
     }
 }

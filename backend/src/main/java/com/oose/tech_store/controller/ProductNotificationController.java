@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/products/{productId}/notifications/subscription")
+@RequestMapping("/api/variants/{productVariantId}/notifications/subscription")
 @RequiredArgsConstructor
 public class ProductNotificationController {
 
@@ -23,16 +23,16 @@ public class ProductNotificationController {
     @PostMapping
     public ResponseEntity<NotificationSubscriptionResponse> subscribe(
             Authentication authentication,
-            @PathVariable String productId) {
+            @PathVariable String productVariantId) {
         String resolvedCustomerId = securityHelper.resolveCustomerId(authentication);
-        return ResponseEntity.ok(notificationSubscriptionService.subscribe(resolvedCustomerId, productId));
+        return ResponseEntity.ok(notificationSubscriptionService.subscribe(resolvedCustomerId, productVariantId));
     }
 
     @DeleteMapping
     public ResponseEntity<NotificationSubscriptionResponse> unsubscribe(
             Authentication authentication,
-            @PathVariable String productId) {
+            @PathVariable String productVariantId) {
         String resolvedCustomerId = securityHelper.resolveCustomerId(authentication);
-        return ResponseEntity.ok(notificationSubscriptionService.unsubscribe(resolvedCustomerId, productId));
+        return ResponseEntity.ok(notificationSubscriptionService.unsubscribe(resolvedCustomerId, productVariantId));
     }
 }
