@@ -81,6 +81,7 @@ export const NAV_ITEMS = [
   ['customers', 'Khách hàng'],
   ['staff',     'Nhân viên'],
   ['reports',   'Báo cáo'],
+  ['promotions', 'Khuyến mãi'],
   ['settings',  'Cài đặt'],
 ];
 
@@ -94,5 +95,6 @@ export const PAGE_META = {
   customers: ['Khách hàng',         'Quản lý thông tin và hạng thành viên khách hàng'],
   staff:     ['Nhân viên',          'Quản lý nhân sự và phân quyền hệ thống'],
   reports:   ['Báo cáo doanh thu',  'Tổng hợp kết quả kinh doanh trong tháng'],
+  promotions: ['Khuyến mãi',        'Tạo chương trình khuyến mãi và marketing'],
   settings:  ['Cài đặt',            'Thiết lập thông báo và tuỳ chọn hệ thống'],
 };

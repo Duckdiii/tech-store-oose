@@ -19,6 +19,7 @@ import { SupplyOrderForm } from './components/SupplyOrderForm';
 import { supplierApi } from '../../api/supplierApi';
 import { supplyOrderApi } from '../../api/supplyOrderApi';
 import { useEffect } from 'react';
+import { PromotionsPage } from './pages/PromotionsPage';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
 
@@ -300,8 +301,8 @@ export function ManagerPortal() {
           )} />
         )}
         {activeSection === 'suppliers' && (
-          <SuppliersPage 
-            suppliers={data.suppliers} 
+          <SuppliersPage
+            suppliers={data.suppliers}
             onAdd={() => { setEditingSupplier(null); setSupplierFormOpen(true); }}
             onEdit={(sup) => { setEditingSupplier(sup); setSupplierFormOpen(true); }}
             onDelete={deleteSupplier}
@@ -313,6 +314,9 @@ export function ManagerPortal() {
             onAdd={() => setPoFormOpen(true)}
             onUpdateStatus={updateSOStatus}
           />
+        )}
+        {activeSection === 'promotions' && (
+          <PromotionsPage />
         )}
         {activeSection === 'settings' && (
           <SettingsPage settings={data.settings} onToggle={setSetting} />
