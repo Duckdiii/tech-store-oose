@@ -12,6 +12,7 @@ import { StaffPage } from './pages/StaffPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WarehousePage } from './pages/WarehousePage';
+import { PromotionsPage } from './pages/PromotionsPage';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
 
@@ -222,7 +223,10 @@ export function ManagerPortal() {
             [['Doanh thu thuần', '428500000'], ['Giá trị đơn trung bình', '2840000'], ['Tỉ lệ hoàn tất', '94.2%']]
           )} />
         )}
-{activeSection === 'settings' && (
+        {activeSection === 'promotions' && (
+          <PromotionsPage />
+        )}
+        {activeSection === 'settings' && (
           <SettingsPage settings={data.settings} onToggle={setSetting} />
         )}
       </ManagerLayout>

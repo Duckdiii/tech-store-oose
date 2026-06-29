@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, String> {
@@ -21,6 +22,39 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
 	List<Order> findByCustomerIdAndOrderDateBetweenOrderByOrderDateDesc(
 			String customerId, LocalDateTime startDate, LocalDateTime endDate);
+
+	@Query(value = """
+			select exists (
+				select 1
+				from information_schema.columns
+				where table_schema = current_schema()
+				and table_name = 'orders'
+				and column_name = 'promotion_id'
+			)
+			""", nativeQuery = true)
+	boolean hasPromotionIdColumn();
+
+	@Query(value = "select count(*) > 0 from orders where promotion_id = :promotionId", nativeQuery = true)
+	boolean existsByPromotionId(@Param("promotionId") String promotionId);
+
+	@Query(value = """
+			select
+				count(o.id) as usageCount,
+				coalesce(sum(i.discount_amount), 0) as totalDiscountAmount,
+				coalesce(sum(i.original_amount), 0) as totalOrderAmount
+			from orders o
+			left join invoices i on i.order_id = o.id
+			where o.promotion_id = :promotionId
+			""", nativeQuery = true)
+	PromotionPerformanceStats getPromotionPerformanceStats(@Param("promotionId") String promotionId);
+
+	interface PromotionPerformanceStats {
+		Long getUsageCount();
+
+		BigDecimal getTotalDiscountAmount();
+
+		BigDecimal getTotalOrderAmount();
+	}
 
 	@Query("SELECT DISTINCT o FROM Order o " +
 		   "JOIN FETCH o.items i " +

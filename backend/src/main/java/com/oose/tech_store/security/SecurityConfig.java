@@ -41,6 +41,7 @@ public class SecurityConfig {
                                                                 "/api/payments/vnpay/ipn")
                                                 .permitAll()
                                                 .requestMatchers("/api/bundle-services/**").permitAll()
+                                                .requestMatchers("/api/promotions/**").hasRole("MANAGER")
                                                 .requestMatchers("/api/payments/**").hasRole("CUSTOMER")
                                                 .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                                                 .requestMatchers("/api/orders/**").hasRole("CUSTOMER")
