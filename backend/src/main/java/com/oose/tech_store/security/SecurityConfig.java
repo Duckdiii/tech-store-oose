@@ -40,6 +40,8 @@ public class SecurityConfig {
                                                                 "/api/admin/warehouse/export/**",
                                                                 "/api/warehouse/receipts/**")
                                                 .hasAnyRole("STAFF", "MANAGER")
+                                                .requestMatchers("/api/admin/supply-orders/**").hasAnyRole("STAFF", "MANAGER")
+                                                .requestMatchers("/api/admin/suppliers/**").hasAnyRole("STAFF", "MANAGER")
                                                 .requestMatchers("/api/admin/**").hasRole("MANAGER")
                                                 .requestMatchers("/api/payments/**").hasRole("CUSTOMER")
                                                 .requestMatchers("/api/cart/**").hasRole("CUSTOMER")

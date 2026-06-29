@@ -13,11 +13,11 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { SuppliersPage } from './pages/SuppliersPage';
-import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { SupplyOrdersPage } from './pages/SupplyOrdersPage';
 import { SupplierForm } from './components/SupplierForm';
-import { PurchaseOrderForm } from './components/PurchaseOrderForm';
+import { SupplyOrderForm } from './components/SupplyOrderForm';
 import { supplierApi } from '../../api/supplierApi';
-import { purchaseOrderApi } from '../../api/purchaseOrderApi';
+import { supplyOrderApi } from '../../api/supplyOrderApi';
 import { useEffect } from 'react';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
@@ -54,9 +54,9 @@ export function ManagerPortal() {
       try {
         const [sups, pos] = await Promise.all([
           supplierApi.getAll(),
-          purchaseOrderApi.getAll()
+          supplyOrderApi.getAll()
         ]);
-        setData(prev => ({ ...prev, suppliers: sups, purchaseOrders: pos }));
+        setData(prev => ({ ...prev, suppliers: sups, supplyOrders: pos }));
       } catch (err) {
         console.error("Failed to fetch from API", err);
       }
@@ -234,11 +234,11 @@ export function ManagerPortal() {
     }
   };
 
-  const savePurchaseOrder = async (poData) => {
+  const saveSupplyOrder = async (poData) => {
     try {
-      await purchaseOrderApi.create(poData);
-      const pos = await purchaseOrderApi.getAll();
-      setData(prev => ({ ...prev, purchaseOrders: pos }));
+      await supplyOrderApi.create(poData);
+      const pos = await supplyOrderApi.getAll();
+      setData(prev => ({ ...prev, supplyOrders: pos }));
       setToast('Đã tạo đơn nhập hàng');
       setPoFormOpen(false);
     } catch (err) {
@@ -246,11 +246,11 @@ export function ManagerPortal() {
     }
   };
 
-  const updatePOStatus = async (id, status) => {
+  const updateSOStatus = async (id, status) => {
     try {
-      await purchaseOrderApi.updateStatus(id, status);
-      const pos = await purchaseOrderApi.getAll();
-      setData(prev => ({ ...prev, purchaseOrders: pos }));
+      await supplyOrderApi.updateStatus(id, status);
+      const pos = await supplyOrderApi.getAll();
+      setData(prev => ({ ...prev, supplyOrders: pos }));
       setToast(`Đã cập nhật trạng thái đơn thành ${status}`);
     } catch (err) {
       setToast('Lỗi: ' + (err.response?.data?.message || err.message));
@@ -307,11 +307,11 @@ export function ManagerPortal() {
             onDelete={deleteSupplier}
           />
         )}
-        {activeSection === 'purchase-orders' && (
-          <PurchaseOrdersPage 
-            purchaseOrders={data.purchaseOrders}
+        {activeSection === 'supply-orders' && (
+          <SupplyOrdersPage
+            supplyOrders={data.supplyOrders}
             onAdd={() => setPoFormOpen(true)}
-            onUpdateStatus={updatePOStatus}
+            onUpdateStatus={updateSOStatus}
           />
         )}
         {activeSection === 'settings' && (
@@ -342,7 +342,7 @@ export function ManagerPortal() {
       )}
       {staffFormOpen && <StaffForm onSave={addStaff} onClose={() => setStaffFormOpen(false)} />}
       {supplierFormOpen && <SupplierForm supplier={editingSupplier} onSave={saveSupplier} onClose={() => { setSupplierFormOpen(false); setEditingSupplier(null); }} />}
-      {poFormOpen && <PurchaseOrderForm suppliers={data.suppliers} products={data.products} onSave={savePurchaseOrder} onClose={() => setPoFormOpen(false)} />}
+      {poFormOpen && <SupplyOrderForm suppliers={data.suppliers} products={data.products} onSave={saveSupplyOrder} onClose={() => setPoFormOpen(false)} />}
       {toast && (
         <div className="admin-toast" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>✓ {toast}</span>

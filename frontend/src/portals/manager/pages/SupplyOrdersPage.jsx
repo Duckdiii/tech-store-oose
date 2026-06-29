@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react';
 import { Status, DataTable, EmptyState } from '../components/index';
 import { money, sortRows } from '../utils';
 
-export function PurchaseOrdersPage({ purchaseOrders, onAdd, onUpdateStatus }) {
+export function SupplyOrdersPage({ supplyOrders, onAdd, onUpdateStatus }) {
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState('asc');
 
-  const visible = useMemo(() => sortRows(purchaseOrders, sortKey, sortDir), [purchaseOrders, sortKey, sortDir]);
+  const visible = useMemo(() => sortRows(supplyOrders, sortKey, sortDir), [supplyOrders, sortKey, sortDir]);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
@@ -34,7 +34,7 @@ export function PurchaseOrdersPage({ purchaseOrders, onAdd, onUpdateStatus }) {
     <>
       <div className="admin-page-intro">
         <div>
-          <p>{purchaseOrders.length} đơn nhập hàng hiển thị</p>
+          <p>{supplyOrders.length} đơn nhập hàng hiển thị</p>
           <h2>Đơn nhập hàng</h2>
         </div>
         <button className="admin-button" onClick={onAdd}>+ Tạo đơn nhập hàng</button>

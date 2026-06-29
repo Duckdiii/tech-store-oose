@@ -66,7 +66,7 @@ export const INITIAL_DATA = {
   ],
   settings: { stockAlert: true, orderAlert: true, weeklyReport: false },
   suppliers: [],
-  purchaseOrders: []
+  supplyOrders: []
 };
 
 export const LAST_BACKUP = '24/06/2026 02:00';
@@ -77,7 +77,7 @@ export const NAV_ITEMS = [
   ['orders',    'Đơn hàng'],
   ['warehouse', 'Kho hàng'],
   ['suppliers', 'Nhà cung cấp'],
-  ['purchase-orders', 'Đơn nhập hàng'],
+  ['supply-orders', 'Đơn nhập hàng'],
   ['customers', 'Khách hàng'],
   ['staff',     'Nhân viên'],
   ['reports',   'Báo cáo'],
@@ -90,7 +90,7 @@ export const PAGE_META = {
   orders:    ['Quản lý đơn hàng',   'Theo dõi và cập nhật trạng thái đơn hàng'],
   warehouse: ['Quản lý kho',        'Nhập, xuất và theo dõi biến động tồn kho'],
   suppliers: ['Nhà cung cấp',       'Quản lý thông tin các nhà cung cấp sản phẩm'],
-  'purchase-orders': ['Đơn nhập hàng', 'Tạo và quản lý các đơn đặt hàng với nhà cung cấp'],
+  'supply-orders': ['Đơn nhập hàng', 'Tạo và quản lý các đơn đặt hàng với nhà cung cấp'],
   customers: ['Khách hàng',         'Quản lý thông tin và hạng thành viên khách hàng'],
   staff:     ['Nhân viên',          'Quản lý nhân sự và phân quyền hệ thống'],
   reports:   ['Báo cáo doanh thu',  'Tổng hợp kết quả kinh doanh trong tháng'],

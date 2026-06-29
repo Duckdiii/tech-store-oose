@@ -4,11 +4,11 @@ import com.oose.tech_store.dto.supplier.CreateSupplierRequestDTO;
 import com.oose.tech_store.dto.supplier.SupplierResponseDTO;
 import com.oose.tech_store.dto.supplier.UpdateSupplierRequestDTO;
 import com.oose.tech_store.entity.Supplier;
-import com.oose.tech_store.entity.enums.PurchaseOrderStatus;
+import com.oose.tech_store.entity.enums.SupplyOrderStatus;
 import com.oose.tech_store.exception.DuplicateSupplierException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.exception.SupplierHasActivePOException;
-import com.oose.tech_store.repository.PurchaseOrderRepository;
+import com.oose.tech_store.repository.SupplyOrderRepository;
 import com.oose.tech_store.repository.SupplierRepository;
 import com.oose.tech_store.service.SupplierService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.List;
 public class SupplierServiceImpl implements SupplierService {
 
     private final SupplierRepository supplierRepository;
-    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final SupplyOrderRepository supplyOrderRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -51,9 +51,8 @@ public class SupplierServiceImpl implements SupplierService {
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
 
-        if (hasActivePurchaseOrders(id)) {
-            return new SupplierResponseDTO(supplier.getId(), supplier.getName(), supplier.getTaxCode(), 
-                    "Some fields cannot be edited while active POs exist");
+        if (hasActiveSupplyOrders(id)) {
+            throw new SupplierHasActivePOException("Cannot update: supplier has active Supply Orders");
         }
 
         supplier.setName(request.name());
@@ -70,19 +69,19 @@ public class SupplierServiceImpl implements SupplierService {
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
 
-        if (hasActivePurchaseOrders(id)) {
-            throw new SupplierHasActivePOException("Cannot remove: supplier has active Purchase Orders");
+        if (hasActiveSupplyOrders(id)) {
+            throw new SupplierHasActivePOException("Cannot remove: supplier has active Supply Orders");
         }
 
         supplierRepository.delete(supplier);
     }
 
-    private boolean hasActivePurchaseOrders(String supplierId) {
-        List<PurchaseOrderStatus> activeStatuses = List.of(
-                PurchaseOrderStatus.PENDING,
-                PurchaseOrderStatus.CONFIRMED,
-                PurchaseOrderStatus.SHIPPING
+    private boolean hasActiveSupplyOrders(String supplierId) {
+        List<SupplyOrderStatus> activeStatuses = List.of(
+                SupplyOrderStatus.PENDING,
+                SupplyOrderStatus.CONFIRMED,
+                SupplyOrderStatus.SHIPPING
         );
-        return purchaseOrderRepository.countBySupplierIdAndStatusIn(supplierId, activeStatuses) > 0;
+        return supplyOrderRepository.countBySupplierIdAndStatusIn(supplierId, activeStatuses) > 0;
     }
 }

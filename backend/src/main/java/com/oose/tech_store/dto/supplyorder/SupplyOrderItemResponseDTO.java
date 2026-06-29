@@ -1,8 +1,8 @@
-package com.oose.tech_store.dto.purchaseorder;
+package com.oose.tech_store.dto.supplyorder;
 
 import java.math.BigDecimal;
 
-public record PurchaseOrderItemResponseDTO(
+public record SupplyOrderItemResponseDTO(
         String id,
         String productId,
         String productName,

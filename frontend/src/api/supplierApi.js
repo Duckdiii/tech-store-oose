@@ -1,22 +1,10 @@
-import axios from 'axios';
+import { httpClient } from './httpClient';
 
-const API_URL = 'http://localhost:8080/api/suppliers';
+const BASE = '/admin/suppliers';
 
 export const supplierApi = {
-  getAll: async () => {
-    const response = await axios.get(API_URL);
-    return response.data;
-  },
-  create: async (data) => {
-    const response = await axios.post(API_URL, data);
-    return response.data;
-  },
-  update: async (id, data) => {
-    const response = await axios.put(`${API_URL}/${id}`, data);
-    return response.data;
-  },
-  delete: async (id) => {
-    const response = await axios.delete(`${API_URL}/${id}`);
-    return response.data;
-  }
+  getAll: () => httpClient.get(BASE).then(r => r.data),
+  create: (data) => httpClient.post(BASE, data).then(r => r.data),
+  update: (id, data) => httpClient.put(`${BASE}/${id}`, data).then(r => r.data),
+  delete: (id) => httpClient.delete(`${BASE}/${id}`).then(r => r.data),
 };

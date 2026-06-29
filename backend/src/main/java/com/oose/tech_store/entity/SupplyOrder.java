@@ -1,6 +1,6 @@
 package com.oose.tech_store.entity;
 
-import com.oose.tech_store.entity.enums.PurchaseOrderStatus;
+import com.oose.tech_store.entity.enums.SupplyOrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +14,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseOrder extends BaseEntity {
+public class SupplyOrder extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
@@ -22,17 +22,17 @@ public class PurchaseOrder extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    private PurchaseOrderStatus status = PurchaseOrderStatus.PENDING;
+    private SupplyOrderStatus status = SupplyOrderStatus.PENDING;
 
-    @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PurchaseOrderItem> items = new ArrayList<>();
+    @OneToMany(mappedBy = "supplyOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SupplyOrderItem> items = new ArrayList<>();
 
-    public PurchaseOrder(Supplier supplier) {
+    public SupplyOrder(Supplier supplier) {
         this.supplier = supplier;
     }
 
-    public void addItem(PurchaseOrderItem item) {
+    public void addItem(SupplyOrderItem item) {
         items.add(item);
-        item.setPurchaseOrder(this);
+        item.setSupplyOrder(this);
     }
 }

@@ -12,11 +12,11 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @NoArgsConstructor
-public class PurchaseOrderItem extends BaseEntity {
+public class SupplyOrderItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "purchase_order_id", nullable = false)
-    private PurchaseOrder purchaseOrder;
+    private SupplyOrder supplyOrder;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
@@ -27,7 +27,7 @@ public class PurchaseOrderItem extends BaseEntity {
 
     @Column(name = "price", nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
-    
+
     @Column(name = "ram_gb")
     private Integer ramGb;
 
@@ -37,7 +37,7 @@ public class PurchaseOrderItem extends BaseEntity {
     @Column(name = "color", length = 80)
     private String color;
 
-    public PurchaseOrderItem(Product product, Integer quantity, BigDecimal price, Integer ramGb, Integer storageGb, String color) {
+    public SupplyOrderItem(Product product, Integer quantity, BigDecimal price, Integer ramGb, Integer storageGb, String color) {
         this.product = product;
         this.quantity = quantity;
         this.price = price;

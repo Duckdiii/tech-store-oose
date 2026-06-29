@@ -1,4 +1,4 @@
-package com.oose.tech_store.dto.purchaseorder;
+package com.oose.tech_store.dto.supplyorder;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
-public record PurchaseOrderItemRequestDTO(
+public record SupplyOrderItemRequestDTO(
         @NotBlank(message = "Product ID is required")
         String productId,
 

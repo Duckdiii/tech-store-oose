@@ -1,7 +1,7 @@
 package com.oose.tech_store.service;
 
-import com.oose.tech_store.entity.PurchaseOrder;
+import com.oose.tech_store.entity.SupplyOrder;
 
 public interface WarehouseService {
-    void importProducts(PurchaseOrder purchaseOrder, String performedBy);
+    void importProducts(SupplyOrder supplyOrder, String performedBy);
 }
