@@ -2,6 +2,7 @@ package com.oose.tech_store.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
@@ -26,6 +27,7 @@ public class SecurityConfig {
                                                 .securityContextRepository(securityContextRepository))
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/api/health", "/api/auth/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                                                 // Payment gateway callbacks must remain public (external servers +
                                                 // browser redirects)
                                                 .requestMatchers(
@@ -48,6 +50,10 @@ public class SecurityConfig {
                                                 .hasAnyRole("STAFF", "MANAGER")
                                                 .requestMatchers("/api/admin/**").hasRole("MANAGER")
                                                 .requestMatchers("/api/promotions/**").hasRole("MANAGER")
+                                                .requestMatchers("/api/reports/**", "/api/payment-logs/**")
+                                                .hasRole("MANAGER")
+                                                .requestMatchers("/api/products/*/notifications/subscription")
+                                                .hasRole("CUSTOMER")
                                                 .requestMatchers("/api/payments/**").hasRole("CUSTOMER")
                                                 .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                                                 .requestMatchers("/api/orders/**").hasRole("CUSTOMER")

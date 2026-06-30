@@ -26,9 +26,14 @@ export const productApi = {
     return (response.data || []).map(normalizeProductForManager);
   },
 
-  getProductDetail: async (id) => {
+  getManagerProductDetail: async (id) => {
     const response = await httpClient.get(`/admin/products/${id}`);
     return normalizeProductForManager(response.data);
+  },
+
+  getCustomerProductDetail: async (id) => {
+    const response = await httpClient.get(`/products/${id}`);
+    return response.data;
   },
 
   createManagerProduct: async (payload) => {

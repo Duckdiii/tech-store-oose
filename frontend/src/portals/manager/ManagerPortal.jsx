@@ -209,7 +209,7 @@ export function ManagerPortal() {
   const openProductDetail = async (product) => {
     setProductDetailId(product.id);
     try {
-      const detail = await productApi.getProductDetail(product.id);
+      const detail = await productApi.getManagerProductDetail(product.id);
       setData((prev) => ({
         ...prev,
         products: prev.products.map((item) => item.id === product.id ? { ...item, ...detail } : item),
