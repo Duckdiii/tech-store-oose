@@ -1,10 +1,8 @@
 package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.payment.*;
-import com.oose.tech_store.payment.gateway.MomoPaymentGateway;
-import com.oose.tech_store.payment.gateway.VNPayPaymentGateway;
+import com.oose.tech_store.facade.PaymentFacade;
 import com.oose.tech_store.security.CustomerSecurityHelper;
-import com.oose.tech_store.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,15 +17,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentController {
 
-    private final PaymentService paymentService;
+    private final PaymentFacade paymentFacade;
     private final CustomerSecurityHelper securityHelper;
-    private final MomoPaymentGateway momoGateway;
-    private final VNPayPaymentGateway vnpayGateway;
 
     @GetMapping("/checkout/summary")
     public ResponseEntity<CheckoutSummaryResponse> getCheckoutSummary(Authentication authentication) {
         String customerId = securityHelper.resolveCustomerId(authentication);
-        return ResponseEntity.ok(paymentService.getCheckoutSummary(customerId));
+        return ResponseEntity.ok(paymentFacade.getCheckoutSummary(customerId));
     }
 
     @PostMapping("/checkout")
@@ -37,14 +33,14 @@ public class PaymentController {
             HttpServletRequest httpRequest) {
         String customerId = securityHelper.resolveCustomerId(authentication);
         String clientIp = extractClientIp(httpRequest);
-        return ResponseEntity.ok(paymentService.initializePayment(customerId, request, clientIp));
+        return ResponseEntity.ok(paymentFacade.initializePayment(customerId, request, clientIp));
     }
 
     // MoMo redirects browser here after payment
     @GetMapping("/momo/return")
     public ResponseEntity<PaymentResultResponse> handleMomoReturn(
             @RequestParam Map<String, String> params) {
-        return ResponseEntity.ok(paymentService.handleMomoReturn(params));
+        return ResponseEntity.ok(paymentFacade.handleMomoReturn(params));
     }
 
     // MoMo server-to-server IPN — verify signature then acknowledge
@@ -58,7 +54,7 @@ public class PaymentController {
         response.put("responseTime", System.currentTimeMillis());
         response.put("extraData", request.extraData() != null ? request.extraData() : "");
 
-        if (!momoGateway.verifyIpnSignature(request)) {
+        if (!paymentFacade.verifyMomoIpn(request)) {
             response.put("resultCode", 1);
             response.put("message", "Invalid signature");
             return ResponseEntity.ok(response);
@@ -73,14 +69,14 @@ public class PaymentController {
     @GetMapping("/vnpay/return")
     public ResponseEntity<PaymentResultResponse> handleVNPayReturn(
             @RequestParam Map<String, String> params) {
-        return ResponseEntity.ok(paymentService.handleVNPayReturn(params));
+        return ResponseEntity.ok(paymentFacade.handleVNPayReturn(params));
     }
 
     // VNPay server-to-server IPN — verify signature then acknowledge
     @PostMapping("/vnpay/ipn")
     public ResponseEntity<Map<String, String>> handleVNPayIpn(
             @RequestParam Map<String, String> params) {
-        if (!vnpayGateway.verifySignature(params)) {
+        if (!paymentFacade.verifyVNPayIpn(params)) {
             return ResponseEntity.ok(Map.of("RspCode", "97", "Message", "Invalid Signature"));
         }
         return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));

@@ -6,8 +6,7 @@ import com.oose.tech_store.dto.warehouse.WarehouseLogRequestDTO;
 import com.oose.tech_store.dto.warehouse.WarehouseLogResponseDTO;
 import com.oose.tech_store.dto.warehouse.WarehouseLogType;
 import com.oose.tech_store.entity.enums.ImportAndExportStatus;
-import com.oose.tech_store.service.WarehouseLogExportService;
-import com.oose.tech_store.service.WarehouseLogService;
+import com.oose.tech_store.facade.WarehouseFacade;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class WarehouseLogController {
 
-    private final WarehouseLogService warehouseLogService;
-    private final WarehouseLogExportService warehouseLogExportService;
+    private final WarehouseFacade warehouseFacade;
 
     @GetMapping
     public WarehouseLogResponseDTO getWarehouseLogs(
@@ -39,7 +37,7 @@ public class WarehouseLogController {
             @RequestParam(required = false) WarehouseLogType logType,
             @RequestParam(required = false) ImportAndExportStatus status,
             @RequestParam(required = false) String performedBy) {
-        return warehouseLogService.getWarehouseLogs(
+        return warehouseFacade.getLogs(
                 createRequest(from, to, logType, status, performedBy));
     }
 
@@ -47,7 +45,7 @@ public class WarehouseLogController {
     public WarehouseLogDetailResponseDTO getWarehouseLogDetail(
             @PathVariable WarehouseLogType logType,
             @PathVariable String logId) {
-        return warehouseLogService.getWarehouseLogDetail(logType, logId);
+        return warehouseFacade.getLogDetail(logType, logId);
     }
 
     @GetMapping("/export")
@@ -60,7 +58,7 @@ public class WarehouseLogController {
             @RequestParam(required = false) ImportAndExportStatus status,
             @RequestParam(required = false) String performedBy,
             @RequestParam(defaultValue = "CSV") WarehouseLogFileFormat format) {
-        byte[] file = warehouseLogExportService.export(
+        byte[] file = warehouseFacade.exportLogs(
                 createRequest(from, to, logType, status, performedBy), format);
 
         HttpHeaders headers = new HttpHeaders();
