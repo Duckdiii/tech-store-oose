@@ -53,7 +53,6 @@ public class WarehouseServiceImpl implements WarehouseService {
 
                     ImportProductRequestDTO request = new ImportProductRequestDTO(
                             productId,
-                            null,
                             "Imported from Supply Order: " + supplyOrder.getId(),
                             importItems
                     );

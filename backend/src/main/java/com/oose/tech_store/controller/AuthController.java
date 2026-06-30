@@ -1,7 +1,8 @@
 package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.account.LoginRequest;
-import com.oose.tech_store.dto.account.LoginResponse;
+import com.oose.tech_store.dto.auth.LoginResponse;
+import com.oose.tech_store.security.JwtService;
 import com.oose.tech_store.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,12 +23,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService jwtService;
     private final SecurityContextRepository securityContextRepository;
     private final SessionRegistry sessionRegistry;
 
-    public AuthController(AuthService authService, SecurityContextRepository securityContextRepository,
+    public AuthController(AuthService authService, JwtService jwtService,
+            SecurityContextRepository securityContextRepository,
             SessionRegistry sessionRegistry) {
         this.authService = authService;
+        this.jwtService = jwtService;
         this.securityContextRepository = securityContextRepository;
         this.sessionRegistry = sessionRegistry;
     }
@@ -44,7 +48,9 @@ public class AuthController {
         if (session != null) {
             sessionRegistry.registerNewSession(session.getId(), result.authentication().getPrincipal());
         }
-        return result.response();
+        var account = result.response();
+        String token = jwtService.generateToken(account.email(), account.userId(), account.role());
+        return new LoginResponse(token, account.userId(), account.email(), account.fullName(), account.role());
     }
 
     @PostMapping("/logout")

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { confirmImport, getApiError, validateImport } from '../../../../api/warehouseApi';
 import { ApiMessage, Field } from './components';
 import { blankItem } from './utils';
@@ -6,9 +7,10 @@ import { blankItem } from './utils';
 const toNumberOrNull = (value) => value === '' ? null : Number(value);
 const itemProductId = (item) => (item.productId || '').trim();
 
-export function ImportFlow({ products = [], variants = [], onInventoryChanged }) {
-  const [mode, setMode] = useState('existing');
-  const [newProduct, setNewProduct] = useState({ name: '', description: '', brandId: '', categoryId: '' });
+export function ImportFlow({ products = [], variants = [], suppliers = [], onInventoryChanged }) {
+  const location = useLocation();
+  const initialProductId = new URLSearchParams(location.search).get('productId') || '';
+  const [supplierId, setSupplierId] = useState('');
   const [note, setNote] = useState('');
   const [items, setItems] = useState([blankItem()]);
   const [preview, setPreview] = useState(null);
@@ -24,6 +26,14 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
     setError('');
   };
 
+  useEffect(() => {
+    if (!initialProductId || !products.some((product) => product.id === initialProductId)) return;
+    setItems((current) => {
+      if (current.some((item) => itemProductId(item))) return current;
+      return current.map((item, index) => index === 0 ? { ...item, productId: initialProductId } : item);
+    });
+  }, [initialProductId, products]);
+
   const updateItem = (index, key, value) => {
     setItems((current) => current.map((item, itemIndex) =>
       itemIndex === index ? { ...item, [key]: value } : item
@@ -36,7 +46,7 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
       ...current,
       {
         ...blankItem(),
-        productId: mode === 'existing' ? current[current.length - 1]?.productId || '' : '',
+        productId: current[current.length - 1]?.productId || '',
         ramGb: current[0]?.ramGb || '',
         storageGb: current[0]?.storageGb || '',
         color: current[0]?.color || '',
@@ -68,21 +78,20 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
   };
 
   const selectedProductIds = [...new Set(items.map(itemProductId).filter(Boolean))];
+  const selectedSupplier = suppliers.find((supplier) => String(supplier.id) === String(supplierId));
+
+  const importNote = () => {
+    const cleanNote = note.trim();
+    if (!selectedSupplier) return cleanNote || null;
+    const supplierText = `Nhập hàng từ nhà cung cấp ${selectedSupplier.name}`;
+    return cleanNote ? `${supplierText}. ${cleanNote}` : supplierText;
+  };
 
   const requestPayload = () => ({
     productId: null,
-    newProduct: mode === 'new'
-      ? {
-          ...newProduct,
-          name: newProduct.name.trim(),
-          description: newProduct.description.trim() || null,
-          brandId: newProduct.brandId.trim(),
-          categoryId: newProduct.categoryId.trim(),
-        }
-      : null,
-    note: note.trim() || null,
+    note: importNote(),
     items: items.map((item) => ({
-      productId: mode === 'existing' ? itemProductId(item) : null,
+      productId: itemProductId(item),
       serialId: item.serialId.trim(),
       ramGb: toNumberOrNull(item.ramGb),
       storageGb: toNumberOrNull(item.storageGb),
@@ -93,12 +102,7 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
   });
 
   const isReady = () => {
-    if (mode === 'new' && (!newProduct.name.trim() || !newProduct.brandId.trim() || !newProduct.categoryId.trim())) {
-      return false;
-    }
-    if (mode === 'existing' && items.some((item) => !itemProductId(item))) {
-      return false;
-    }
+    if (items.some((item) => !itemProductId(item))) return false;
     return items.length > 0 && items.every((item) =>
       item.serialId.trim() && Number(item.price) > 0 && Number(item.importPrice) > 0
     );
@@ -110,7 +114,7 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
     setResult(null);
 
     if (!isReady()) {
-      setError('Chọn sản phẩm, nhập mã máy, giá bán và giá nhập cho từng dòng trước khi kiểm tra.');
+      setError('Chọn sản phẩm đã có, nhập mã máy, giá bán và giá nhập cho từng dòng trước khi kiểm tra.');
       return;
     }
 
@@ -169,41 +173,29 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
       </div>
 
       <form onSubmit={validate} className="admin-card warehouse-form">
-        <div className="warehouse-mode">
-          <button type="button" className={mode === 'existing' ? 'is-active' : ''} onClick={() => { setMode('existing'); resetValidation(); }}>
-            Sản phẩm có sẵn
-          </button>
-          <button type="button" className={mode === 'new' ? 'is-active' : ''} onClick={() => { setMode('new'); resetValidation(); }}>
-            Sản phẩm mới
-          </button>
+        <div className="warehouse-hint">
+          Chỉ nhập hàng cho sản phẩm đã có trong danh mục. Nếu cần nhập sản phẩm mới, hãy tạo sản phẩm ở trang Sản phẩm trước.
+          <Link to="/manager/products"> Quản lý sản phẩm →</Link>
         </div>
 
-        {mode === 'new' && (
-          <div className="admin-form-grid">
-            <Field label="Tên sản phẩm" wide>
-              <input value={newProduct.name} onChange={(event) => { setNewProduct({ ...newProduct, name: event.target.value }); resetValidation(); }} placeholder="Ví dụ: iPhone 16 Pro Max 256GB" />
-            </Field>
-            <Field label="Mã thương hiệu">
-              <input value={newProduct.brandId} onChange={(event) => { setNewProduct({ ...newProduct, brandId: event.target.value }); resetValidation(); }} placeholder="Ví dụ: BRAND-APPLE" />
-            </Field>
-            <Field label="Mã danh mục">
-              <input value={newProduct.categoryId} onChange={(event) => { setNewProduct({ ...newProduct, categoryId: event.target.value }); resetValidation(); }} placeholder="Ví dụ: CAT-PHONE" />
-            </Field>
-            <Field label="Mô tả" wide>
-              <input value={newProduct.description} onChange={(event) => { setNewProduct({ ...newProduct, description: event.target.value }); resetValidation(); }} placeholder="Mô tả ngắn hiển thị cho sản phẩm" />
-            </Field>
-          </div>
-        )}
+        <Field label="Nhà cung cấp" wide>
+          <select value={supplierId} onChange={(event) => { setSupplierId(event.target.value); resetValidation(); }}>
+            <option value="">Không chọn nhà cung cấp</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+                {supplier.email ? ` · ${supplier.email}` : ''}
+                {supplier.phone ? ` · ${supplier.phone}` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
 
         <div className="warehouse-section-head">
           <div>
             <p>PHIẾU NHẬP · {items.length}</p>
             <h3>Danh sách sản phẩm nhập kho</h3>
-            <small>
-              {mode === 'existing'
-                ? 'Mỗi dòng có thể chọn một sản phẩm khác nhau. Mỗi mã máy là một sản phẩm vật lý riêng.'
-                : 'Sản phẩm mới được tạo một lần, các mã máy bên dưới sẽ thuộc sản phẩm đó.'}
-            </small>
+            <small>Mỗi dòng có thể chọn một sản phẩm khác nhau. Mỗi mã máy là một sản phẩm vật lý riêng.</small>
           </div>
           <div className="warehouse-section-actions">
             <button type="button" className="admin-button admin-button--secondary" onClick={applyFirstItemToAll} disabled={items.length < 2}>
@@ -215,7 +207,7 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
           </div>
         </div>
 
-        {mode === 'existing' && selectedProductIds.length > 0 && (
+        {selectedProductIds.length > 0 && (
           <div className="warehouse-product-summary">
             <div>
               <span>SẢN PHẨM ĐÃ CHỌN</span>
@@ -243,20 +235,18 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
                   )}
                 </div>
 
-                {mode === 'existing' && (
-                  <Field label="Sản phẩm trong danh mục" wide>
-                    <select value={item.productId} onChange={(event) => updateItem(index, 'productId', event.target.value)}>
-                      <option value="">Chọn sản phẩm cho dòng này</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name} · {product.id}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                )}
+                <Field label="Sản phẩm trong danh mục" wide>
+                  <select value={item.productId} onChange={(event) => updateItem(index, 'productId', event.target.value)}>
+                    <option value="">Chọn sản phẩm cho dòng này</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} · {product.id}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
 
-                {mode === 'existing' && selectedProduct && (
+                {selectedProduct && (
                   <div className="warehouse-product-summary" style={{ gridColumn: '1 / -1', margin: '0 0 4px' }}>
                     <div>
                       <span>SẢN PHẨM</span>
@@ -311,7 +301,7 @@ export function ImportFlow({ products = [], variants = [], onInventoryChanged })
         <div className="warehouse-preview">
           <p>PHIẾU NHẬP HỢP LỆ</p>
           <h3>{preview.productName}</h3>
-          <span>{preview.newProduct ? 'Sản phẩm mới' : 'Sản phẩm đã có'} · số lượng nhập: {preview.importQuantity}</span>
+          <span>Sản phẩm đã có · số lượng nhập: {preview.importQuantity}</span>
           <div>
             <button className="admin-button" disabled={loading} onClick={confirm}>
               {loading ? 'Đang lưu...' : 'Xác nhận nhập kho'}

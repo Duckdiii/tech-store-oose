@@ -1,7 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ManagerLayout } from './layout/ManagerLayout';
-import { ProductForm, VariantForm, VariantManager, StaffForm } from './components/index';
+import { StaffForm } from './components/index';
+import { ProductForm } from './components/ProductForm';
+import { ProductDetailModal } from './components/ProductDetailModal';
 import { downloadCsv } from './utils';
 import { INITIAL_DATA, PAGE_META } from './constants';
 import { DashboardPage } from './pages/DashboardPage';
@@ -13,15 +15,43 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { SuppliersPage } from './pages/SuppliersPage';
-import { SupplyOrdersPage } from './pages/SupplyOrdersPage';
 import { SupplierForm } from './components/SupplierForm';
-import { SupplyOrderForm } from './components/SupplyOrderForm';
 import { supplierApi } from '../../api/supplierApi';
-import { supplyOrderApi } from '../../api/supplyOrderApi';
-import { useEffect } from 'react';
+import { getWarehouseInventory } from '../../api/warehouseApi';
+import { productApi } from '../../api/productApi';
 import { PromotionsPage } from './pages/PromotionsPage';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
+const MANAGER_INITIAL_DATA = { ...INITIAL_DATA, products: [], variants: [] };
+
+const apiMessage = (error) =>
+  error?.response?.data?.message || error?.message || 'Không thể kết nối API';
+
+const mergeCatalogWithInventory = (catalogProducts = [], inventory = { products: [], variants: [] }) => {
+  const inventoryById = new Map((inventory.products || []).map((product) => [product.id, product]));
+  const catalogById = new Map(catalogProducts.map((product) => [product.id, product]));
+
+  const mergedProducts = catalogProducts.map((product) => {
+    const inventoryProduct = inventoryById.get(product.id) || {};
+    return {
+      ...inventoryProduct,
+      ...product,
+      brand: product.brand || inventoryProduct.brand || '',
+      brandId: product.brandId || inventoryProduct.brandId || null,
+      category: product.category || inventoryProduct.category || '',
+      categoryId: product.categoryId || inventoryProduct.categoryId || null,
+    };
+  });
+
+  for (const product of inventory.products || []) {
+    if (!catalogById.has(product.id)) mergedProducts.push(product);
+  }
+
+  return {
+    products: mergedProducts,
+    variants: inventory.variants || [],
+  };
+};
 
 export function ManagerPortal() {
   const location = useLocation();
@@ -33,19 +63,18 @@ export function ManagerPortal() {
   const [data, setData] = useState(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('techstore_admin_state') || '{}');
-      return { ...INITIAL_DATA, ...stored, variants: Array.isArray(stored.variants) ? stored.variants : INITIAL_DATA.variants };
+      const { products, variants, supplyOrders, ...safeStored } = stored;
+      return { ...MANAGER_INITIAL_DATA, ...safeStored };
     } catch {
-      return INITIAL_DATA;
+      return MANAGER_INITIAL_DATA;
     }
   });
   const [query, setQuery] = useState('');
   const [productForm, setProductForm] = useState(null);
-  const [variantProductId, setVariantProductId] = useState(null);
-  const [variantForm, setVariantForm] = useState(null);
+  const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
   const [supplierFormOpen, setSupplierFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
-  const [poFormOpen, setPoFormOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [undoData, setUndoData] = useState(null);
   const toastTimerRef = useRef(null);
@@ -53,17 +82,53 @@ export function ManagerPortal() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sups, pos] = await Promise.all([
-          supplierApi.getAll(),
-          supplyOrderApi.getAll()
-        ]);
-        setData(prev => ({ ...prev, suppliers: sups, supplyOrders: pos }));
+        const sups = await supplierApi.getAll();
+        setData(prev => ({ ...prev, suppliers: sups }));
       } catch (err) {
         console.error("Failed to fetch from API", err);
       }
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!['dashboard', 'products', 'warehouse'].includes(activeSection)) return;
+
+    const syncCatalogFromApi = async () => {
+      const [catalogResult, inventoryResult] = await Promise.allSettled([
+        productApi.getManagerCatalog(),
+        getWarehouseInventory(),
+      ]);
+
+      if (catalogResult.status === 'rejected' && inventoryResult.status === 'rejected') {
+        console.error('Failed to sync product catalog API', catalogResult.reason);
+        console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
+        setData((prev) => ({ ...prev, products: [], variants: [] }));
+        return;
+      }
+
+      if (catalogResult.status === 'rejected') {
+        console.error('Failed to sync product catalog API', catalogResult.reason);
+      }
+      if (inventoryResult.status === 'rejected') {
+        console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
+      }
+
+      const catalogProducts = catalogResult.status === 'fulfilled' ? catalogResult.value : [];
+      const inventory = inventoryResult.status === 'fulfilled'
+        ? inventoryResult.value
+        : { products: [], variants: [] };
+      const merged = mergeCatalogWithInventory(catalogProducts, inventory);
+
+      setData((prev) => ({
+        ...prev,
+        products: merged.products,
+        variants: merged.variants,
+      }));
+    };
+
+    syncCatalogFromApi();
+  }, [activeSection, warehouseView]);
 
   const showToast = (message, ttl = 2600) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -122,12 +187,14 @@ export function ManagerPortal() {
     const variants = data.variants.filter((v) => v.productId === product.id);
     const available = variants.filter((v) => v.status === 'AVAILABLE');
     const prices = variants.map((v) => v.price).filter(Boolean);
-    const stock = available.length;
+    const stock = variants.length ? available.length : Number(product.stock || 0);
+    const variantCount = variants.length || Number(product.variantCount || 0);
+    const price = prices.length ? Math.min(...prices) : Number(product.price || 0);
     return {
       ...product,
       stock,
-      variantCount: variants.length,
-      price: prices.length ? Math.min(...prices) : 0,
+      variantCount,
+      price,
       status: stock === 0 ? 'Tạm ẩn' : stock < 6 ? 'Sắp hết hàng' : 'Đang bán',
     };
   }), [data.products, data.variants]);
@@ -137,41 +204,67 @@ export function ManagerPortal() {
     [productRows, query]
   );
 
-  const selectedVariantProduct = data.products.find((p) => p.id === variantProductId);
-  const selectedVariants = data.variants.filter((v) => v.productId === variantProductId);
+  const selectedDetailProduct = data.products.find((p) => p.id === productDetailId);
 
-  const saveProduct = (product) => {
+  const openProductDetail = async (product) => {
+    setProductDetailId(product.id);
+    try {
+      const detail = await productApi.getProductDetail(product.id);
+      setData((prev) => ({
+        ...prev,
+        products: prev.products.map((item) => item.id === product.id ? { ...item, ...detail } : item),
+      }));
+    } catch (err) {
+      console.error('Failed to load product detail', err);
+    }
+  };
+
+  const saveProduct = async (product) => {
     const exists = data.products.some((item) => item.id === product.id);
-    const next = { ...product, id: exists ? product.id : `SP-${String(data.products.length + 1).padStart(3, '0')}` };
-    commit(
-      { ...data, products: exists ? data.products.map((item) => item.id === product.id ? next : item) : [next, ...data.products] },
-      exists ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm mới'
-    );
-    setProductForm(null);
+    const { id, stock, variantCount, price, status, imagesText, ...payload } = product;
+
+    try {
+      const savedProduct = exists
+        ? await productApi.updateManagerProduct(product.id, payload)
+        : await productApi.createManagerProduct(payload);
+
+      const currentProduct = data.products.find((item) => item.id === savedProduct.id) || {};
+      const nextProduct = {
+        ...currentProduct,
+        ...savedProduct,
+        stock: currentProduct.stock ?? savedProduct.stock ?? 0,
+        variantCount: currentProduct.variantCount ?? savedProduct.variantCount ?? 0,
+        status: currentProduct.status || savedProduct.status || 'Tạm ẩn',
+      };
+
+      commit(
+        {
+          ...data,
+          products: exists
+            ? data.products.map((item) => item.id === savedProduct.id ? nextProduct : item)
+            : [nextProduct, ...data.products],
+        },
+        exists ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm mới'
+      );
+      setProductForm(null);
+    } catch (error) {
+      setToast(apiMessage(error));
+      throw error;
+    }
   };
 
-  const deleteProduct = (productId) => {
-    commitWithUndo(
-      { ...data, products: data.products.filter((p) => p.id !== productId), variants: data.variants.filter((v) => v.productId !== productId) },
-      'Đã xóa sản phẩm'
-    );
-    if (variantProductId === productId) setVariantProductId(null);
+  const deleteProduct = async (productId) => {
+    try {
+      await productApi.deleteManagerProduct(productId);
+      commitWithUndo(
+        { ...data, products: data.products.filter((p) => p.id !== productId), variants: data.variants.filter((v) => v.productId !== productId) },
+        'Đã xóa sản phẩm'
+      );
+      if (productDetailId === productId) setProductDetailId(null);
+    } catch (error) {
+      setToast(apiMessage(error));
+    }
   };
-
-  const saveVariant = (variant, isNew) => {
-    const exists = data.variants.some((v) => v.id === variant.id);
-    if (isNew && exists) { setToast('Serial ID đã tồn tại'); return; }
-    commit(
-      { ...data, variants: exists ? data.variants.map((v) => v.id === variant.id ? variant : v) : [variant, ...data.variants] },
-      exists ? 'Đã cập nhật ProductVariant' : 'Đã thêm ProductVariant mới'
-    );
-    setVariantForm(null);
-  };
-
-  const deleteVariant = (variantId) => commit(
-    { ...data, variants: data.variants.filter((v) => v.id !== variantId) },
-    'Đã xóa ProductVariant'
-  );
 
   const changeOrderStatus = (id, status) => commit(
     { ...data, orders: data.orders.map((o) => o.id === id ? { ...o, status } : o) },
@@ -235,29 +328,6 @@ export function ManagerPortal() {
     }
   };
 
-  const saveSupplyOrder = async (poData) => {
-    try {
-      await supplyOrderApi.create(poData);
-      const pos = await supplyOrderApi.getAll();
-      setData(prev => ({ ...prev, supplyOrders: pos }));
-      setToast('Đã tạo đơn nhập hàng');
-      setPoFormOpen(false);
-    } catch (err) {
-      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const updateSOStatus = async (id, status) => {
-    try {
-      await supplyOrderApi.updateStatus(id, status);
-      const pos = await supplyOrderApi.getAll();
-      setData(prev => ({ ...prev, supplyOrders: pos }));
-      setToast(`Đã cập nhật trạng thái đơn thành ${status}`);
-    } catch (err) {
-      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
   return (
     <>
       <ManagerLayout activeSection={activeSection} title={title} query={query} onQueryChange={setQuery} breadcrumbs={breadcrumbs} badges={badges}>
@@ -269,7 +339,7 @@ export function ManagerPortal() {
             products={filteredProducts}
             onAdd={() => setProductForm({})}
             onEdit={(product) => setProductForm(product)}
-            onViewVariants={(product) => setVariantProductId(product.id)}
+            onViewDetails={openProductDetail}
             onDelete={deleteProduct}
           />
         )}
@@ -285,7 +355,7 @@ export function ManagerPortal() {
           />
         )}
         {activeSection === 'warehouse' && (
-          <WarehousePage view={warehouseView} navigate={navigate} products={data.products} variants={data.variants} />
+          <WarehousePage view={warehouseView} navigate={navigate} suppliers={data.suppliers} />
         )}
         {activeSection === 'customers' && (
           <CustomersPage customers={data.customers} onToggle={toggleCustomer} />
@@ -308,13 +378,6 @@ export function ManagerPortal() {
             onDelete={deleteSupplier}
           />
         )}
-        {activeSection === 'supply-orders' && (
-          <SupplyOrdersPage
-            supplyOrders={data.supplyOrders}
-            onAdd={() => setPoFormOpen(true)}
-            onUpdateStatus={updateSOStatus}
-          />
-        )}
         {activeSection === 'promotions' && (
           <PromotionsPage />
         )}
@@ -326,27 +389,14 @@ export function ManagerPortal() {
       {productForm && (
         <ProductForm product={productForm.id ? productForm : null} onSave={saveProduct} onClose={() => setProductForm(null)} />
       )}
-      {selectedVariantProduct && (
-        <VariantManager
-          product={selectedVariantProduct}
-          variants={selectedVariants}
-          onAdd={() => setVariantForm({ productId: selectedVariantProduct.id })}
-          onEdit={setVariantForm}
-          onDelete={deleteVariant}
-          onClose={() => setVariantProductId(null)}
-        />
-      )}
-      {variantForm && (
-        <VariantForm
-          product={data.products.find((p) => p.id === variantForm.productId) || selectedVariantProduct}
-          variant={variantForm.id ? variantForm : null}
-          onSave={(variant) => saveVariant(variant, !variantForm.id)}
-          onClose={() => setVariantForm(null)}
+      {selectedDetailProduct && (
+        <ProductDetailModal
+          product={selectedDetailProduct}
+          onClose={() => setProductDetailId(null)}
         />
       )}
       {staffFormOpen && <StaffForm onSave={addStaff} onClose={() => setStaffFormOpen(false)} />}
       {supplierFormOpen && <SupplierForm supplier={editingSupplier} onSave={saveSupplier} onClose={() => { setSupplierFormOpen(false); setEditingSupplier(null); }} />}
-      {poFormOpen && <SupplyOrderForm suppliers={data.suppliers} products={data.products} onSave={saveSupplyOrder} onClose={() => setPoFormOpen(false)} />}
       {toast && (
         <div className="admin-toast" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>✓ {toast}</span>

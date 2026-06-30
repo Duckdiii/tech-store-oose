@@ -7,7 +7,6 @@ import java.util.List;
 
 public record ImportProductRequestDTO(
         @Size(max = 36) String productId,
-        @Valid NewProductRequestDTO newProduct,
         String note,
         @NotEmpty List<@Valid ProductVariantImportItemDTO> items) {
 }

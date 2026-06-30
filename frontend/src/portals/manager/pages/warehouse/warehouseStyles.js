@@ -63,6 +63,9 @@ export const warehouseStyles = `
   .warehouse-export-note { color: #64748b; font-size: 11px; line-height: 1.45; }
   .warehouse-export-quick { display: grid; gap: 8px; }
   .warehouse-export-quick textarea { min-height: 110px; resize: vertical; }
+  .warehouse-hint { padding: 12px 14px; border: 1px solid #dbeafe; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 12px; font-weight: 600; line-height: 1.5; }
+  .warehouse-hint a { color: #0d1117; font-weight: 800; text-decoration: none; }
+  .warehouse-hint a:hover { text-decoration: underline; }
   @media (max-width: 700px) { .warehouse-overview-controls { align-items: stretch; flex-direction: column; }.warehouse-serial-search { display: grid; }.warehouse-serial-search input { width: 100%; }.warehouse-metric { padding: 15px; }.warehouse-export-filterbar { grid-template-columns: repeat(2, 1fr); }.warehouse-export-summary { flex-direction: column; align-items: flex-start; }.warehouse-export-serial-row { grid-template-columns: 28px minmax(0, 1fr); }.warehouse-export-serial-meta, .warehouse-export-serial-price, .warehouse-export-serial-row .admin-status { grid-column: 2; text-align: left; } }
   @keyframes slideDown {
     from { opacity: 0; max-height: 0; }

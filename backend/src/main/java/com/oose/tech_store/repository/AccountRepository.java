@@ -1,6 +1,7 @@
 package com.oose.tech_store.repository;
 
 import com.oose.tech_store.entity.Account;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,6 +25,8 @@ public interface AccountRepository extends JpaRepository<Account, String>, JpaSp
     Optional<Account> findByUserId(String userId);
 
     Optional<Account> findByUser_Id(String userId);
+
+    List<Account> findByEmailContainingIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCase(String email);
 }

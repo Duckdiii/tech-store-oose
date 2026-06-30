@@ -8,6 +8,7 @@ import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 
@@ -16,7 +17,8 @@ public class SecurityConfig {
 
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry,
-                        SecurityContextRepository securityContextRepository) throws Exception {
+                        SecurityContextRepository securityContextRepository,
+                        JwtAuthFilter jwtAuthFilter) throws Exception {
                 return http
                                 .csrf(csrf -> csrf.disable())
                                 .securityContext(context -> context
@@ -62,6 +64,7 @@ public class SecurityConfig {
                                                 .sessionRegistry(sessionRegistry))
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                                 .build();
         }
 
