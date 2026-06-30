@@ -1,5 +1,7 @@
 package com.oose.tech_store.security;
 
+import com.oose.tech_store.entity.enums.AccountStatus;
+import com.oose.tech_store.repository.AccountRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +23,7 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final AccountRepository accountRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -40,13 +43,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             String email  = jwtService.extractEmail(token);
-            String role   = jwtService.extractRole(token);
+            String role = jwtService.extractRole(token);
+            var account = accountRepository.findByEmailIgnoreCase(email)
+                    .filter(found -> found.getStatus() == AccountStatus.ACTIVE)
+                    .orElse(null);
 
-            var auth = new UsernamePasswordAuthenticationToken(
-                    email, null,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            if (account != null) {
+                AccountPrincipal principal = new AccountPrincipal(
+                        account.getId(),
+                        account.getUser().getId(),
+                        account.getEmail(),
+                        account.getUser().getFullName(),
+                        role);
+                var auth = new UsernamePasswordAuthenticationToken(
+                        principal, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
         }
 
         chain.doFilter(request, response);

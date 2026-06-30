@@ -1,0 +1,29 @@
+package com.oose.tech_store.dto.admin;
+
+import java.util.List;
+
+public record AdminProductResponseDTO(
+        String id,
+        String name,
+        String description,
+        String brandId,
+        String brand,
+        String categoryId,
+        String category,
+        Double screenSize,
+        String rearCamera,
+        String frontCamera,
+        String chipset,
+        Boolean nfcSupported,
+        Integer batteryCapacity,
+        String simType,
+        String operatingSystem,
+        String screenResolution,
+        List<ImageDTO> images) {
+
+    public record ImageDTO(
+            String id,
+            String name,
+            String imageUrl) {
+    }
+}

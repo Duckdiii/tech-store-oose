@@ -7,7 +7,7 @@ import { WarehouseLogs } from './warehouse/WarehouseLogs';
 import { WarehouseOverview } from './warehouse/WarehouseOverview';
 import { warehouseStyles } from './warehouse/warehouseStyles';
 
-export function WarehousePage({ view, navigate }) {
+export function WarehousePage({ view, navigate, suppliers = [] }) {
   const tabs = [['overview', 'Tổng quan'], ['import', 'Nhập kho'], ['export', 'Xuất kho'], ['logs', 'Nhật ký kho']];
   const [inventory, setInventory] = useState({ products: [], variants: [] });
   const [inventoryError, setInventoryError] = useState('');
@@ -35,7 +35,7 @@ export function WarehousePage({ view, navigate }) {
     <div className="warehouse-tabs">{tabs.map(([key, label]) => <button key={key} className={view === key ? 'is-active' : ''} onClick={() => navigate(`/manager/warehouse${key === 'overview' ? '' : `/${key}`}`)}>{label}</button>)}</div>
     {inventoryError && <ApiMessage error={inventoryError} />}
     {inventoryLoading && <ApiMessage>Đang tải dữ liệu kho...</ApiMessage>}
-    {view === 'import' && <ImportFlow products={inventory.products} variants={inventory.variants} onInventoryChanged={loadInventory} />}
+    {view === 'import' && <ImportFlow products={inventory.products} variants={inventory.variants} suppliers={suppliers} onInventoryChanged={loadInventory} />}
     {view === 'export' && <ExportFlow products={inventory.products} variants={inventory.variants} onInventoryChanged={loadInventory} />}
     {view === 'logs' && <WarehouseLogs />}
     {view === 'overview' && <WarehouseOverview navigate={navigate} products={inventory.products} variants={inventory.variants} />}

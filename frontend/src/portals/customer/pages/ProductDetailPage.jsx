@@ -87,7 +87,7 @@ export function ProductDetailPage() {
       setLoading(true);
       setError('');
       try {
-        const data = await productApi.getProductDetail(id);
+        const data = await productApi.getCustomerProductDetail(id);
         if (!cancelled) {
           setProduct(data);
           setSelectedColor(0);

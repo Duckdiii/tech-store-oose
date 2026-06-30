@@ -15,6 +15,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     long countByProductIdAndStatus(String productId, ProductVariantStatus status);
 
+    long countByProductId(String productId);
+
     List<ProductVariant> findByProductIdAndStatus(String productId, ProductVariantStatus status);
 
     /** Locks the physical products while an export transaction confirms their availability. */

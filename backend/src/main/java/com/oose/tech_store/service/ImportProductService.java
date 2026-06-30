@@ -3,17 +3,12 @@ package com.oose.tech_store.service;
 import com.oose.tech_store.dto.warehouse.ImportProductPreviewResponseDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductResponseDTO;
-import com.oose.tech_store.dto.warehouse.NewProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ProductVariantImportItemDTO;
-import com.oose.tech_store.entity.Brand;
-import com.oose.tech_store.entity.Category;
 import com.oose.tech_store.entity.ImportLog;
 import com.oose.tech_store.entity.ImportLogItem;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.entity.enums.ImportAndExportStatus;
-import com.oose.tech_store.repository.BrandRepository;
-import com.oose.tech_store.repository.CategoryRepository;
 import com.oose.tech_store.repository.ImportLogRepository;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
@@ -35,8 +30,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class ImportProductService {
 
     private final ProductRepository productRepository;
-    private final BrandRepository brandRepository;
-    private final CategoryRepository categoryRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ImportLogRepository importLogRepository;
 
@@ -51,7 +44,7 @@ public class ImportProductService {
         if (hasExistingProduct(request)) {
             Product product = findProduct(request.productId());
             return new ImportProductPreviewResponseDTO(
-                    product.getId(), product.getName(), false, request.items().size(), serialIds(request.items()),
+                    product.getId(), product.getName(), request.items().size(), serialIds(request.items()),
                     "Import information is valid. Please confirm the import.");
         }
 
@@ -61,15 +54,11 @@ public class ImportProductService {
                     ? products.get(0).getName()
                     : products.size() + " existing products";
             return new ImportProductPreviewResponseDTO(
-                    null, productName, false, request.items().size(), serialIds(request.items()),
+                    null, productName, request.items().size(), serialIds(request.items()),
                     "Import information is valid. Please confirm the import.");
         }
 
-        NewProductRequestDTO newProduct = requireNewProduct(request);
-        validateNewProductDoesNotExist(newProduct);
-        return new ImportProductPreviewResponseDTO(
-                null, newProduct.name().trim(), true, request.items().size(), serialIds(request.items()),
-                "New product information is valid. Please confirm the import.");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select an existing product before importing");
     }
 
     @Transactional
@@ -83,8 +72,6 @@ public class ImportProductService {
             product = findProduct(request.productId());
         } else if (hasItemProducts(request)) {
             itemProducts = resolveItemProductsById(request);
-        } else {
-            product = createNewProduct(requireNewProduct(request));
         }
 
         List<ProductVariant> variants = new ArrayList<>();
@@ -122,53 +109,26 @@ public class ImportProductService {
                 "Products were imported successfully");
     }
 
-    private Product createNewProduct(NewProductRequestDTO request) {
-        validateNewProductDoesNotExist(request);
-        Brand brand = brandRepository.findById(request.brandId().trim())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Brand was not found"));
-        Category category = categoryRepository.findById(request.categoryId().trim())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category was not found"));
-
-        Product product = new Product(request.name().trim(), normalizeNullable(request.description()), brand, category);
-        return productRepository.save(product);
-    }
-
-    private void validateNewProductDoesNotExist(NewProductRequestDTO request) {
-        if (productRepository.findFirstByNameIgnoreCaseAndBrandIdAndCategoryId(
-                request.name().trim(), request.brandId().trim(), request.categoryId().trim()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Product information already exists");
-        }
-    }
-
     private Product findProduct(String productId) {
         if (productId == null || productId.isBlank()) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Select an existing product or enter new product information");
+                    HttpStatus.BAD_REQUEST, "Select an existing product before importing");
         }
         return productRepository.findById(productId.trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product was not found"));
     }
 
-    private NewProductRequestDTO requireNewProduct(ImportProductRequestDTO request) {
-        return request.newProduct();
-    }
-
     private void validateProductChoice(ImportProductRequestDTO request) {
         boolean hasRequestProduct = hasExistingProduct(request);
-        boolean hasNewProduct = request.newProduct() != null;
         boolean hasItemProducts = hasItemProducts(request);
 
-        if ((hasRequestProduct || hasItemProducts) && hasNewProduct) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Use either existing products or new product information, not both");
-        }
         if (hasRequestProduct && hasItemProducts) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Use either productId for all items or productId per item, not both");
         }
-        if (!hasRequestProduct && !hasItemProducts && !hasNewProduct) {
+        if (!hasRequestProduct && !hasItemProducts) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Select an existing product or enter new product information");
+                    HttpStatus.BAD_REQUEST, "Select an existing product before importing");
         }
         if (hasItemProducts && request.items().stream().anyMatch(item -> !hasItemProduct(item))) {
             throw new ResponseStatusException(

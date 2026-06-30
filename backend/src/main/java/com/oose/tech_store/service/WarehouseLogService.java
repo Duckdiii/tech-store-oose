@@ -10,7 +10,7 @@ import com.oose.tech_store.entity.ExportLog;
 import com.oose.tech_store.entity.ExportLogItem;
 import com.oose.tech_store.entity.ImportLog;
 import com.oose.tech_store.entity.ImportLogItem;
-import com.oose.tech_store.entity.enums.ImportAndExportStatus;
+import com.oose.tech_store.entity.Account;
 import com.oose.tech_store.repository.ExportLogRepository;
 import com.oose.tech_store.repository.ImportLogRepository;
 import com.oose.tech_store.repository.AccountRepository;
@@ -29,6 +29,9 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class WarehouseLogService {
 
+    private static final LocalDateTime MIN_LOG_TIME = LocalDateTime.of(1970, 1, 1, 0, 0);
+    private static final LocalDateTime MAX_LOG_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+
     private final ImportLogRepository importLogRepository;
     private final ExportLogRepository exportLogRepository;
     private final AccountRepository accountRepository;
@@ -40,24 +43,77 @@ public class WarehouseLogService {
         WarehouseLogType requestedType = request.logType() == null
                 ? WarehouseLogType.ALL
                 : request.logType();
+        String performedBy = cleanSearchText(request.performedBy());
         List<WarehouseLogSummaryDTO> logs = new ArrayList<>();
 
         if (requestedType == WarehouseLogType.ALL || requestedType == WarehouseLogType.IMPORT) {
-            importLogRepository.findAll().stream()
-                    .filter(log -> matchesImportLog(log, request))
+            searchImportLogs(request, performedBy).stream()
                     .map(this::toImportSummary)
                     .forEach(logs::add);
         }
 
         if (requestedType == WarehouseLogType.ALL || requestedType == WarehouseLogType.EXPORT) {
-            exportLogRepository.findAll().stream()
-                    .filter(log -> matchesExportLog(log, request))
+            searchExportLogs(request, performedBy).stream()
                     .map(this::toExportSummary)
                     .forEach(logs::add);
         }
 
         logs.sort(Comparator.comparing(WarehouseLogSummaryDTO::occurredAt).reversed());
         return new WarehouseLogResponseDTO(logs, logs.size());
+    }
+
+    private List<ImportLog> searchImportLogs(WarehouseLogRequestDTO request, String performedBy) {
+        LocalDateTime from = defaultFrom(request.from());
+        LocalDateTime to = defaultTo(request.to());
+
+        if (performedBy == null) {
+            if (request.status() != null) {
+                return importLogRepository.searchWarehouseLogsByStatus(from, to, request.status());
+            }
+
+            return importLogRepository.searchWarehouseLogs(
+                    from, to);
+        }
+
+        List<String> actorIds = findActorIds(performedBy);
+        if (request.status() != null) {
+            return importLogRepository.searchWarehouseLogsByActorAndStatus(
+                    from, to, request.status(), performedBy, actorIds);
+        }
+
+        return importLogRepository.searchWarehouseLogsByActor(
+                from, to, performedBy, actorIds);
+    }
+
+    private List<ExportLog> searchExportLogs(WarehouseLogRequestDTO request, String performedBy) {
+        LocalDateTime from = defaultFrom(request.from());
+        LocalDateTime to = defaultTo(request.to());
+
+        if (performedBy == null) {
+            if (request.status() != null) {
+                return exportLogRepository.searchWarehouseLogsByStatus(from, to, request.status());
+            }
+
+            return exportLogRepository.searchWarehouseLogs(
+                    from, to);
+        }
+
+        List<String> actorIds = findActorIds(performedBy);
+        if (request.status() != null) {
+            return exportLogRepository.searchWarehouseLogsByActorAndStatus(
+                    from, to, request.status(), performedBy, actorIds);
+        }
+
+        return exportLogRepository.searchWarehouseLogsByActor(
+                from, to, performedBy, actorIds);
+    }
+
+    private LocalDateTime defaultFrom(LocalDateTime from) {
+        return from == null ? MIN_LOG_TIME : from;
+    }
+
+    private LocalDateTime defaultTo(LocalDateTime to) {
+        return to == null ? MAX_LOG_TIME : to;
     }
 
     @Transactional(readOnly = true)
@@ -79,38 +135,6 @@ public class WarehouseLogService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Export log was not found"));
         return toExportDetail(exportLog);
-    }
-
-    private boolean matchesImportLog(ImportLog log, WarehouseLogRequestDTO request) {
-        return matchesCommonFields(
-                log.getImportedAt(), log.getPerformedBy(), log.getStatus(), request);
-    }
-
-    private boolean matchesExportLog(ExportLog log, WarehouseLogRequestDTO request) {
-        return matchesCommonFields(
-                log.getExportedAt(), log.getPerformedBy(), log.getStatus(), request);
-    }
-
-    private boolean matchesCommonFields(
-            LocalDateTime occurredAt,
-            String performedBy,
-            ImportAndExportStatus status,
-            WarehouseLogRequestDTO request) {
-        if (request.from() != null && occurredAt.isBefore(request.from())) {
-            return false;
-        }
-        if (request.to() != null && occurredAt.isAfter(request.to())) {
-            return false;
-        }
-        if (request.status() != null && request.status() != status) {
-            return false;
-        }
-        if (request.performedBy() != null && !request.performedBy().isBlank()) {
-            String keyword = request.performedBy().trim();
-            return performedBy.equalsIgnoreCase(keyword)
-                    || displayActor(performedBy).equalsIgnoreCase(keyword);
-        }
-        return true;
     }
 
     private WarehouseLogSummaryDTO toImportSummary(ImportLog log) {
@@ -190,6 +214,23 @@ public class WarehouseLogService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "from must be before or equal to to");
         }
+    }
+
+    private String cleanSearchText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private List<String> findActorIds(String performedBy) {
+        List<String> actorIds = accountRepository.findByEmailContainingIgnoreCase(performedBy).stream()
+                .map(Account::getUser)
+                .filter(user -> user != null && user.getId() != null)
+                .map(user -> user.getId())
+                .toList();
+
+        return actorIds.isEmpty() ? List.of("__NO_ACTOR_MATCH__") : actorIds;
     }
 
     private String productNames(List<com.oose.tech_store.entity.ProductVariant> variants) {
