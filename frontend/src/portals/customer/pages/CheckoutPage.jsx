@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { httpClient } from '../../../api/httpClient';
+import { membershipApi } from '../../../api/membershipApi';
 
 
 
@@ -51,6 +52,11 @@ export function CheckoutPage() {
   const [method, setMethod] = useState('');
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [promotionCode, setPromotionCode] = useState('');
+  const [appliedPromotionCode, setAppliedPromotionCode] = useState('');
+  const [promotionMessage, setPromotionMessage] = useState('');
+  const [tierInfo, setTierInfo] = useState(null);
+  const [vouchers, setVouchers] = useState([]);
   const [showAddrPicker, setShowAddrPicker] = useState(false);
   const [selectedAddr, setSelectedAddr] = useState(null);
   const addrRef = useRef(null);
@@ -79,6 +85,31 @@ export function CheckoutPage() {
     };
     fetchSummary();
   }, [user]);
+
+  useEffect(() => {
+    const fetchMembershipOffers = async () => {
+      try {
+        const [tierData, voucherData] = await Promise.all([
+          membershipApi.getMyTier(),
+          membershipApi.getMyVouchers(),
+        ]);
+        setTierInfo(tierData);
+        setVouchers(voucherData || []);
+      } catch (error) {
+        console.error('Error fetching membership offers:', error);
+      }
+    };
+    fetchMembershipOffers();
+  }, []);
+
+  useEffect(() => {
+    const promo = searchParams.get('promo');
+    if (!promo) return;
+
+    const normalizedPromo = promo.trim().toUpperCase();
+    setPromotionCode(normalizedPromo);
+    setAppliedPromotionCode(normalizedPromo);
+  }, [searchParams]);
 
   // Set default method when summary loads
   useEffect(() => {
@@ -143,8 +174,26 @@ export function CheckoutPage() {
   }, [isVnPayReturn, isMomoReturn, user]);
 
   const checkoutTotal = summary ? summary.subtotal : total;
-  const shipping = checkoutTotal >= 500000 ? 0 : 30000;
-  const finalTotal = checkoutTotal + shipping;
+  const membershipDiscountRate = Number(tierInfo?.discountPercentage || 0);
+  const membershipDiscount = Math.round((checkoutTotal * membershipDiscountRate) / 100);
+  const currentTierName = tierInfo?.tierName || tierInfo?.currentTierName || '';
+  const appliedVoucher = vouchers.find((voucher) => voucher.code === appliedPromotionCode);
+  const appliedVoucherType = String(appliedVoucher?.discountType || 'PERCENTAGE').toUpperCase();
+  const appliedVoucherValue = Number(appliedVoucher?.discountValue ?? appliedVoucher?.discountPercent ?? 0);
+  const canUseAppliedVoucher = Boolean(appliedVoucher?.usableNow);
+  const isNewMemberVoucherAllowed = appliedPromotionCode !== 'NEWMEM50K'
+    || String(currentTierName).toUpperCase() === 'STANDARD';
+  const isTech10Allowed = appliedPromotionCode !== 'TECH10OFF' || checkoutTotal >= 5000000;
+  const appliedVoucherValid = canUseAppliedVoucher && isNewMemberVoucherAllowed && isTech10Allowed;
+  const promotionDiscount = appliedVoucherValid && appliedVoucherType === 'FIXED_AMOUNT'
+    ? Math.min(appliedVoucherValue, Math.max(0, checkoutTotal - membershipDiscount))
+    : appliedVoucherValid && appliedVoucherType === 'PERCENTAGE'
+      ? Math.round((checkoutTotal * appliedVoucherValue) / 100)
+      : 0;
+  const freeShippingByTier = Boolean(tierInfo?.freeShipping);
+  const freeShippingByVoucher = appliedVoucherValid && appliedVoucherType === 'FREE_SHIPPING';
+  const shipping = checkoutTotal >= 500000 || freeShippingByTier || freeShippingByVoucher ? 0 : 30000;
+  const finalTotal = Math.max(0, checkoutTotal - membershipDiscount - promotionDiscount) + shipping;
 
   useEffect(() => {
     const handler = e => {
@@ -158,6 +207,40 @@ export function CheckoutPage() {
     setSelectedAddr(addr);
     setForm(f => ({ ...f, name: addr.name, phone: addr.phone }));
     setShowAddrPicker(false);
+  };
+
+  const handleApplyPromotion = () => {
+    const code = promotionCode.trim().toUpperCase();
+    if (!code) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('');
+      return;
+    }
+
+    const voucher = vouchers.find((item) => item.code === code);
+    if (!voucher) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('Ma giam gia khong ton tai.');
+      return;
+    }
+    if (!voucher.usableNow) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('Ma giam gia da het han hoac chua duoc kich hoat.');
+      return;
+    }
+    if (code === 'TECH10OFF' && checkoutTotal < 5000000) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('TECH10OFF chi ap dung cho don tu 5.000.000d.');
+      return;
+    }
+    if (code === 'NEWMEM50K' && String(currentTierName).toUpperCase() !== 'STANDARD') {
+      setAppliedPromotionCode('');
+      setPromotionMessage('NEWMEM50K chi ap dung cho thanh vien STANDARD.');
+      return;
+    }
+    setAppliedPromotionCode(code);
+    const voucherType = String(voucher.discountType || 'PERCENTAGE').toUpperCase();
+    setPromotionMessage(voucherType === 'FREE_SHIPPING' ? 'Da ap dung mien phi van chuyen.' : 'Da ap dung ma giam gia.');
   };
 
   const handleOrder = async () => {
@@ -178,13 +261,15 @@ export function CheckoutPage() {
       const payload = {
         addressId,
         paymentMethodId: method,
-        selectedCartItemIds
+        selectedCartItemIds,
+        promotionCode: appliedPromotionCode || null
       };
 
       const response = await httpClient.post(`/payments/checkout?customerId=${customerId}`, payload);
       const initResponse = response.data;
+      const paymentType = initResponse.paymentType || initResponse.type;
 
-      if (initResponse.paymentType === 'COD') {
+      if (paymentType === 'COD') {
         const orderId = initResponse.orderId;
         const methodLabel = summary?.availablePaymentMethods?.find(m => m.id === method)?.name || 'COD';
         
@@ -197,17 +282,17 @@ export function CheckoutPage() {
             price: item.unitPrice
           })),
           total: summary.subtotal,
-          finalTotal: summary.subtotal + (summary.subtotal >= 500000 ? 0 : 30000),
+          finalTotal,
           method: methodLabel,
           address: addrStr,
           name: form.name
         });
-      } else if (initResponse.paymentType === 'REDIRECT') {
-        window.location.href = initResponse.paymentUrl; // Redirect to payment gateway
+      } else if (paymentType === 'REDIRECT') {
+        window.location.href = initResponse.paymentUrl || initResponse.redirectUrl; // Redirect to payment gateway
       }
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Đặt hàng không thành công. Vui lòng thử lại.');
+      alert(error.response?.data?.message || 'Đặt hàng không thành công. Vui lòng thử lại.');
     } finally {
       setPlacing(false);
     }
@@ -524,10 +609,43 @@ export function CheckoutPage() {
               ))}
             </div>
             <div style={{ height: 1, background: '#f1f3f5', marginBottom: 16 }}/>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="Mã giảm giá"
+                value={promotionCode}
+                onChange={(event) => setPromotionCode(event.target.value.toUpperCase())}
+                style={{ flex: 1, height: 40, padding: '0 12px', border: '1.5px solid #e9ecef', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={handleApplyPromotion}
+                style={{ padding: '0 14px', height: 40, background: '#f4f5f7', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}
+              >
+                Áp dụng
+              </button>
+            </div>
+            {promotionMessage && (
+              <div style={{ marginTop: -8, marginBottom: 12, fontSize: 12.5, color: appliedVoucherValid ? '#15803d' : '#b45309', fontWeight: 700 }}>
+                {promotionMessage}
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#6b7280' }}>
                 <span>Tạm tính</span><span style={{ fontWeight: 600, color: '#374151' }}>{fmt(checkoutTotal)}₫</span>
               </div>
+              {membershipDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#15803d' }}>
+                  <span>Ưu đãi hạng {currentTierName}</span>
+                  <span style={{ fontWeight: 700 }}>-{fmt(membershipDiscount)}₫</span>
+                </div>
+              )}
+              {promotionDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#15803d' }}>
+                  <span>Mã {appliedPromotionCode}</span>
+                  <span style={{ fontWeight: 700 }}>-{fmt(promotionDiscount)}₫</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#6b7280' }}>
                 <span>Vận chuyển</span>
                 <span style={{ fontWeight: 600, color: shipping === 0 ? '#16a34a' : '#374151' }}>{shipping === 0 ? 'Miễn phí' : fmt(shipping) + '₫'}</span>

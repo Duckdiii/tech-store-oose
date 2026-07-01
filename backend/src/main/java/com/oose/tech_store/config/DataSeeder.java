@@ -3,6 +3,7 @@ package com.oose.tech_store.config;
 import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.AccountStatus;
 import com.oose.tech_store.entity.enums.MembershipTier;
+import com.oose.tech_store.entity.enums.PromotionDiscountType;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,13 +35,15 @@ public class DataSeeder implements CommandLineRunner {
     private final StaffRepository staffRepository;
     private final ManagerRepository managerRepository;
     private final AccountRepository accountRepository;
+    private final PromotionRepository promotionRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
         if (brandRepository.count() > 0) {
-            log.info("Database already seeded. Skipping seeder.");
+            ensureDemoVouchers();
+            log.info("Database already seeded. Verified demo vouchers.");
             return;
         }
 
@@ -427,10 +431,55 @@ public class DataSeeder implements CommandLineRunner {
         createVariant(savedS24p, 12, 512, "Vàng Hổ Phách", 24490000.0);
 
         log.info("Database seeding completed successfully!");
+        ensureDemoVouchers();
     }
 
     private void createVariant(Product product, int ram, int storage, String color, double price) {
         ProductVariant variant = new ProductVariant(product, ram, storage, color, BigDecimal.valueOf(price));
         productVariantRepository.save(variant);
+    }
+
+    private void ensureDemoVouchers() {
+        ensureVoucher(
+                "TECH10OFF",
+                "Giảm 10% cho đơn từ 5 triệu",
+                PromotionDiscountType.PERCENTAGE,
+                10.0,
+                LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 6, 30, 23, 59));
+        ensureVoucher(
+                "FREESHIP",
+                "Miễn phí vận chuyển toàn quốc",
+                PromotionDiscountType.FREE_SHIPPING,
+                0.0,
+                LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 12, 31, 23, 59));
+        ensureVoucher(
+                "NEWMEM50K",
+                "Giảm 50.000đ cho thành viên mới",
+                PromotionDiscountType.FIXED_AMOUNT,
+                50000.0,
+                LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 7, 15, 23, 59));
+    }
+
+    private void ensureVoucher(String code, String name, PromotionDiscountType discountType, double discountValue, LocalDateTime startAt, LocalDateTime endAt) {
+        promotionRepository.findByCodeIgnoreCase(code)
+                .map(existing -> {
+                    existing.setName(name);
+                    existing.changeDiscount(discountType, discountValue);
+                    existing.changeDates(startAt, endAt);
+                    existing.activate();
+                    return promotionRepository.save(existing);
+                })
+                .orElseGet(() -> promotionRepository.save(new Promotion(
+                        code,
+                        name,
+                        discountType,
+                        discountValue,
+                        startAt,
+                        endAt,
+                        true,
+                        null)));
     }
 }

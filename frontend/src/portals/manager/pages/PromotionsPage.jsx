@@ -8,7 +8,12 @@ const STATUS_FILTERS = [
   ['INACTIVE', 'Đã tắt'],
 ];
 
-const RESTRICTED_FIELDS = ['code', 'discountPercent', 'startAt', 'endAt', 'productIds'];
+const RESTRICTED_FIELDS = ['code', 'discountType', 'discountValue', 'startAt', 'productIds'];
+const DISCOUNT_TYPES = [
+  ['PERCENTAGE', '% giảm giá'],
+  ['FIXED_AMOUNT', 'Số tiền cố định'],
+  ['FREE_SHIPPING', 'Miễn phí vận chuyển'],
+];
 
 function defaultDateTime(offsetHours = 0) {
   const value = new Date();
@@ -46,12 +51,31 @@ function parseProductIds(value) {
     .filter(Boolean);
 }
 
+function normalizeDiscountType(value) {
+  return String(value || 'PERCENTAGE').toUpperCase();
+}
+
+function discountValueOf(promotion) {
+  return Number(promotion?.discountValue ?? promotion?.discountPercent ?? 0);
+}
+
+function formatPromotionDiscount(promotion) {
+  const type = normalizeDiscountType(promotion?.discountType);
+  const value = discountValueOf(promotion);
+  if (type === 'FREE_SHIPPING') return 'Freeship';
+  if (type === 'FIXED_AMOUNT') return formatMoney(value);
+  return `${value}%`;
+}
+
 function normalizePromotion(item) {
   return {
     ...item,
     code: item?.code || item?.promotionCode || item?.couponCode || '',
     name: item?.name || item?.promotionName || '',
+    discountType: normalizeDiscountType(item?.discountType),
+    discountValue: item?.discountValue ?? item?.discountPercent ?? 0,
     productIds: Array.isArray(item?.productIds) ? item.productIds : [],
+    usageCount: Number(item?.usageCount || 0),
   };
 }
 
@@ -73,7 +97,8 @@ function blankForm() {
   return {
     code: '',
     name: '',
-    discountPercent: '10',
+    discountType: 'PERCENTAGE',
+    discountValue: '10',
     startAt: defaultDateTime(),
     endAt: defaultDateTime(24 * 7),
     active: true,
@@ -85,7 +110,8 @@ function formFromPromotion(promotion) {
   return {
     code: promotion.code || '',
     name: promotion.name || '',
-    discountPercent: String(promotion.discountPercent ?? ''),
+    discountType: normalizeDiscountType(promotion.discountType),
+    discountValue: String(discountValueOf(promotion)),
     startAt: toInputDateTime(promotion.startAt),
     endAt: toInputDateTime(promotion.endAt),
     active: Boolean(promotion.active),
@@ -115,7 +141,13 @@ function StatusPill({ active }) {
 function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, submitting, error, notice }) {
   const isEdit = mode === 'update';
   const isActiveEdit = isEdit && promotion?.active;
-  const lockRestricted = (field) => isActiveEdit && RESTRICTED_FIELDS.includes(field);
+  const usageCount = Number(promotion?.usageCount || 0);
+  const hasUsage = usageCount > 0;
+  const hasStarted = isEdit && promotion?.startAt && new Date(promotion.startAt) <= new Date();
+  const lockRestricted = (field) => {
+    if (field === 'startAt') return hasStarted;
+    return hasUsage && RESTRICTED_FIELDS.includes(field);
+  };
 
   const disabledStyle = {
     opacity: 0.72,
