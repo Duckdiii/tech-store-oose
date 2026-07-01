@@ -5,6 +5,7 @@ import com.oose.tech_store.entity.enums.PaymentLogStatus;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.payment.PendingCheckout;
 import com.oose.tech_store.repository.*;
+import com.oose.tech_store.payment.price.*;
 import com.oose.tech_store.service.OrderFulfillmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
         private final OrderRepository orderRepository;
         private final PaymentLogRepository paymentLogRepository;
         private final InvoiceRepository invoiceRepository;
+        private final List<PriceProcessor> priceProcessors; // [MembershipDiscountProcessor (vị trí 0),
+                                                            // ShippingFeeProcessor (vị trí 1)]
 
         @Override
         @Transactional
@@ -54,7 +57,11 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                 }
 
                 Order order = Order.create(customer, address, paymentMethod, selectedItems); // tạo order mới
-                BigDecimal totalAmount = order.calculateSubtotal();
+
+                PriceContext priceContext = new PriceContext(order, customer);
+                for (PriceProcessor processor : priceProcessors) {
+                        processor.process(priceContext);
+                }
 
                 if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
                         order.markPaid();
@@ -62,20 +69,21 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
 
                 Order savedOrder = orderRepository.save(order); //
 
-                PaymentLog paymentLog = new PaymentLog(savedOrder, totalAmount, paymentStatus); // ghi log thanh toán
+                PaymentLog paymentLog = new PaymentLog(savedOrder, priceContext.getFinalAmount(), paymentStatus); // ghi
+                                                                                                                  // log
+                                                                                                                  // thanh
+                                                                                                                  // toán
                 if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
                         paymentLog.markSuccess();
                 }
                 paymentLogRepository.save(paymentLog);
 
-                BigDecimal discountAmount = customer.getMembership().getBenefit()
-                                .calculateDiscount(totalAmount)
-                                .setScale(2, RoundingMode.HALF_UP);
-                BigDecimal finalAmount = totalAmount.subtract(discountAmount);
-
-                Invoice invoice = new Invoice(savedOrder, totalAmount, BigDecimal.ZERO, discountAmount, finalAmount);// xuất
-                                                                                                                     // hóa
-                                                                                                                     // đơn
+                Invoice invoice = new Invoice(
+                                savedOrder,
+                                priceContext.getSubtotal(),
+                                priceContext.getTaxAmount(),
+                                priceContext.getMembershipDiscount().add(priceContext.getPromotionDiscount()),
+                                priceContext.getFinalAmount());
                 Invoice savedInvoice = invoiceRepository.save(invoice);
 
                 selectedItems.forEach(cart::removeItem); // xóa items khỏi cart
