@@ -14,11 +14,11 @@ const CATEGORIES = [
 ];
 
 const FLASH_PRODUCTS = [
-  { id: 101, name: 'iPhone 14 128GB', price: 18990000, oldPrice: 22990000, discount: '-17%', sold: 87, total: 100, soldPct: 87 },
-  { id: 102, name: 'Samsung S23 FE 256GB', price: 10990000, oldPrice: 14990000, discount: '-27%', sold: 64, total: 80, soldPct: 80 },
-  { id: 103, name: 'Xiaomi Redmi 12C 128GB', price: 3490000, oldPrice: 4290000, discount: '-19%', sold: 112, total: 150, soldPct: 75 },
-  { id: 104, name: 'OPPO A78 256GB', price: 6290000, oldPrice: 8490000, discount: '-26%', sold: 53, total: 70, soldPct: 76 },
-  { id: 105, name: 'Realme C55 128GB', price: 4490000, oldPrice: 5790000, discount: '-22%', sold: 38, total: 60, soldPct: 63 },
+  { id: 101, name: 'iPhone 14 128GB', price: 18990000, oldPrice: 22990000, discount: '-17%', sold: 87, total: 100, soldPct: 87, thumbnailUrl: 'https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=300' },
+  { id: 102, name: 'Samsung S23 FE 256GB', price: 10990000, oldPrice: 14990000, discount: '-27%', sold: 64, total: 80, soldPct: 80, thumbnailUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=300' },
+  { id: 103, name: 'Xiaomi Redmi 12C 128GB', price: 3490000, oldPrice: 4290000, discount: '-19%', sold: 112, total: 150, soldPct: 75, thumbnailUrl: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=300' },
+  { id: 104, name: 'OPPO A78 256GB', price: 6290000, oldPrice: 8490000, discount: '-26%', sold: 53, total: 70, soldPct: 76, thumbnailUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300' },
+  { id: 105, name: 'Realme C55 128GB', price: 4490000, oldPrice: 5790000, discount: '-22%', sold: 38, total: 60, soldPct: 63, thumbnailUrl: 'https://images.unsplash.com/photo-1565849906660-754d90c6a858?w=300' },
 ];
 
 const BRANDS = ['Apple', 'Samsung', 'Xiaomi', 'OPPO', 'Vivo', 'Realme', 'Nokia'];
@@ -30,11 +30,10 @@ const REVIEWS = [
 ];
 
 const BLOGS = [
-  { category: 'Review', date: '15/06/2025', readTime: '5 phút đọc', tag: 'iPhone', title: 'iPhone 15 Pro Max sau 6 tháng sử dụng: Có còn đáng mua?', excerpt: 'Sau nửa năm trải nghiệm thực tế, chúng tôi đánh giá toàn diện hiệu suất, camera và thời lượng pin của iPhone 15 Pro Max...' },
-  { category: 'Tin tức', date: '12/06/2025', readTime: '3 phút đọc', tag: 'Samsung', title: 'Samsung Galaxy S25 Ultra lộ diện: Thiết kế mới hoàn toàn?', excerpt: 'Các tài liệu rò rỉ mới nhất cho thấy Samsung sẽ thay đổi hoàn toàn thiết kế dòng S25 Ultra với viền phẳng và S Pen cải tiến...' },
-  { category: 'Hướng dẫn', date: '10/06/2025', readTime: '7 phút đọc', tag: 'Tips', title: 'Top 5 mẹo tiết kiệm pin điện thoại Android hiệu quả nhất 2025', excerpt: 'Những cài đặt đơn giản nhưng cực kỳ hiệu quả giúp điện thoại Android của bạn sử dụng được lâu hơn mà không ảnh hưởng hiệu năng...' },
+  { category: 'Review', date: '15/06/2025', readTime: '5 phút đọc', tag: 'iPhone', title: 'iPhone 15 Pro Max sau 6 tháng sử dụng: Có còn đáng mua?', excerpt: 'Sau nửa năm trải nghiệm thực tế, chúng tôi đánh giá toàn diện hiệu suất, camera và thời lượng pin của iPhone 15 Pro Max...', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500' },
+  { category: 'Tin tức', date: '12/06/2025', readTime: '3 phút đọc', tag: 'Samsung', title: 'Samsung Galaxy S25 Ultra lộ diện: Thiết kế mới hoàn toàn?', excerpt: 'Các tài liệu rò rỉ mới nhất cho thấy Samsung sẽ thay đổi hoàn toàn thiết kế dòng S25 Ultra với viền phẳng và S Pen cải tiến...', image: 'https://images.unsplash.com/photo-1562813733-b31f71025d54?w=500' },
+  { category: 'Hướng dẫn', date: '10/06/2025', readTime: '7 phút đọc', tag: 'Tips', title: 'Top 5 mẹo tiết kiệm pin điện thoại Android hiệu quả nhất 2025', excerpt: 'Những cài đặt đơn giản nhưng cực kỳ hiệu quả giúp điện thoại Android của bạn sử dụng được lâu hơn mà không ảnh hưởng hiệu năng...', image: 'https://images.unsplash.com/photo-1484788984921-03950022c9ef?w=500' },
 ];
-
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -223,15 +222,15 @@ export function HomePage() {
                 style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.22s' }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow='0 10px 32px rgba(0,0,0,0.09)'; e.currentTarget.style.transform='translateY(-4px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}>
-                <div style={{ background: 'linear-gradient(148deg,#f4f5f7 0%,#eaecf0 100%)', padding: '28px 20px', height: 196, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                  <svg width="72" height="120" viewBox="0 0 72 120" fill="none">
-                    <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
-                    <rect x="7" y="7" width="58" height="106" rx="13" stroke="#c4c9d4" strokeWidth="1.5"/>
-                    <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
-                    {item.thumbnailUrl && <image href={item.thumbnailUrl} x="13" y="23" width="46" height="70" preserveAspectRatio="xMidYMid slice" />}
-                    <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
-                    <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
-                  </svg>
+                <div style={{ background: '#f8fafc', padding: '16px', height: 196, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {item.thumbnailUrl ? (
+                    <img src={item.thumbnailUrl} alt={item.name} style={{ height: '100%', maxWidth: '100%', objectFit: 'contain', transition: 'transform 0.3s' }} />
+                  ) : (
+                    <svg width="48" height="48" fill="none" stroke="#94a3b8" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                      <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                  )}
                   {item.discount && <span style={{ position: 'absolute', top: 11, right: 11, background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 5 }}>{item.discount}</span>}
                   <span style={{ position: 'absolute', top: 11, left: 11, background: '#0d1117', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 5 }}>Mới</span>
                 </div>
@@ -268,7 +267,7 @@ export function HomePage() {
       <section style={{ background: '#0d1117', padding: '64px 0', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 20% 50%,rgba(225,29,72,0.06) 0%,transparent 50%)', pointerEvents: 'none' }}/>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
@@ -298,12 +297,15 @@ export function HomePage() {
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '20px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='translateY(-3px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.transform='none'; }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 132, marginBottom: 14, position: 'relative' }}>
-                  <svg width="66" height="108" viewBox="0 0 66 108" fill="none">
-                    <rect x="5" y="5" width="56" height="98" rx="12" fill="#1e293b" stroke="#2d3f56" strokeWidth="1.5"/>
-                    <rect x="11" y="20" width="44" height="64" rx="5" fill="#0d1117" opacity="0.8"/>
-                    <circle cx="33" cy="95" r="4.5" fill="#2d3f56"/>
-                  </svg>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 132, marginBottom: 14, position: 'relative', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: 8 }}>
+                  {fp.thumbnailUrl ? (
+                    <img src={fp.thumbnailUrl} alt={fp.name} style={{ height: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <svg width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                      <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                  )}
                   <div style={{ position: 'absolute', top: 0, right: 0, background: '#e11d48', color: '#fff', fontSize: 13.5, fontWeight: 900, padding: '4px 10px', borderRadius: 8 }}>{fp.discount}</div>
                 </div>
                 <h4 style={{ fontSize: 13.5, fontWeight: 700, color: '#e2e8f0', marginBottom: 9, lineHeight: 1.3 }}>{fp.name}</h4>
@@ -312,7 +314,7 @@ export function HomePage() {
                   <div style={{ fontSize: 12, color: '#334155', textDecoration: 'line-through', marginTop: 2 }}>{fmt(fp.oldPrice)}₫</div>
                 </div>
                 <div style={{ marginBottom: 13 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', justifycontent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 11, color: '#475569' }}>Đã bán: {fp.sold}/{fp.total}</span>
                     <span style={{ fontSize: 11, color: '#e11d48', fontWeight: 700 }}>{fp.soldPct}%</span>
                   </div>
@@ -399,8 +401,8 @@ export function HomePage() {
                 style={{ background: '#fff', borderRadius: 18, border: '1.5px solid #f1f3f5', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.22s' }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow='0 8px 28px rgba(0,0,0,0.07)'; e.currentTarget.style.transform='translateY(-3px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}>
-                <div style={{ height: 196, background: 'linear-gradient(148deg,#e9ecef 0%,#d5dae2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                  <svg width="44" height="44" fill="none" stroke="#b0b8c4" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <div style={{ height: 196, position: 'relative', overflow: 'hidden' }}>
+                  <img src={post.image} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   <div style={{ position: 'absolute', top: 14, left: 14, background: '#0d1117', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5 }}>{post.category}</div>
                 </div>
                 <div style={{ padding: '22px 22px 24px' }}>

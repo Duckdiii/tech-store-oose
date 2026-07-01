@@ -47,7 +47,7 @@ function HeartIcon({ broken = false }) {
 export function ProductListingPage() {
   const [params] = useSearchParams();
   const { isLoggedIn } = useAuth();
-  const [brands, setBrands] = useState([]);
+  const [brands, setBrands] = useState(() => params.get('brand') ? [params.get('brand')] : []);
   const [prices, setPrices] = useState([]);
   const [rams, setRams] = useState([]);
   const [storages, setStorages] = useState([]);
@@ -56,6 +56,15 @@ export function ProductListingPage() {
   const [goTo, setGoTo] = useState('');
   const navigate = useNavigate();
   const PER_PAGE = 8;
+
+  useEffect(() => {
+    const brandParam = params.get('brand');
+    if (brandParam) {
+      setBrands([brandParam]);
+    } else {
+      setBrands([]);
+    }
+  }, [params]);
 
   const [products, setProducts] = useState([]);
   const [totalElements, setTotalElements] = useState(0);

@@ -15,7 +15,7 @@ export function Navbar() {
   const navigate = useNavigate();
   const { count } = useCart();
   const { user, logout, isLoggedIn } = useAuth();
-  const { theme, setTheme, lang, setLang } = useTheme();
+  const { theme, setTheme, lang, setLang, t } = useTheme();
   const [search, setSearch] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
@@ -137,17 +137,17 @@ export function Navbar() {
       <div style={{ background: '#0d1117', padding: '9px 0', borderBottom: '1px solid #1e293b' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <span style={{ fontSize: 12.5, color: '#64748b' }}>
-            Miễn phí vận chuyển đơn từ <strong style={{ color: '#e2e8f0' }}>500.000₫</strong> — Áp dụng toàn quốc
+            {t('Miễn phí vận chuyển đơn từ')} <strong style={{ color: '#e2e8f0' }}>500.000₫</strong> — {t('Áp dụng toàn quốc')}
           </span>
           <span style={{ fontSize: 12.5, color: '#64748b' }}>
-            Hotline: <strong style={{ color: '#fff' }}>1800 6789</strong> — 08:00–21:00 hằng ngày
+            {t('Hotline')}: <strong style={{ color: '#fff' }}>1800 6789</strong> — 08:00–21:00 {t('hằng ngày')}
           </span>
           <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
-            <Link to="/orders" style={{ fontSize: 12.5, color: '#475569', textDecoration: 'none' }}>Theo dõi đơn hàng</Link>
+            <Link to="/orders" style={{ fontSize: 12.5, color: '#475569', textDecoration: 'none' }}>{t('Theo dõi đơn hàng')}</Link>
             <span style={{ color: '#1e293b' }}>|</span>
-            <button style={{ fontSize: 12.5, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Hệ thống cửa hàng</button>
+            <button style={{ fontSize: 12.5, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>{t('Hệ thống cửa hàng')}</button>
             <span style={{ color: '#1e293b' }}>|</span>
-            <button style={{ fontSize: 12.5, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Tuyển dụng</button>
+            <button style={{ fontSize: 12.5, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>{t('Tuyển dụng')}</button>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@ export function Navbar() {
             </div>
             <div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#0d1117', letterSpacing: -0.8, lineHeight: 1.1 }}>TechStore</div>
-              <div style={{ fontSize: 9.5, color: '#9ca3af', letterSpacing: 1.5, fontWeight: 600, lineHeight: 1, textTransform: 'uppercase' }}>Điện thoại chính hãng</div>
+              <div style={{ fontSize: 9.5, color: '#9ca3af', letterSpacing: 1.5, fontWeight: 600, lineHeight: 1, textTransform: 'uppercase' }}>{t('Điện thoại chính hãng')}</div>
             </div>
           </Link>
 
@@ -190,7 +190,7 @@ export function Navbar() {
                     transition: 'color 0.15s',
                   }}
                 >
-                  {link.label}
+                  {t(link.label)}
                 </Link>
               );
             })}
@@ -200,7 +200,7 @@ export function Navbar() {
           <form onSubmit={handleSearch} style={{ position: 'relative', width: 272, flexShrink: 0 }}>
             <input
               type="text"
-              placeholder="Tìm điện thoại, phụ kiện..."
+              placeholder={t('Tìm kiếm sản phẩm...')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ width: '100%', height: 40, padding: '0 42px 0 15px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 13, fontFamily: 'inherit', background: '#f8f9fa', color: '#374151', outline: 'none' }}
@@ -216,8 +216,8 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={handleFavoritesClick}
-                title="San pham da tim"
-                aria-label="San pham da tim"
+                title="{t('Danh sách yêu thích')}"
+                aria-label="{t('Danh sách yêu thích')}"
                 style={{ width: 40, height: 40, background: showFavorites ? '#f4f5f7' : 'none', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: showFavorites ? '#0d1117' : '#4b5563' }}
               >
                 <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -227,8 +227,8 @@ export function Navbar() {
                 <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: -46, width: 320, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 1001 }}>
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div>
-                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>San pham da tim</div>
-                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{favoriteProducts.length} san pham dang theo doi</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>{t('Danh sách yêu thích')}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{favoriteProducts.length} {t('Đang theo dõi thông báo')}</div>
                     </div>
                     <button
                       type="button"
@@ -244,11 +244,11 @@ export function Navbar() {
 
                   <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                     {favoritesLoading ? (
-                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>Dang tai danh sach...</div>
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>{t('Đang tải...')}</div>
                     ) : favoritesError ? (
                       <div style={{ padding: '22px 16px', color: '#e11d48', fontSize: 13.5 }}>{favoritesError}</div>
                     ) : favoriteProducts.length === 0 ? (
-                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>Chua co san pham nao duoc tim.</div>
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>{t('Chưa có sản phẩm nào yêu thích')}</div>
                     ) : (
                       favoriteProducts.map((item) => (
                         <button
@@ -265,7 +265,7 @@ export function Navbar() {
                           </span>
                           <span style={{ minWidth: 0 }}>
                             <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#0d1117', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName || 'San pham'}</span>
-                            <span style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Dang theo doi thong bao</span>
+                            <span style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{t('Đang theo dõi thông báo')}</span>
                           </span>
                         </button>
                       ))
@@ -298,16 +298,16 @@ export function Navbar() {
                 <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: -46, width: 320, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 1001 }}>
                   <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div>
-                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>Thông báo của tôi</div>
-                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Bạn có {unreadNotificationsCount} thông báo chưa đọc</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>{t('Thông báo')}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{t('Bạn có {count} thông báo chưa đọc').replace('{count}', String(unreadNotificationsCount))}</div>
                     </div>
                   </div>
 
                   <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                     {notificationsLoading && notifications.length === 0 ? (
-                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>Đang tải thông báo...</div>
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>{t('Đang tải...')}</div>
                     ) : notifications.length === 0 ? (
-                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5, textAlign: 'center' }}>Không có thông báo nào.</div>
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5, textAlign: 'center' }}>{t('Không có thông báo nào.')}</div>
                     ) : (
                       notifications.map((item) => (
                         <div
@@ -331,9 +331,9 @@ export function Navbar() {
                               type="button"
                               onClick={(e) => handleMarkAsRead(e, item.id)}
                               style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: '2px 4px', whiteSpace: 'nowrap' }}
-                              title="Đánh dấu đã đọc"
+                              title={t('Đánh dấu đã đọc')}
                             >
-                              Đọc
+                              {t('Đọc')}
                             </button>
                           )}
                         </div>
@@ -362,7 +362,7 @@ export function Navbar() {
                   <div style={{ width: 28, height: 28, background: '#0d1117', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800 }}>
                     {user?.name?.[0]?.toUpperCase() || 'U'}
                   </div>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0d1117' }}>{user?.name?.split(' ').at(-1) || 'Tài khoản'}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0d1117' }}>{user?.name?.split(' ').at(-1) || t('Hồ sơ')}</span>
                   <svg width="12" height="12" fill="none" stroke="#9ca3af" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
                 {showMenu && (
@@ -372,8 +372,8 @@ export function Navbar() {
                       <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{user?.email}</div>
                     </div>
                     {[
-                      { to: '/profile', label: 'Tài khoản của tôi' },
-                      { to: '/orders', label: 'Đơn hàng của tôi' },
+                      { to: '/profile', label: t('Hồ sơ') },
+                      { to: '/orders', label: t('Đơn hàng') },
                     ].map(item => (
                       <Link key={item.to} to={item.to} onClick={() => setShowMenu(false)}
                         style={{ display: 'block', padding: '11px 16px', textDecoration: 'none', fontSize: 13.5, color: '#374151', fontWeight: 500 }}>
@@ -384,14 +384,14 @@ export function Navbar() {
                     {/* System settings */}
                     <div style={{ borderTop: '1px solid #f1f3f5', padding: '12px 16px 8px' }}>
                       <div style={{ fontSize: 10.5, fontWeight: 800, color: '#c4c9d4', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10 }}>
-                        Hệ thống
+                        {t('Hệ thống')}
                       </div>
 
                       {/* Language */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#374151', fontWeight: 500 }}>
                           <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                          Ngôn ngữ
+                          {t('Ngôn ngữ')}
                         </div>
                         <div style={{ display: 'flex', background: '#f0f1f3', borderRadius: 6, padding: 2, gap: 1 }}>
                           {['VI', 'EN'].map(l => (
@@ -410,14 +410,14 @@ export function Navbar() {
                             ? <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                             : <svg width="13" height="13" fill="none" stroke="#9ca3af" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                           }
-                          Giao diện
+                          {t('Giao diện')}
                         </div>
                         <div style={{ display: 'flex', background: '#f0f1f3', borderRadius: 6, padding: 2, gap: 1 }}>
-                          <button onClick={() => setTheme('light')} title="Sáng"
+                          <button onClick={() => setTheme('light')} title={t('Sáng')}
                             style={{ width: 30, height: 24, borderRadius: 4, border: 'none', background: theme === 'light' ? '#0d1117' : 'transparent', color: theme === 'light' ? '#fff' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
                             <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                           </button>
-                          <button onClick={() => setTheme('dark')} title="Tối"
+                          <button onClick={() => setTheme('dark')} title={t('Tối')}
                             style={{ width: 30, height: 24, borderRadius: 4, border: 'none', background: theme === 'dark' ? '#0d1117' : 'transparent', color: theme === 'dark' ? '#fff' : '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
                             <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                           </button>
@@ -429,7 +429,7 @@ export function Navbar() {
                       <button
                         onClick={() => { logout(); setShowMenu(false); navigate('/'); }}
                         style={{ display: 'block', width: '100%', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, color: '#e11d48', fontWeight: 600, fontFamily: 'inherit', textAlign: 'left' }}>
-                        Đăng xuất
+                        {t('Đăng xuất')}
                       </button>
                     </div>
                   </div>
@@ -439,7 +439,7 @@ export function Navbar() {
               <Link to="/sign-in"
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', background: '#0d1117', borderRadius: 9, color: '#fff', fontSize: 13.5, fontWeight: 700, textDecoration: 'none', flexShrink: 0, marginLeft: 4 }}>
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Đăng nhập
+                {t('Đăng nhập')}
               </Link>
             )}
           </div>
