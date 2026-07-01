@@ -34,9 +34,16 @@ public class RevenueReportServiceImpl implements RevenueReportService {
 
         LocalDateTime effectiveStart = startDate != null ? startDate
                 : LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        // nếu không có startDate, mặc định là ngày đầu tiên của tháng hiện tại
+        // ví dụ: 2023-08-01T00:00:00
         LocalDateTime effectiveEnd = endDate != null ? endDate
                 : effectiveStart.plusMonths(1).minusSeconds(1);
+        // nếu không có endDate, mặc định là ngày cuối cùng của tháng hiện tại
+        // ví dụ: 2023-08-31T23:59:59
         GroupBy effectiveGroupBy = groupBy != null ? groupBy : GroupBy.MONTH;
+        // nếu không có groupBy, mặc định là theo tháng
+        // ví dụ: nếu effectiveStart là 2023-08-01, effectiveEnd là 2023-08-31, groupBy
+        // là MONTH
 
         List<Order> orders = orderRepository.findCompletedOrdersForReport(
                 effectiveStart, effectiveEnd, categoryId, brandId, paymentMethodId);
@@ -49,11 +56,14 @@ public class RevenueReportServiceImpl implements RevenueReportService {
                 .map(Order::calculateTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<RevenueTrendPoint> trend = buildTrend(orders, effectiveGroupBy);
-        List<CategoryRevenueItem> byCategory = buildCategoryRevenue(orders);
-        List<BrandRevenueItem> byBrand = buildBrandRevenue(orders);
-        List<TopProductItem> topProducts = buildTopProducts(orders);
-        List<PaymentMethodRevenueItem> byPaymentMethod = buildPaymentMethodRevenue(orders);
+        List<RevenueTrendPoint> trend = buildTrend(orders, effectiveGroupBy); // xây dựng dữ liệu xu hướng doanh thu
+                                                                              // theo groupBy
+        List<CategoryRevenueItem> byCategory = buildCategoryRevenue(orders); // xây dựng dữ liệu doanh thu theo danh mục
+        List<BrandRevenueItem> byBrand = buildBrandRevenue(orders); // xây dựng dữ liệu doanh thu theo thương hiệu
+        List<TopProductItem> topProducts = buildTopProducts(orders);// xây dựng dữ liệu top sản phẩm bán chạy nhất
+        List<PaymentMethodRevenueItem> byPaymentMethod = buildPaymentMethodRevenue(orders);// xây dựng dữ liệu doanh thu
+                                                                                           // theo phương thức thanh
+                                                                                           // toán
 
         return new RevenueReportResponse(
                 totalRevenue,
@@ -62,14 +72,13 @@ public class RevenueReportServiceImpl implements RevenueReportService {
                 byCategory,
                 byBrand,
                 topProducts,
-                byPaymentMethod
-        );
+                byPaymentMethod);
     }
 
     private List<RevenueTrendPoint> buildTrend(List<Order> orders, GroupBy groupBy) {
         TreeMap<String, BigDecimal> trendMap = new TreeMap<>();
         for (Order order : orders) {
-            String period = toPeriodLabel(order.getOrderDate(), groupBy);
+            String period = toPeriodLabel(order.getOrderDate(), groupBy); // ví dụ
             trendMap.merge(period, order.calculateTotal(), BigDecimal::add);
         }
         return trendMap.entrySet().stream()
@@ -115,7 +124,8 @@ public class RevenueReportServiceImpl implements RevenueReportService {
     }
 
     private List<TopProductItem> buildTopProducts(List<Order> orders) {
-        record ProductStats(long qty, BigDecimal revenue) {}
+        record ProductStats(long qty, BigDecimal revenue) {
+        }
 
         Map<String, ProductStats> map = new HashMap<>();
         for (Order order : orders) {
@@ -149,7 +159,6 @@ public class RevenueReportServiceImpl implements RevenueReportService {
     private RevenueReportResponse emptyReport() {
         return new RevenueReportResponse(
                 BigDecimal.ZERO, 0,
-                List.of(), List.of(), List.of(), List.of(), List.of()
-        );
+                List.of(), List.of(), List.of(), List.of(), List.of());
     }
 }

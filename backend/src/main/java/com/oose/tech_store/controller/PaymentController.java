@@ -40,6 +40,8 @@ public class PaymentController {
     @GetMapping("/momo/return")
     public ResponseEntity<PaymentResultResponse> handleMomoReturn(
             @RequestParam Map<String, String> params) {
+        // params gồm orderId, amount, resultCode, signature, extraData, message,
+        // transId, payType, orderInfo, requestId, responseTime
         return ResponseEntity.ok(paymentFacade.handleMomoReturn(params));
     }
 
@@ -82,6 +84,7 @@ public class PaymentController {
         return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));
     }
 
+    // lấy IP thật của client gửi request
     private String extractClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {

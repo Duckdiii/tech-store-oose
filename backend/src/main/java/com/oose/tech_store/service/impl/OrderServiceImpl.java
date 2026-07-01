@@ -36,12 +36,12 @@ public class OrderServiceImpl implements OrderService {
 
         List<Order> orders;
 
-        if (status != null) {
+        if (status != null) { // filter by status
             orders = orderRepository.findByCustomerIdAndOrderStatusOrderByOrderDateDesc(customerId, status);
-        } else if (startDate != null && endDate != null) {
+        } else if (startDate != null && endDate != null) { // filter by date range
             orders = orderRepository.findByCustomerIdAndOrderDateBetweenOrderByOrderDateDesc(
                     customerId, startDate, endDate);
-        } else {
+        } else {// filter by customer only
             orders = orderRepository.findByCustomerIdOrderByOrderDateDesc(customerId);
         }
 
@@ -69,8 +69,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getId(),
                 order.getOrderDate(),
                 order.getOrderStatus().name(),
-                order.calculateTotal()
-        );
+                order.calculateTotal());
     }
 
     private OrderDetailResponse toOrderDetailResponse(Order order, Invoice invoice) {
@@ -92,8 +91,7 @@ public class OrderServiceImpl implements OrderService {
                 originalAmount,
                 discountAmount,
                 vatAmount,
-                finalAmount
-        );
+                finalAmount);
     }
 
     private OrderItemDetailResponse toOrderItemDetailResponse(OrderItem item) {
@@ -107,7 +105,6 @@ public class OrderServiceImpl implements OrderService {
                 item.getQuantity(),
                 item.getUnitPriceAtOrder(),
                 bundleServices,
-                item.calculateTotal()
-        );
+                item.calculateTotal());
     }
 }

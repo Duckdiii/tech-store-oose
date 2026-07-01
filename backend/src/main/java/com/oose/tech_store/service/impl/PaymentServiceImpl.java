@@ -58,7 +58,7 @@ public class PaymentServiceImpl implements PaymentService {
         Cart cart = cartRepository.findByCustomerId(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
-        Set<String> selectedIds = new HashSet<>(request.selectedCartItemIds());
+        Set<String> selectedIds = new HashSet<>(request.selectedCartItemIds()); // dùng Set để tăng tốc độ tìm kiếm
         List<CartItem> selectedItems = cart.getItems().stream()
                 .filter(item -> selectedIds.contains(item.getId()))
                 .toList();
@@ -78,8 +78,9 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Selected payment method is not available");
         }
 
-        PendingCheckout checkout = PendingCheckout.builder()
-                .txnRef(UUID.randomUUID().toString())
+        PendingCheckout checkout = PendingCheckout.builder() // lưu thông tin checkout vào session để xử lý sau khi
+                                                             // redirect về
+                .txnRef(UUID.randomUUID().toString()) // tạo transaction reference duy nhất
                 .customerId(customerId)
                 .addressId(request.addressId())
                 .paymentMethodId(request.paymentMethodId())
@@ -92,8 +93,8 @@ public class PaymentServiceImpl implements PaymentService {
             if (!cod.isAmountAllowed(amount)) {
                 throw new IllegalArgumentException("Order amount exceeds COD limit of " + cod.getMaxAmount());
             }
-            OrderFulfillmentService.OrderFulfillmentResult result =
-                    fulfillmentService.fulfill(checkout, PaymentLogStatus.PENDING);
+            OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
+                    PaymentLogStatus.PENDING);
             return new PaymentInitResponse("COD", checkout.getTxnRef(), null,
                     result.orderId(), result.invoiceId(), "Order placed successfully");
         }
@@ -116,7 +117,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentResultResponse handleMomoReturn(Map<String, String> params) {
-        if (!momoGateway.verifyReturnSignature(params)) {
+        if (!momoGateway.verifyReturnSignature(params)) { // xác minh chữ ký HMAC-SHA256 trên callback return từ MoMo
             return new PaymentResultResponse(false, null, null, "Invalid payment signature");
         }
 
@@ -129,19 +130,20 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         PendingCheckout checkout = sessionStore.getAndRemove(txnRef);
-        if (checkout == null) {
+        if (checkout == null) { // nếu không tìm thấy session checkout, có thể là do session đã hết hạn hoặc đã
+                                // được xử lý trước đó
             return new PaymentResultResponse(false, null, null,
                     "Payment session not found or already processed");
         }
 
-        if (resultCode == 0) {
-            OrderFulfillmentService.OrderFulfillmentResult result =
-                    fulfillmentService.fulfill(checkout, PaymentLogStatus.SUCCESS);
+        if (resultCode == 0) { // thanh toán thành công
+            OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
+                    PaymentLogStatus.SUCCESS);
             return new PaymentResultResponse(true, result.orderId(), result.invoiceId(),
                     "Payment completed successfully");
         }
 
-        if (resultCode == 1006) {
+        if (resultCode == 1006) { // user hủy thanh toán trên MoMo
             return new PaymentResultResponse(false, null, null,
                     "Payment was cancelled. Please try again.");
         }
@@ -157,22 +159,24 @@ public class PaymentServiceImpl implements PaymentService {
             return new PaymentResultResponse(false, null, null, "Invalid payment signature");
         }
 
-        String txnRef = params.get("vnp_TxnRef");
+        String txnRef = params.get("vnp_TxnRef"); // vnp_TxnRef là transaction reference mà mình đã gửi cho VNPay khi
+                                                  // tạo payment URL
 
         PendingCheckout checkout = sessionStore.getAndRemove(txnRef);
-        if (checkout == null) {
+        if (checkout == null) { // nếu không tìm thấy session checkout, có thể là do session đã hết hạn hoặc đã
+                                // được xử lý trước đó
             return new PaymentResultResponse(false, null, null,
                     "Payment session not found or already processed");
         }
 
-        if (vnpayGateway.isSuccessful(params)) {
-            OrderFulfillmentService.OrderFulfillmentResult result =
-                    fulfillmentService.fulfill(checkout, PaymentLogStatus.SUCCESS);
+        if (vnpayGateway.isSuccessful(params)) { // thanh toán thành công
+            OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
+                    PaymentLogStatus.SUCCESS);
             return new PaymentResultResponse(true, result.orderId(), result.invoiceId(),
                     "Payment completed successfully");
         }
 
-        if (vnpayGateway.isCancelled(params)) {
+        if (vnpayGateway.isCancelled(params)) { // user hủy thanh toán trên VNPay
             return new PaymentResultResponse(false, null, null,
                     "Payment was cancelled. Please try again.");
         }
@@ -204,8 +208,7 @@ public class PaymentServiceImpl implements PaymentService {
                 item.getQuantity(),
                 item.getUnitPrice(),
                 bundleServices,
-                item.calculateSubtotal()
-        );
+                item.calculateSubtotal());
     }
 
     private PaymentMethodDto toPaymentMethodDto(PaymentMethod pm) {

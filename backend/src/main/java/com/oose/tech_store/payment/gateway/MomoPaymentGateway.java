@@ -26,12 +26,13 @@ public class MomoPaymentGateway {
     private final RestClient restClient = RestClient.create();
 
     public String createPaymentUrl(PendingCheckout checkout) {
-        String orderId = checkout.getTxnRef();
-        String requestId = UUID.randomUUID().toString();
-        String orderInfo = "Payment for order " + orderId;
-        String extraData = "";
-        String requestType = "payWithMethod";
-        long amount = checkout.getAmount().longValue();
+        String orderId = checkout.getTxnRef(); // sử dụng txnRef làm orderId để tránh trùng lặp
+        String requestId = UUID.randomUUID().toString(); // tạo requestId duy nhất cho mỗi request
+        String orderInfo = "Payment for order " + orderId;// thông tin mô tả đơn hàng
+        String extraData = "";// có thể thêm thông tin bổ sung nếu cần
+        String requestType = "payWithMethod";// loại request, có thể là "captureWallet" hoặc "payWithMethod" tùy theo
+                                             // nhu cầu
+        long amount = checkout.getAmount().longValue(); // số tiền thanh toán, MoMo yêu cầu là long (đơn vị: VND)
 
         String rawSignature = "accessKey=" + properties.getAccessKey()
                 + "&amount=" + amount
@@ -44,9 +45,10 @@ public class MomoPaymentGateway {
                 + "&requestId=" + requestId
                 + "&requestType=" + requestType;
 
-        String signature = hmacSHA256(rawSignature, properties.getSecretKey());
+        String signature = hmacSHA256(rawSignature, properties.getSecretKey()); // tạo chữ ký HMAC-SHA256 để gửi kèm
+                                                                                // request
 
-        Map<String, Object> body = new LinkedHashMap<>();
+        Map<String, Object> body = new LinkedHashMap<>(); // tạo body request theo định dạng JSON mà MoMo yêu cầu
         body.put("partnerCode", properties.getPartnerCode());
         body.put("requestId", requestId);
         body.put("amount", amount);
@@ -62,7 +64,7 @@ public class MomoPaymentGateway {
 
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restClient.post()
+            Map<String, Object> response = restClient.post() // gửi request tới MoMo để tạo payment URL
                     .uri(properties.getEndpoint())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
@@ -74,13 +76,16 @@ public class MomoPaymentGateway {
                         "Payment service is currently unavailable. Please try again later.");
             }
 
-            int resultCode = ((Number) response.getOrDefault("resultCode", -1)).intValue();
+            int resultCode = ((Number) response.getOrDefault("resultCode", -1)).intValue(); // kiểm tra resultCode trả
+                                                                                            // về từ MoMo -> mục đích là
+                                                                                            // để xác nhận request thành
+                                                                                            // công
             if (resultCode != 0) {
                 throw new PaymentServiceUnavailableException(
                         "MoMo rejected payment: " + response.get("message"));
             }
 
-            return (String) response.get("payUrl");
+            return (String) response.get("payUrl"); // trả về URL để redirect người dùng tới MoMo
 
         } catch (PaymentServiceUnavailableException e) {
             throw e;
@@ -90,8 +95,15 @@ public class MomoPaymentGateway {
         }
     }
 
-    /** Verifies the HMAC-SHA256 signature on a server-to-server IPN callback from MoMo. */
-    public boolean verifyIpnSignature(MomoIpnRequest request) {
+    /**
+     * Verifies the HMAC-SHA256 signature on a server-to-server IPN callback from
+     * MoMo.
+     */
+    public boolean verifyIpnSignature(MomoIpnRequest request) { // kiểm tra chữ ký HMAC-SHA256 trên callback IPN từ MoMo
+        // IPN = Instant Payment Notification — MoMo chủ động gọi từ server của họ đến
+        // server của mình để thông báo kết quả giao dịch, không qua browser của user.
+        // Khi MoMo gọi về /api/payments/momo/ipn, mình cần xác minh đây thật sự là MoMo
+        // gọi, không phải ai đó giả mạo:
         if (request.signature() == null) {
             return false;
         }
@@ -113,7 +125,11 @@ public class MomoPaymentGateway {
         return hmacSHA256(rawSignature, properties.getSecretKey()).equals(request.signature());
     }
 
-    public boolean verifyReturnSignature(Map<String, String> params) {
+    public boolean verifyReturnSignature(Map<String, String> params) { // Sau khi user thanh toán xong trên MoMo, MoMo
+                                                                       // redirect browser về GET
+                                                                       // /api/payments/momo/return?orderId=xxx&amount=xxx&resultCode=0&signature=abc...
+        // Hàm này xác minh các params đó có bị ai sửa giữa chừng không.
+
         String receivedSignature = params.get("signature");
         if (receivedSignature == null) {
             return false;

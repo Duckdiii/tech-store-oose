@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequiredArgsConstructor
+@RequiredArgsConstructor // tạo ra constructor với các trường final
 public class CartItemController {
 
     private final CartBundleService cartBundleService;
