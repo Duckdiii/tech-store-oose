@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { fmt } from '../../../utils/format';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { orderApi } from '../../../api/orderApi';
 import { membershipApi } from '../../../api/membershipApi';
 
-function fmt(n) { return n ? n.toLocaleString('vi-VN') : '0'; }
+
 
 const RED = '#CC0000';
 

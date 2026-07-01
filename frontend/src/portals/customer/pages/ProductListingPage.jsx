@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fmt } from '../../../utils/format';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { productApi } from '../../../api/productApi';
 import { notificationApi } from '../../../api/notificationApi';
@@ -14,7 +15,7 @@ const FILTER_PRICES = [
 const FILTER_RAMS = ['4GB','6GB','8GB','12GB','16GB'];
 const FILTER_STORAGES = ['128GB','256GB','512GB'];
 
-function fmt(n) { return n.toLocaleString('vi-VN'); }
+
 
 function getPageNumbers(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);

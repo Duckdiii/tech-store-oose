@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { fmt } from '../../../utils/format';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { httpClient } from '../../../api/httpClient';
 
-function fmt(n) { return n.toLocaleString('vi-VN'); }
+
 
 const BACKEND_STATUS_MAP = {
   AWAITING_CONFIRMATION: { label: 'Chờ xác nhận', color: '#f59e0b', bg: '#fffbeb' },

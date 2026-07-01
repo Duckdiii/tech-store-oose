@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { fmt } from '../../../utils/format';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { productApi } from '../../../api/productApi';
 import { notificationApi } from '../../../api/notificationApi';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
 
-function fmt(value) {
-  return Number(value || 0).toLocaleString('vi-VN');
-}
+
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];

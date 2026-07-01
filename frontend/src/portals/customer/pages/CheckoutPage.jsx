@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { fmt } from '../../../utils/format';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { httpClient } from '../../../api/httpClient';
 
-function fmt(n) { return n.toLocaleString('vi-VN'); }
+
 
 const SAVED_ADDRESSES = [
   { id: 1, tag: 'Nhà riêng', name: 'Nguyễn Văn An', phone: '0901 234 567', address: '123 Lê Lợi, P. Bến Nghé, Q.1', province: 'TP. Hồ Chí Minh', isDefault: true },

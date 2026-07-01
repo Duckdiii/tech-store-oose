@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fmt } from '../../../utils/format';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { productApi } from '../../../api/productApi';
@@ -34,7 +35,7 @@ const BLOGS = [
   { category: 'Hướng dẫn', date: '10/06/2025', readTime: '7 phút đọc', tag: 'Tips', title: 'Top 5 mẹo tiết kiệm pin điện thoại Android hiệu quả nhất 2025', excerpt: 'Những cài đặt đơn giản nhưng cực kỳ hiệu quả giúp điện thoại Android của bạn sử dụng được lâu hơn mà không ảnh hưởng hiệu năng...' },
 ];
 
-function fmt(n) { return n ? n.toLocaleString('vi-VN') : '0'; }
+
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function useCountdown(h0 = 5) {

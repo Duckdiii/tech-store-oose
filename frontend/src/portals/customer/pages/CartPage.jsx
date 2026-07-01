@@ -1,9 +1,10 @@
 import { useState, useEffect  } from 'react';
+import { fmt } from '../../../utils/format';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import {httpClient } from '../../../api/httpClient';
 
-function fmt(n) { return n.toLocaleString('vi-VN'); }
+
 
 
 export function CartPage() {
