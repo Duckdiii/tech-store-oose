@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/manage")
 public class AccountManagementController {
 
     private final AccountManagementService accountManagementService;

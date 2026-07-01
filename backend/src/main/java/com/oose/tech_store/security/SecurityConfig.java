@@ -37,18 +37,23 @@ public class SecurityConfig {
                                                                 "/api/payments/vnpay/ipn")
                                                 .permitAll()
                                                 .requestMatchers("/api/bundle-services/**").permitAll()
-                                                .requestMatchers("/api/admin/warehouse/logs/**").hasRole("MANAGER")
+                                                .requestMatchers("/api/manage/warehouse/logs/**")
+                                                                .hasAnyRole("STAFF", "MANAGER")
                                                 .requestMatchers(
-                                                                "/api/admin/warehouse",
-                                                                "/api/admin/warehouse/import/**",
-                                                                "/api/admin/warehouse/export/**",
+                                                                "/api/manage/warehouse",
+                                                                "/api/manage/warehouse/import/**",
+                                                                "/api/manage/warehouse/export/**",
                                                                 "/api/warehouse/receipts/**")
                                                 .hasAnyRole("STAFF", "MANAGER")
-                                                .requestMatchers("/api/admin/supply-orders/**")
+                                                .requestMatchers("/api/manage/supply-orders/**")
                                                 .hasAnyRole("STAFF", "MANAGER")
-                                                .requestMatchers("/api/admin/suppliers/**")
+                                                .requestMatchers("/api/manage/suppliers/**")
                                                 .hasAnyRole("STAFF", "MANAGER")
-                                                .requestMatchers("/api/admin/**").hasRole("MANAGER")
+                                                .requestMatchers("/api/manage/orders", "/api/manage/orders/**")
+                                                                .hasAnyRole("STAFF", "MANAGER")
+                                                .requestMatchers("/api/manage/notifications", "/api/manage/notifications/**")
+                                                                .hasAnyRole("STAFF", "MANAGER")
+                                                .requestMatchers("/api/manage/**").hasRole("MANAGER")
                                                 .requestMatchers("/api/promotions/**").hasRole("MANAGER")
                                                 .requestMatchers("/api/reports/**", "/api/payment-logs/**")
                                                 .hasRole("MANAGER")

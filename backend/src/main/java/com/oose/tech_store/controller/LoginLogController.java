@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin/login-logs")
+@RequestMapping("/api/manage/login-logs")
 public class LoginLogController {
 
     private final LoginLogService loginLogService;

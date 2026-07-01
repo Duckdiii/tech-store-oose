@@ -51,6 +51,10 @@ public class InventoryNotificationService {
                     outOfStock);
             observers.forEach(observer -> observer.onInventoryChanged(event));
 
+            if (availableQuantity < 6) {
+                notifyLowStock(product, availableQuantity);
+            }
+
             int notifiedCustomerCount = outOfStock ? notifySubscribedCustomers(product) : 0;
 
             results.add(new InventoryStatusDTO(
@@ -61,6 +65,23 @@ public class InventoryNotificationService {
                     notifiedCustomerCount));
         }
         return results;
+    }
+
+    private void notifyLowStock(AffectedProductDTO product, long availableQuantity) {
+        String specs = String.format("%dGB RAM, %dGB Storage, %s", product.ramGb(), product.storageGb(), product.color());
+        String message = String.format("Sản phẩm %s (%s) sắp hết hàng (chỉ còn %d máy).", product.productName(), specs, availableQuantity);
+
+        List.of("STAFF", "MANAGER").forEach(role -> {
+            Notification lowStockNotif = new Notification(
+                    "Tồn kho thấp",
+                    NotificationType.OUT_OF_STOCK,
+                    message,
+                    role,
+                    List.of(NotificationChannel.WEB)
+            );
+            lowStockNotif.markSent();
+            notificationRepository.save(lowStockNotif);
+        });
     }
 
     // tìm kiếm khách hàng đăng ký theo biến thể

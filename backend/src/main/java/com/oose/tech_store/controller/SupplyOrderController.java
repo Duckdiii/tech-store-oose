@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 
 @RestController
-@RequestMapping("/api/admin/supply-orders")
+@RequestMapping("/api/manage/supply-orders")
 @RequiredArgsConstructor
 public class SupplyOrderController {
 

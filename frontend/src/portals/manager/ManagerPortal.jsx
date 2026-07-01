@@ -20,6 +20,7 @@ import { supplierApi } from '../../api/supplierApi';
 import { getWarehouseInventory } from '../../api/warehouseApi';
 import { productApi } from '../../api/productApi';
 import { PromotionsPage } from './pages/PromotionsPage';
+import { manageOrderApi } from '../../api/manageOrderApi';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
 const MANAGER_INITIAL_DATA = { ...INITIAL_DATA, products: [], variants: [] };
@@ -53,6 +54,42 @@ const mergeCatalogWithInventory = (catalogProducts = [], inventory = { products:
   };
 };
 
+const mapBackendStatusToFrontend = (status) => {
+  const map = {
+    'AWAITING_CONFIRMATION': 'Chờ xác nhận',
+    'PROCESSING': 'Đang xử lý',
+    'SHIPPING': 'Đang giao',
+    'COMPLETED': 'Hoàn thành',
+    'CANCELLED': 'Đã hủy',
+    'REFUNDED': 'Đã hoàn tiền'
+  };
+  return map[status] || status;
+};
+
+const mapFrontendStatusToBackend = (status) => {
+  const map = {
+    'Chờ xác nhận': 'AWAITING_CONFIRMATION',
+    'Đang xử lý': 'PROCESSING',
+    'Đang giao': 'SHIPPING',
+    'Hoàn thành': 'COMPLETED',
+    'Đã hủy': 'CANCELLED',
+    'Đã hoàn tiền': 'REFUNDED'
+  };
+  return map[status] || 'AWAITING_CONFIRMATION';
+};
+
+const formatDateString = (isoString) => {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  } catch {
+    return isoString;
+  }
+};
+
 export function ManagerPortal() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,9 +112,36 @@ export function ManagerPortal() {
   const [staffFormOpen, setStaffFormOpen] = useState(false);
   const [supplierFormOpen, setSupplierFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [toast, setToast] = useState('');
   const [undoData, setUndoData] = useState(null);
   const toastTimerRef = useRef(null);
+
+  const fetchOrdersFromApi = async () => {
+    setOrdersLoading(true);
+    try {
+      const orders = await manageOrderApi.getAllOrders();
+      const mappedOrders = (orders || []).map(o => ({
+        id: o.orderId,
+        customer: o.customerName,
+        total: Number(o.totalAmount || 0),
+        payment: o.paymentMethod || 'COD',
+        status: mapBackendStatusToFrontend(o.orderStatus),
+        date: formatDateString(o.orderDate),
+      }));
+      setData(prev => ({ ...prev, orders: mappedOrders }));
+    } catch (err) {
+      console.error('Failed to fetch admin orders:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (['dashboard', 'orders'].includes(activeSection)) {
+      fetchOrdersFromApi();
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -266,10 +330,16 @@ export function ManagerPortal() {
     }
   };
 
-  const changeOrderStatus = (id, status) => commit(
-    { ...data, orders: data.orders.map((o) => o.id === id ? { ...o, status } : o) },
-    `Đã cập nhật đơn ${id}`
-  );
+  const changeOrderStatus = async (id, status) => {
+    try {
+      const backendStatus = mapFrontendStatusToBackend(status);
+      await manageOrderApi.updateOrderStatus(id, backendStatus);
+      showToast(`Đã cập nhật trạng thái đơn ${id} thành "${status}"`);
+      fetchOrdersFromApi();
+    } catch (error) {
+      setToast(apiMessage(error));
+    }
+  };
 
   const toggleCustomer = (id) => commit(
     { ...data, customers: data.customers.map((c) => c.id === id ? { ...c, active: !c.active } : c) },

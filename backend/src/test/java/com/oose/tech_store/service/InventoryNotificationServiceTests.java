@@ -136,9 +136,9 @@ class InventoryNotificationServiceTests {
         assertEquals(5L, event.availableQuantity());
         assertEquals(false, event.outOfStock());
 
-        // Verify notifications NOT saved
+        // Verify notifications NOT saved for customers, but saved for low stock (STAFF, MANAGER)
         verifyNoInteractions(favoriteProductRepository);
-        verifyNoInteractions(notificationRepository);
+        verify(notificationRepository, times(2)).save(any());
     }
 
     @Test

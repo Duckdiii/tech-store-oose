@@ -22,12 +22,12 @@ export const productApi = {
   },
 
   getManagerCatalog: async () => {
-    const response = await httpClient.get('/admin/products');
+    const response = await httpClient.get('/manage/products');
     return (response.data || []).map(normalizeProductForManager);
   },
 
   getManagerProductDetail: async (id) => {
-    const response = await httpClient.get(`/admin/products/${id}`);
+    const response = await httpClient.get(`/manage/products/${id}`);
     return normalizeProductForManager(response.data);
   },
 
@@ -37,16 +37,16 @@ export const productApi = {
   },
 
   createManagerProduct: async (payload) => {
-    const response = await httpClient.post('/admin/products', payload);
+    const response = await httpClient.post('/manage/products', payload);
     return normalizeProductForManager(response.data);
   },
 
   updateManagerProduct: async (id, payload) => {
-    const response = await httpClient.put(`/admin/products/${id}`, payload);
+    const response = await httpClient.put(`/manage/products/${id}`, payload);
     return normalizeProductForManager(response.data);
   },
 
   deleteManagerProduct: async (id) => {
-    await httpClient.delete(`/admin/products/${id}`);
+    await httpClient.delete(`/manage/products/${id}`);
   }
 };

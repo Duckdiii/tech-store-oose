@@ -200,7 +200,7 @@ export function OrdersPage() {
                           <div style={{ borderTop: '1px solid #e9ecef', marginTop: 16, paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', gap: 8 }}>
                               {detail.orderStatus === 'AWAITING_CONFIRMATION' && (
-                                <button onClick={() => alert('Yêu cầu hủy đơn hàng đã được gửi đến ban quản trị.')} style={{ padding: '8px 14px', background: '#fef2f2', color: '#e11d48', border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Hủy đơn</button>
+                                <button onClick={() => alert('Yêu cầu hủy đơn hàng đã được gửi đến cửa hàng.')} style={{ padding: '8px 14px', background: '#fef2f2', color: '#e11d48', border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Hủy đơn</button>
                               )}
                               {detail.orderStatus === 'COMPLETED' && (
                                 <button onClick={() => alert('Tính năng đánh giá đang được phát triển.')} style={{ padding: '8px 14px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Đánh giá</button>

@@ -1,7 +1,7 @@
 package com.oose.tech_store.service.product;
 
-import com.oose.tech_store.dto.admin.AdminProductRequestDTO;
-import com.oose.tech_store.dto.admin.AdminProductResponseDTO;
+import com.oose.tech_store.dto.manage.ManageProductRequestDTO;
+import com.oose.tech_store.dto.manage.ManageProductResponseDTO;
 import com.oose.tech_store.entity.Brand;
 import com.oose.tech_store.entity.Category;
 import com.oose.tech_store.entity.Product;
@@ -21,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
-public class AdminProductService {
+public class ManageProductService {
 
     private final ProductRepository productRepository;
     private final BrandRepository brandRepository;
@@ -29,7 +29,7 @@ public class AdminProductService {
     private final ProductVariantRepository productVariantRepository;
 
     @Transactional(readOnly = true)
-    public List<AdminProductResponseDTO> getAllProducts() {
+    public List<ManageProductResponseDTO> getAllProducts() {
         return productRepository.findAll().stream()
                 .sorted(Comparator.comparing(Product::getName, String.CASE_INSENSITIVE_ORDER))
                 .map(this::toResponse)
@@ -37,14 +37,14 @@ public class AdminProductService {
     }
 
     @Transactional(readOnly = true)
-    public AdminProductResponseDTO getProductById(String id) {
+    public ManageProductResponseDTO getProductById(String id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
         return toResponse(product);
     }
 
     @Transactional
-    public AdminProductResponseDTO createProduct(AdminProductRequestDTO request) {
+    public ManageProductResponseDTO createProduct(ManageProductRequestDTO request) {
         Product product = new Product(
                 cleanRequired(request.name(), "Product name is required"),
                 cleanOptional(request.description()),
@@ -55,7 +55,7 @@ public class AdminProductService {
     }
 
     @Transactional
-    public AdminProductResponseDTO updateProduct(String id, AdminProductRequestDTO request) {
+    public ManageProductResponseDTO updateProduct(String id, ManageProductRequestDTO request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
@@ -83,7 +83,7 @@ public class AdminProductService {
         productRepository.delete(product);
     }
 
-    private void applyProductDetails(Product product, AdminProductRequestDTO request) {
+    private void applyProductDetails(Product product, ManageProductRequestDTO request) {
         product.setScreenSize(request.screenSize());
         product.setRearCamera(cleanOptional(request.rearCamera()));
         product.setFrontCamera(cleanOptional(request.frontCamera()));
@@ -95,9 +95,8 @@ public class AdminProductService {
         product.setScreenResolution(cleanOptional(request.screenResolution()));
 
         product.getImages().clear();
-        if (request.images() == null) {
-            return;
-        }
+        if (request.images() == null) return;
+
         request.images().stream()
                 .filter(image -> image.imageUrl() != null && !image.imageUrl().isBlank())
                 .forEach(image -> new ProductImage(
@@ -106,25 +105,23 @@ public class AdminProductService {
                         image.imageUrl().trim()));
     }
 
-    private Brand resolveBrand(AdminProductRequestDTO request) {
+    private Brand resolveBrand(ManageProductRequestDTO request) {
         String brandId = cleanOptional(request.brandId());
         if (brandId != null) {
             return brandRepository.findById(brandId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Brand was not found"));
         }
-
         String brandName = cleanRequired(request.brand(), "Brand is required");
         return brandRepository.findByNameIgnoreCase(brandName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Brand was not found"));
     }
 
-    private Category resolveCategory(AdminProductRequestDTO request) {
+    private Category resolveCategory(ManageProductRequestDTO request) {
         String categoryId = cleanOptional(request.categoryId());
         if (categoryId != null) {
             return categoryRepository.findById(categoryId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category was not found"));
         }
-
         String categoryName = cleanRequired(request.category(), "Category is required");
         return categoryRepository.findByNameIgnoreCase(categoryName)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category was not found"));
@@ -139,21 +136,19 @@ public class AdminProductService {
     }
 
     private String cleanOptional(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
+        if (value == null || value.isBlank()) return null;
         return value.trim();
     }
 
-    private AdminProductResponseDTO toResponse(Product product) {
+    private ManageProductResponseDTO toResponse(Product product) {
         Brand brand = product.getBrand();
         Category category = product.getCategory();
 
-        List<AdminProductResponseDTO.ImageDTO> images = product.getImages().stream()
+        List<ManageProductResponseDTO.ImageDTO> images = product.getImages().stream()
                 .map(this::toImageResponse)
                 .toList();
 
-        return new AdminProductResponseDTO(
+        return new ManageProductResponseDTO(
                 product.getId(),
                 product.getName(),
                 product.getDescription(),
@@ -173,8 +168,8 @@ public class AdminProductService {
                 images);
     }
 
-    private AdminProductResponseDTO.ImageDTO toImageResponse(ProductImage image) {
-        return new AdminProductResponseDTO.ImageDTO(
+    private ManageProductResponseDTO.ImageDTO toImageResponse(ProductImage image) {
+        return new ManageProductResponseDTO.ImageDTO(
                 image.getId(),
                 image.getName(),
                 image.getImageUrl());

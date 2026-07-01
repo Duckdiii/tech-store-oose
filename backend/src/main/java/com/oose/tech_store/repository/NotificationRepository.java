@@ -12,4 +12,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
     List<Notification> findByCustomer_IdAndReadAtIsNullOrderByCreatedAtDesc(String customerId);
 
     Optional<Notification> findByIdAndCustomer_Id(String id, String customerId);
+
+    List<Notification> findByRecipientRoleOrderByCreatedAtDesc(String recipientRole);
+
+    List<Notification> findByRecipientRoleAndReadAtIsNullOrderByCreatedAtDesc(String recipientRole);
+
+    Optional<Notification> findByIdAndRecipientRole(String id, String recipientRole);
 }

@@ -1,6 +1,8 @@
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { NAV_ITEMS, adminStyles, LAST_BACKUP } from '../constants';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { manageNotificationApi } from '../../../api/manageNotificationApi';
 
 function getInitials(name, email) {
   const source = (name || email || 'Manager').trim();
@@ -24,9 +26,169 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
   const initials = getInitials(user?.name, user?.email);
   const roleLabel = getRoleLabel(user?.role);
 
+  const [notifications, setNotifications] = useState([]);
+  const [showNotif, setShowNotif] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef(null);
+
+  const loadNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const data = await manageNotificationApi.getNotifications();
+      setNotifications(data || []);
+    } catch (err) {
+      console.error('Failed to load manage notifications:', err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const normalizedRole = String(user?.role || '').replace(/^ROLE_/, '').toUpperCase();
+    if (['STAFF', 'MANAGER'].includes(normalizedRole)) {
+      loadNotifications();
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const clickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotif(false);
+      }
+    };
+    document.addEventListener('mousedown', clickOutside);
+    return () => document.removeEventListener('mousedown', clickOutside);
+  }, []);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await manageNotificationApi.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
+    } catch (err) {
+      console.error('Failed to mark read', err);
+    }
+  };
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.readAt).length, [notifications]);
+
+  const filteredNavItems = useMemo(() => {
+    const normalizedRole = String(user?.role || '').replace(/^ROLE_/, '').toUpperCase();
+    if (normalizedRole === 'STAFF') {
+      return NAV_ITEMS.filter(([key]) => ['dashboard', 'orders', 'warehouse', 'suppliers'].includes(key));
+    }
+    return NAV_ITEMS;
+  }, [user]);
+
   return (
     <div className="admin-shell">
       <style>{adminStyles}</style>
+      <style>{`
+        .admin-notif-bell {
+          position: relative;
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          background: none;
+          border: 1px solid #cbd5e1;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .admin-notif-bell:hover {
+          background: #f1f5f9;
+          color: #0f172a;
+          border-color: #94a3b8;
+        }
+        .admin-notif-badge {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: #ef4444;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 700;
+          width: 17px;
+          height: 17px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #fff;
+        }
+        .admin-notif-dropdown {
+          position: absolute;
+          top: 48px;
+          right: 0;
+          width: 320px;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+          border: 1px solid #e2e8f0;
+          z-index: 50;
+          overflow: hidden;
+        }
+        .admin-notif-header {
+          padding: 12px 16px;
+          border-bottom: 1px solid #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .admin-notif-header h4 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .admin-notif-list {
+          max-height: 280px;
+          overflow-y: auto;
+        }
+        .admin-notif-item {
+          padding: 12px 16px;
+          border-bottom: 1px solid #f1f5f9;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          transition: background 0.15s;
+          cursor: pointer;
+          position: relative;
+          text-align: left;
+        }
+        .admin-notif-item:hover {
+          background: #f8fafc;
+        }
+        .admin-notif-item.is-unread {
+          background: #f0f9ff;
+        }
+        .admin-notif-item.is-unread:hover {
+          background: #e0f2fe;
+        }
+        .admin-notif-item__unread-dot {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          width: 6px;
+          height: 6px;
+          background: #3b82f6;
+          border-radius: 50%;
+        }
+        .admin-notif-title {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .admin-notif-msg {
+          font-size: 12px;
+          color: #475569;
+          line-height: 1.4;
+        }
+      `}</style>
 
       <aside className="admin-sidebar">
         <Link to="/" className="admin-brand">
@@ -35,7 +197,7 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
         </Link>
         <p className="admin-sidebar__label">ĐIỀU HƯỚNG</p>
         <nav>
-          {NAV_ITEMS.map(([key, label]) => {
+          {filteredNavItems.map(([key, label]) => {
             const badge = badges?.[key];
             return (
               <Link
@@ -120,6 +282,49 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
                 placeholder="Tìm trong trang..."
               />
             </label>
+
+            <div ref={notifRef} style={{ position: 'relative' }}>
+              <button className="admin-notif-bell" onClick={() => setShowNotif(!showNotif)} title="Thông báo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                {unreadCount > 0 && <span className="admin-notif-badge">{unreadCount}</span>}
+              </button>
+
+              {showNotif && (
+                <div className="admin-notif-dropdown">
+                  <div className="admin-notif-header">
+                    <h4>Thông báo</h4>
+                    {unreadCount > 0 && (
+                      <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>
+                        {unreadCount} chưa đọc
+                      </span>
+                    )}
+                  </div>
+                  <div className="admin-notif-list">
+                    {notifLoading && notifications.length === 0 ? (
+                      <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>Đang tải thông báo...</div>
+                    ) : notifications.length === 0 ? (
+                      <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>Không có thông báo nào</div>
+                    ) : (
+                      notifications.map(item => (
+                        <div
+                          key={item.id}
+                          className={`admin-notif-item ${!item.readAt ? 'is-unread' : ''}`}
+                          onClick={() => !item.readAt && handleMarkAsRead(item.id)}
+                        >
+                          <div className="admin-notif-title">{item.title}</div>
+                          <div className="admin-notif-msg">{item.message}</div>
+                          {!item.readAt && <span className="admin-notif-item__unread-dot" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="admin-profile" title={displayName}>{initials}</div>
           </div>
         </header>

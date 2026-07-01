@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin/warehouse")
+@RequestMapping("/api/manage/warehouse")
 @RequiredArgsConstructor
 public class WarehouseInventoryController {
 

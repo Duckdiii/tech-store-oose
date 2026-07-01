@@ -11,7 +11,7 @@ export function LogsPage({ onExport }) {
     <>
       <div className="admin-page-intro">
         <div>
-          <p>Hoạt động quản trị hệ thống</p>
+          <p>Hoạt động quản lý hệ thống</p>
           <h2>Nhật ký hệ thống</h2>
         </div>
         <button className="admin-button admin-button--secondary" onClick={onExport}>

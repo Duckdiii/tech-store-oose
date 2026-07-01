@@ -50,9 +50,12 @@ public class Notification extends BaseEntity {
     @JoinColumn(name = "favorite_product_id")
     private FavoriteProduct favoriteProduct;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
     private Customer customer;
+
+    @Column(name = "recipient_role", length = 30)
+    private String recipientRole;
 
     public Notification(Customer customer, String title, NotificationType type, String message, List<NotificationChannel> channels) {
         if (customer == null) {
@@ -73,6 +76,23 @@ public class Notification extends BaseEntity {
         this.message = message;
         this.channels.addAll(channels);
         customer.getNotifications().add(this);
+    }
+
+    public Notification(String title, NotificationType type, String message, String recipientRole, List<NotificationChannel> channels) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("title must not be blank");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("type must not be null");
+        }
+        if (channels == null) {
+            throw new IllegalArgumentException("channels must not be null");
+        }
+        this.title = title;
+        this.type = type;
+        this.message = message;
+        this.recipientRole = recipientRole;
+        this.channels.addAll(channels);
     }
 
     public void markSent() {

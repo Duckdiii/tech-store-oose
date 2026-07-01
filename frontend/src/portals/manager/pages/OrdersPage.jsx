@@ -3,7 +3,7 @@ import { Status, DataTable, EmptyState } from '../components/index';
 import { money, sortRows, downloadCsv } from '../utils';
 import { httpClient } from '../../../api/httpClient';
 
-const ORDER_STATUSES = ['Chờ xác nhận', 'Đang giao', 'Hoàn thành', 'Đã hủy'];
+const ORDER_STATUSES = ['Chờ xác nhận', 'Đang xử lý', 'Đang giao', 'Hoàn thành', 'Đã hủy', 'Đã hoàn tiền'];
 
 const PAYMENT_LOG_STATUSES = ['Tất cả', 'Success', 'Failed', 'Pending', 'Cancelled'];
 

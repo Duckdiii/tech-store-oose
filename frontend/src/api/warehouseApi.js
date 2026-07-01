@@ -15,31 +15,31 @@ const normalizeInventory = (data) => ({
 });
 
 export const getWarehouseInventory = async () => {
-  const response = await httpClient.get('/admin/warehouse');
+  const response = await httpClient.get('/manage/warehouse');
   return normalizeInventory(response.data);
 };
 
 export const validateImport = async (payload) =>
-  (await httpClient.post('/admin/warehouse/import/validate', payload)).data;
+  (await httpClient.post('/manage/warehouse/import/validate', payload)).data;
 
 export const confirmImport = async (payload) =>
-  (await httpClient.post('/admin/warehouse/import/confirm', payload)).data;
+  (await httpClient.post('/manage/warehouse/import/confirm', payload)).data;
 
 export const validateExport = async (payload) =>
-  (await httpClient.post('/admin/warehouse/export/validate', payload)).data;
+  (await httpClient.post('/manage/warehouse/export/validate', payload)).data;
 
 export const confirmExport = async (payload) =>
-  (await httpClient.post('/admin/warehouse/export/confirm', payload)).data;
+  (await httpClient.post('/manage/warehouse/export/confirm', payload)).data;
 
 export const getWarehouseLogs = async (filters) => {
-  const response = await httpClient.get('/admin/warehouse/logs', {
+  const response = await httpClient.get('/manage/warehouse/logs', {
     params: cleanParams(filters),
   });
   return response.data;
 };
 
 export const getWarehouseLogDetail = async (logType, logId) =>
-  (await httpClient.get(`/admin/warehouse/logs/${logType}/${logId}`)).data;
+  (await httpClient.get(`/manage/warehouse/logs/${logType}/${logId}`)).data;
 
 export const downloadReceipt = async (receiptId) => {
   const response = await httpClient.get(`/warehouse/receipts/${receiptId}/download`, {
@@ -49,7 +49,7 @@ export const downloadReceipt = async (receiptId) => {
 };
 
 export const downloadWarehouseLogs = async (filters, format) => {
-  const response = await httpClient.get('/admin/warehouse/logs/export', {
+  const response = await httpClient.get('/manage/warehouse/logs/export', {
     params: { ...cleanParams(filters), format },
     responseType: 'blob',
   });

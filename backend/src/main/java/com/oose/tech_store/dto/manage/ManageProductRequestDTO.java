@@ -1,11 +1,11 @@
-package com.oose.tech_store.dto.admin;
+package com.oose.tech_store.dto.manage;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
 
-public record AdminProductRequestDTO(
+public record ManageProductRequestDTO(
         @NotBlank String name,
         String description,
         String brandId,

@@ -2,6 +2,8 @@ package com.oose.tech_store.service.order.impl;
 
 import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
+import com.oose.tech_store.entity.enums.NotificationChannel;
+import com.oose.tech_store.entity.enums.NotificationType;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.payment.PendingCheckout;
 import com.oose.tech_store.repository.*;
@@ -27,6 +29,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
         private final OrderRepository orderRepository;
         private final PaymentLogRepository paymentLogRepository;
         private final InvoiceRepository invoiceRepository;
+        private final NotificationRepository notificationRepository;
         private final List<PriceProcessor> priceProcessors; // [MembershipDiscountProcessor (vị trí 0),
                                                             // ShippingFeeProcessor (vị trí 1)]
 
@@ -87,6 +90,19 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                 Invoice savedInvoice = invoiceRepository.save(invoice);
 
                 selectedItems.forEach(cart::removeItem); // xóa items khỏi cart
+
+                // Create notifications for STAFF and MANAGER
+                List.of("STAFF", "MANAGER").forEach(role -> {
+                        Notification orderNotif = new Notification(
+                                "Đơn hàng mới",
+                                NotificationType.PROMOTION,
+                                "Đơn hàng mới " + savedOrder.getId() + " từ khách hàng " + customer.getFullName() + " đang chờ xử lý.",
+                                role,
+                                List.of(NotificationChannel.WEB)
+                        );
+                        orderNotif.markSent();
+                        notificationRepository.save(orderNotif);
+                });
 
                 return new OrderFulfillmentResult(savedOrder.getId(), savedInvoice.getId());
         }

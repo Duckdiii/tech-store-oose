@@ -1,8 +1,8 @@
-package com.oose.tech_store.dto.admin;
+package com.oose.tech_store.dto.manage;
 
 import java.util.List;
 
-public record AdminProductResponseDTO(
+public record ManageProductResponseDTO(
         String id,
         String name,
         String description,

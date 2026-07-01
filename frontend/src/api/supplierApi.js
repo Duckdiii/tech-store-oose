@@ -1,6 +1,6 @@
 import { httpClient } from './httpClient';
 
-const BASE = '/admin/suppliers';
+const BASE = '/manage/suppliers';
 
 export const supplierApi = {
   getAll: () => httpClient.get(BASE).then(r => r.data),

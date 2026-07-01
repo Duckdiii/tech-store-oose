@@ -482,9 +482,9 @@ export function SettingsPage({ settings, onToggle }) {
 
       <article className="admin-card admin-danger-zone" style={{ maxWidth: 'none', width: '100%' }}>
         <div>
-          <p>VÙNG QUẢN TRỊ</p>
+          <p>CẤU HÌNH HỆ THỐNG</p>
           <h3>Đặt lại dữ liệu mock trên trình duyệt</h3>
-          <span>Chỉ dùng khi bạn muốn khôi phục dữ liệu quản trị ban đầu trên trình duyệt này.</span>
+          <span>Chỉ dùng khi bạn muốn khôi phục dữ liệu ban đầu trên trình duyệt này.</span>
           <button
             className="admin-button admin-button--danger"
             onClick={() => { localStorage.removeItem('techstore_admin_state'); window.location.reload(); }}
