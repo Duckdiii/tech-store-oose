@@ -53,8 +53,15 @@ public class ExportPersistenceService {
 
         Map<String, AffectedProductDTO> products = new LinkedHashMap<>();
         for (ProductVariant variant : savedVariants) {
-            products.putIfAbsent(variant.getProduct().getId(),
-                    new AffectedProductDTO(variant.getProduct().getId(), variant.getProduct().getName()));
+            String key = variant.getProduct().getId() + "_" + variant.getRamGb() + "_" + variant.getStorageGb() + "_" + variant.getColor();
+            String displayName = variant.getProduct().getName() + " (" + variant.getDisplayName() + ")";
+            products.putIfAbsent(key,
+                    new AffectedProductDTO(
+                            variant.getProduct().getId(),
+                            displayName,
+                            variant.getRamGb(),
+                            variant.getStorageGb(),
+                            variant.getColor()));
         }
 
         return new ExportPersistenceResult(

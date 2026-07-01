@@ -52,7 +52,17 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/promotions/**").hasRole("MANAGER")
                                                 .requestMatchers("/api/reports/**", "/api/payment-logs/**")
                                                 .hasRole("MANAGER")
-                                                .requestMatchers("/api/products/*/notifications/subscription")
+                                                .requestMatchers("/api/variants/*/notifications/subscription") // cho
+                                                                                                               // phép
+                                                                                                               // khách
+                                                                                                               // hàng
+                                                                                                               // gọi
+                                                                                                               // API
+                                                                                                               // đăng
+                                                                                                               // ký
+                                                                                                               // theo
+                                                                                                               // biến
+                                                                                                               // thể
                                                 .hasRole("CUSTOMER")
                                                 .requestMatchers("/api/payments/**").hasRole("CUSTOMER")
                                                 .requestMatchers("/api/cart/**").hasRole("CUSTOMER")

@@ -11,6 +11,8 @@ import com.oose.tech_store.entity.enums.SubscriptionStatus;
 import com.oose.tech_store.repository.FavoriteProductRepository;
 import com.oose.tech_store.repository.NotificationRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
+import com.oose.tech_store.service.observer.InventoryObserver;
+import com.oose.tech_store.service.observer.InventoryStatusChangedEvent;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -24,19 +26,31 @@ public class InventoryNotificationService {
     private final ProductVariantRepository productVariantRepository;
     private final FavoriteProductRepository favoriteProductRepository;
     private final NotificationRepository notificationRepository;
+    private final List<InventoryObserver> observers; // người lắng nghe sự kiện thay đổi tồn kho
 
-    /**
-     * Inventory quantity is derived from physical ProductVariant rows with AVAILABLE status.
-     * When it reaches zero, create web notifications for customers subscribed to that product.
-     */
     @Transactional
     public List<InventoryStatusDTO> notifyInventoryChange(List<AffectedProductDTO> affectedProducts) {
         List<InventoryStatusDTO> results = new ArrayList<>();
 
         for (AffectedProductDTO product : affectedProducts) {
-            long availableQuantity = productVariantRepository.countByProductIdAndStatus(
-                    product.productId(), ProductVariantStatus.AVAILABLE);
+            long availableQuantity = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                    product.productId(),
+                    product.ramGb(),
+                    product.storageGb(),
+                    product.color(),
+                    ProductVariantStatus.AVAILABLE);
             boolean outOfStock = availableQuantity == 0;
+
+            InventoryStatusChangedEvent event = new InventoryStatusChangedEvent(
+                    product.productId(),
+                    product.productName(),
+                    product.ramGb(),
+                    product.storageGb(),
+                    product.color(),
+                    availableQuantity,
+                    outOfStock);
+            observers.forEach(observer -> observer.onInventoryChanged(event));
+
             int notifiedCustomerCount = outOfStock ? notifySubscribedCustomers(product) : 0;
 
             results.add(new InventoryStatusDTO(
@@ -49,9 +63,14 @@ public class InventoryNotificationService {
         return results;
     }
 
+    // tìm kiếm khách hàng đăng ký theo biến thể
     private int notifySubscribedCustomers(AffectedProductDTO product) {
-        List<FavoriteProduct> subscriptions = favoriteProductRepository.findByProductVariant_Product_IdAndStatus(
-                product.productId(), SubscriptionStatus.SUBSCRIBED);
+        List<FavoriteProduct> subscriptions = favoriteProductRepository.findBySpecsAndStatus(
+                product.productId(),
+                product.ramGb(),
+                product.storageGb(),
+                product.color(),
+                SubscriptionStatus.SUBSCRIBED);
         List<Notification> notifications = new ArrayList<>();
 
         for (FavoriteProduct subscription : subscriptions) {

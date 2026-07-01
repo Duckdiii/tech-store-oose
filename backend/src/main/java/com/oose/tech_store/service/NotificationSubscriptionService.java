@@ -45,7 +45,15 @@ public class NotificationSubscriptionService {
     public NotificationSubscriptionResponse unsubscribe(String customerId, String productVariantId) {
         FavoriteProduct subscription = favoriteProductRepository
                 .findByCustomer_IdAndProductVariant_Id(customerId, productVariantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Notification subscription not found"));
+                .orElseGet(() -> {
+                    List<FavoriteProduct> subs = favoriteProductRepository.findByCustomer_IdOrderByUpdatedAtDesc(customerId);
+                    for (FavoriteProduct sub : subs) {
+                        if (sub.getProductVariant().getProduct().getId().equals(productVariantId)) {
+                            return sub;
+                        }
+                    }
+                    throw new ResourceNotFoundException("Notification subscription not found");
+                });
 
         subscription.unsubscribe();
         return toSubscriptionResponse(subscription);
@@ -85,7 +93,25 @@ public class NotificationSubscriptionService {
 
     private ProductVariant findProductVariant(String productVariantId) {
         return productVariantRepository.findById(productVariantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
+                .orElseGet(() -> {
+                    List<ProductVariant> variants = productVariantRepository.findByProductIdAndStatus(
+                            productVariantId, com.oose.tech_store.entity.enums.ProductVariantStatus.AVAILABLE);
+                    if (variants.isEmpty()) {
+                        variants = productVariantRepository.findByProductIdAndStatus(
+                                productVariantId, com.oose.tech_store.entity.enums.ProductVariantStatus.EXPORTED);
+                    }
+                    if (variants.isEmpty()) {
+                        // Thử tìm bất kỳ biến thể nào của sản phẩm này
+                        List<ProductVariant> allVariants = productVariantRepository.findAll();
+                        for (ProductVariant v : allVariants) {
+                            if (v.getProduct().getId().equals(productVariantId)) {
+                                return v;
+                            }
+                        }
+                        throw new ResourceNotFoundException("Product variant or product not found with ID: " + productVariantId);
+                    }
+                    return variants.get(0);
+                });
     }
 
     private NotificationSubscriptionResponse toSubscriptionResponse(FavoriteProduct subscription) {
@@ -94,6 +120,8 @@ public class NotificationSubscriptionService {
                 subscription.getId(),
                 productVariant.getId(),
                 productVariant.getDisplayName(),
+                productVariant.getProduct().getId(),
+                productVariant.getProduct().getName(),
                 subscription.getStatus(),
                 subscription.getSubscribedAt(),
                 subscription.getUnsubscribedAt());

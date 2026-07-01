@@ -1,13 +1,13 @@
 import { httpClient } from './httpClient';
 
 export const notificationApi = {
-  subscribeProduct: async (productId) => {
-    const response = await httpClient.post(`/products/${productId}/notifications/subscription`);
+  subscribeProduct: async (productVariantId) => {
+    const response = await httpClient.post(`/variants/${productVariantId}/notifications/subscription`);
     return response.data;
   },
 
-  unsubscribeProduct: async (productId) => {
-    const response = await httpClient.delete(`/products/${productId}/notifications/subscription`);
+  unsubscribeProduct: async (productVariantId) => {
+    const response = await httpClient.delete(`/variants/${productVariantId}/notifications/subscription`);
     return response.data;
   },
 

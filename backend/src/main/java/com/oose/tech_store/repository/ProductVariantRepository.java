@@ -13,13 +13,26 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     boolean existsByIdIgnoreCase(String id);
 
-    long countByProductIdAndStatus(String productId, ProductVariantStatus status);
+    @Query("SELECT COUNT(v) FROM ProductVariant v WHERE v.product.id = :productId " +
+            "AND (:ramGb IS NULL OR v.ramGb = :ramGb) " +
+            "AND (:storageGb IS NULL OR v.storageGb = :storageGb) " +
+            "AND (:color IS NULL OR v.color = :color) " +
+            "AND v.status = :status")
+    long countByProductIdAndSpecsAndStatus(
+            @Param("productId") String productId,
+            @Param("ramGb") Integer ramGb,
+            @Param("storageGb") Integer storageGb,
+            @Param("color") String color,
+            @Param("status") ProductVariantStatus status);
 
     long countByProductId(String productId);
 
     List<ProductVariant> findByProductIdAndStatus(String productId, ProductVariantStatus status);
 
-    /** Locks the physical products while an export transaction confirms their availability. */
+    /**
+     * Locks the physical products while an export transaction confirms their
+     * availability.
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select variant from ProductVariant variant where variant.id in :serialIds")
     List<ProductVariant> findAllByIdInForUpdate(@Param("serialIds") List<String> serialIds);

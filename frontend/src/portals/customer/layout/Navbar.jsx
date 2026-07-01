@@ -24,8 +24,12 @@ export function Navbar() {
   const [favoriteProducts, setFavoriteProducts] = useState([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoritesError, setFavoritesError] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const menuRef = useRef(null);
   const favoritesRef = useRef(null);
+  const notificationsRef = useRef(null);
 
   const isActive = (link) => {
     if (link.exact) return location.pathname === '/';
@@ -36,6 +40,7 @@ export function Navbar() {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
       if (favoritesRef.current && !favoritesRef.current.contains(e.target)) setShowFavorites(false);
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) setShowNotifications(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -44,7 +49,9 @@ export function Navbar() {
   useEffect(() => {
     if (!isLoggedIn) {
       setShowFavorites(false);
+      setShowNotifications(false);
       setFavoriteProducts([]);
+      setNotifications([]);
       setFavoritesError('');
     }
   }, [isLoggedIn]);
@@ -78,8 +85,53 @@ export function Navbar() {
     const nextOpen = !showFavorites;
     setShowFavorites(nextOpen);
     setShowMenu(false);
+    setShowNotifications(false);
     if (nextOpen) loadFavorites();
   };
+
+  const loadNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const data = await notificationApi.getNotifications();
+      setNotifications(data);
+    } catch (err) {
+      console.error('Failed to load notifications', err);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleNotificationsClick = () => {
+    if (!isLoggedIn) {
+      navigate('/sign-in');
+      return;
+    }
+    const nextOpen = !showNotifications;
+    setShowNotifications(nextOpen);
+    setShowFavorites(false);
+    setShowMenu(false);
+    if (nextOpen) loadNotifications();
+  };
+
+  const handleMarkAsRead = async (e, id) => {
+    e.stopPropagation();
+    try {
+      await notificationApi.markRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
+    } catch (err) {
+      console.error('Failed to mark read', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadNotifications();
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn]);
+
+  const unreadNotificationsCount = notifications.filter(n => !n.readAt).length;
 
   return (
     <>
@@ -218,6 +270,75 @@ export function Navbar() {
                             <span style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Dang theo doi thong bao</span>
                           </span>
                         </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bell Notifications */}
+            <div ref={notificationsRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={handleNotificationsClick}
+                title="Thông báo"
+                aria-label="Thông báo"
+                style={{ width: 40, height: 40, background: showNotifications ? '#f4f5f7' : 'none', border: 'none', cursor: 'pointer', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNotifications ? '#0d1117' : '#4b5563', position: 'relative' }}
+              >
+                <svg width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadNotificationsCount > 0 && (
+                  <span style={{ position: 'absolute', top: 5, right: 5, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 800, minWidth: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }}>
+                    {unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: -46, width: 320, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 1001 }}>
+                  <div style={{ padding: '14px 16px', borderBottom: '1px solid #f1f3f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>Thông báo của tôi</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Bạn có {unreadNotificationsCount} thông báo chưa đọc</div>
+                    </div>
+                  </div>
+
+                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {notificationsLoading && notifications.length === 0 ? (
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5 }}>Đang tải thông báo...</div>
+                    ) : notifications.length === 0 ? (
+                      <div style={{ padding: '22px 16px', color: '#9ca3af', fontSize: 13.5, textAlign: 'center' }}>Không có thông báo nào.</div>
+                    ) : (
+                      notifications.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{ width: '100%', padding: '12px 16px', background: item.readAt ? '#fff' : '#f8fafc', borderBottom: '1px solid #f4f5f7', display: 'flex', alignItems: 'flex-start', gap: 11, transition: 'background 0.15s' }}
+                        >
+                          <span style={{ width: 34, height: 34, borderRadius: 9, background: item.readAt ? '#f1f5f9' : '#eff6ff', color: item.readAt ? '#64748b' : '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 13.5, fontWeight: item.readAt ? 600 : 800, color: '#0d1117', lineHeight: 1.35 }}>{item.title}</span>
+                            <span style={{ display: 'block', fontSize: 12.5, color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{item.message}</span>
+                            <span style={{ display: 'block', fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                              {item.sentAt ? new Date(item.sentAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : ''}
+                            </span>
+                          </div>
+                          {!item.readAt && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleMarkAsRead(e, item.id)}
+                              style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: '2px 4px', whiteSpace: 'nowrap' }}
+                              title="Đánh dấu đã đọc"
+                            >
+                              Đọc
+                            </button>
+                          )}
+                        </div>
                       ))
                     )}
                   </div>

@@ -108,25 +108,6 @@ export function ProductDetailPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  useEffect(() => {
-    if (!isLoggedIn || !id) {
-      setSubscribed(false);
-      return;
-    }
-
-    let cancelled = false;
-    notificationApi.getSubscriptions()
-      .then((subscriptions) => {
-        if (cancelled) return;
-        setSubscribed(subscriptions.some((item) => item.productId === id && item.status === 'SUBSCRIBED'));
-      })
-      .catch(() => {
-        if (!cancelled) setSubscribed(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [id, isLoggedIn]);
-
   const colors = useMemo(() => unique(product?.variants?.map((variant) => variant.color) || []), [product]);
   const storages = useMemo(
     () => unique((product?.variants || []).map((variant) => variant.storageGb).map((value) => value && `${value}GB`)),
@@ -142,6 +123,25 @@ export function ProductDetailPage() {
       return (!color || variant.color === color) && (!storage || variantStorage === storage);
     }) || product.variants[0];
   }, [colors, product, selectedColor, selectedStorage, storages]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !id || !selectedVariant) {
+      setSubscribed(false);
+      return;
+    }
+
+    let cancelled = false;
+    notificationApi.getSubscriptions()
+      .then((subscriptions) => {
+        if (cancelled) return;
+        setSubscribed(subscriptions.some((item) => item.productVariantId === selectedVariant.id && item.status === 'SUBSCRIBED'));
+      })
+      .catch(() => {
+        if (!cancelled) setSubscribed(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [id, isLoggedIn, selectedVariant]);
 
   if (loading) {
     return (
@@ -194,15 +194,17 @@ export function ProductDetailPage() {
       return;
     }
 
+    if (!selectedVariant) return;
+
     setSubscriptionBusy(true);
     setSubscriptionMessage('');
     try {
       if (subscribed) {
-        await notificationApi.unsubscribeProduct(product.id);
+        await notificationApi.unsubscribeProduct(selectedVariant.id);
         setSubscribed(false);
         setSubscriptionMessage('Da huy dang ky thong bao cho san pham nay.');
       } else {
-        await notificationApi.subscribeProduct(product.id);
+        await notificationApi.subscribeProduct(selectedVariant.id);
         setSubscribed(true);
         setSubscriptionMessage('Da dang ky nhan thong bao khi san pham co cap nhat ton kho.');
       }

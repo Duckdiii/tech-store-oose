@@ -7,6 +7,8 @@ public record NotificationSubscriptionResponse(
         String id,
         String productVariantId,
         String productVariantName,
+        String productId,
+        String productName,
         SubscriptionStatus status,
         LocalDateTime subscribedAt,
         LocalDateTime unsubscribedAt) {
