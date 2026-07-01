@@ -53,16 +53,8 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                         throw new IllegalStateException("No valid cart items found for fulfillment");
                 }
 
-                Order order = new Order(customer, address, paymentMethod); // tạo order mới
-
-                BigDecimal totalAmount = BigDecimal.ZERO;
-                for (CartItem cartItem : selectedItems) {
-                        BigDecimal unitPrice = cartItem.getUnitPrice();
-                        OrderItem orderItem = new OrderItem(order, cartItem.getProductVariant(),
-                                        cartItem.getQuantity(), unitPrice);
-                        cartItem.getBundleServices().forEach(orderItem::addBundleService);
-                        totalAmount = totalAmount.add(cartItem.calculateSubtotal());
-                }
+                Order order = Order.create(customer, address, paymentMethod, selectedItems); // tạo order mới
+                BigDecimal totalAmount = order.calculateSubtotal();
 
                 if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
                         order.markPaid();

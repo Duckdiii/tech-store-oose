@@ -70,6 +70,19 @@ public class Order extends BaseEntity {
         this.orderDate = LocalDateTime.now();
     }
 
+    public static Order create(Customer customer, Address address, PaymentMethod selectedPaymentMethod, List<CartItem> cartItems) {
+        Order order = new Order(customer, address, selectedPaymentMethod);
+        for (CartItem cartItem : cartItems) {
+            OrderItem orderItem = new OrderItem(order, cartItem.getProductVariant(),
+                    cartItem.getQuantity(), cartItem.getUnitPrice());
+            if (cartItem.getBundleServices() != null) {
+                cartItem.getBundleServices().forEach(orderItem::addBundleService);
+            }
+            order.addItem(orderItem);
+        }
+        return order;
+    }
+
     public void addItem(OrderItem item) {
         if (item == null) {
             throw new IllegalArgumentException("item must not be null");
