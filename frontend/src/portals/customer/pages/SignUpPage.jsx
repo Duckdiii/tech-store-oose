@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { authApi } from '../../../api/authApi';
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -14,14 +15,20 @@ export function SignUpPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.name || !form.email || !form.password) { setError('Vui lòng điền đầy đủ thông tin.'); return; }
+    if (!form.name || !form.email || !form.phone || !form.password) { setError('Vui lòng điền đầy đủ thông tin.'); return; }
     if (form.password !== form.confirm) { setError('Mật khẩu xác nhận không khớp.'); return; }
     if (form.password.length < 6) { setError('Mật khẩu phải có ít nhất 6 ký tự.'); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    login({ id: Date.now(), name: form.name, email: form.email, phone: form.phone });
-    setLoading(false);
-    navigate('/');
+    try {
+      await authApi.register(form.name, form.email, form.phone, form.password);
+      await login(form.email, form.password);
+      setLoading(false);
+      navigate('/');
+    } catch (err) {
+      setLoading(false);
+      const errMsg = err.response?.data?.message || 'Đăng ký thất bại. Email có thể đã tồn tại hoặc định dạng dữ liệu không hợp lệ.';
+      setError(errMsg);
+    }
   };
 
   const fields = [

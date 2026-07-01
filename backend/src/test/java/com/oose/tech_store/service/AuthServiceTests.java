@@ -15,7 +15,10 @@ import com.oose.tech_store.entity.enums.AccountStatus;
 import com.oose.tech_store.entity.enums.LoginStatus;
 import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.repository.AccountRepository;
+import com.oose.tech_store.repository.CartRepository;
+import com.oose.tech_store.repository.CustomerRepository;
 import com.oose.tech_store.repository.LoginLogRepository;
+import com.oose.tech_store.repository.MembershipRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,11 +40,27 @@ class AuthServiceTests {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private CustomerRepository customerRepository;
+
+    @Mock
+    private CartRepository cartRepository;
+
+    @Mock
+    private MembershipRepository membershipRepository;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(accountRepository, loginLogRepository, passwordEncoder);
+        authService = new AuthService(
+                accountRepository,
+                loginLogRepository,
+                passwordEncoder,
+                customerRepository,
+                cartRepository,
+                membershipRepository
+        );
     }
 
     @Test

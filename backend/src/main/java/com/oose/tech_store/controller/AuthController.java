@@ -2,6 +2,7 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.account.LoginRequest;
 import com.oose.tech_store.dto.auth.LoginResponse;
+import com.oose.tech_store.dto.auth.RegisterRequest;
 import com.oose.tech_store.security.JwtService;
 import com.oose.tech_store.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,6 +52,12 @@ public class AuthController {
         var account = result.response();
         String token = jwtService.generateToken(account.email(), account.userId(), account.role());
         return new LoginResponse(token, account.userId(), account.email(), account.fullName(), account.role());
+    }
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
     }
 
     @PostMapping("/logout")
