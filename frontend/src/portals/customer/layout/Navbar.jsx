@@ -8,8 +8,6 @@ import { notificationApi } from '../../../api/notificationApi';
 const NAV_LINKS = [
   { to: '/', label: 'Trang chủ', exact: true },
   { to: '/products', label: 'Điện thoại' },
-  { to: '/brands', label: 'Thương hiệu' },
-  { to: '/flash-sale', label: 'Flash Sale ⚡' },
 ];
 
 export function Navbar() {
