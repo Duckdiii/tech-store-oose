@@ -19,7 +19,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class RevenueReportServiceImpl implements RevenueReportService {
+public class RevenueReportServiceImpl extends AbstractReportService<RevenueReportResponse, Order> implements RevenueReportService {
 
     private final OrderRepository orderRepository;
 
@@ -32,38 +32,41 @@ public class RevenueReportServiceImpl implements RevenueReportService {
             String brandId,
             String paymentMethodId) {
 
-        LocalDateTime effectiveStart = startDate != null ? startDate
-                : LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        // nếu không có startDate, mặc định là ngày đầu tiên của tháng hiện tại
-        // ví dụ: 2023-08-01T00:00:00
-        LocalDateTime effectiveEnd = endDate != null ? endDate
-                : effectiveStart.plusMonths(1).minusSeconds(1);
-        // nếu không có endDate, mặc định là ngày cuối cùng của tháng hiện tại
-        // ví dụ: 2023-08-31T23:59:59
-        GroupBy effectiveGroupBy = groupBy != null ? groupBy : GroupBy.MONTH;
-        // nếu không có groupBy, mặc định là theo tháng
-        // ví dụ: nếu effectiveStart là 2023-08-01, effectiveEnd là 2023-08-31, groupBy
-        // là MONTH
+        Map<String, String> filters = new HashMap<>();
+        filters.put("categoryId", categoryId != null ? categoryId : "");
+        filters.put("brandId", brandId != null ? brandId : "");
+        filters.put("paymentMethodId", paymentMethodId != null ? paymentMethodId : "");
 
-        List<Order> orders = orderRepository.findCompletedOrdersForReport(
-                effectiveStart, effectiveEnd, categoryId, brandId, paymentMethodId);
+        return generate(startDate, endDate, groupBy, filters);
+    }
 
-        if (orders.isEmpty()) {
-            return emptyReport();
-        }
+    @Override
+    protected List<Order> fetchRawData(LocalDateTime start, LocalDateTime end, Map<String, String> filters) {
+        return orderRepository.findCompletedOrdersForReport(
+                start,
+                end,
+                filters.get("categoryId").isEmpty() ? null : filters.get("categoryId"),
+                filters.get("brandId").isEmpty() ? null : filters.get("brandId"),
+                filters.get("paymentMethodId").isEmpty() ? null : filters.get("paymentMethodId")
+        );
+    }
 
+    @Override
+    protected RevenueReportResponse getEmptyReport() {
+        return emptyReport();
+    }
+
+    @Override
+    protected RevenueReportResponse buildReportResponse(List<Order> orders, GroupBy groupBy) {
         BigDecimal totalRevenue = orders.stream()
                 .map(Order::calculateTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<RevenueTrendPoint> trend = buildTrend(orders, effectiveGroupBy); // xây dựng dữ liệu xu hướng doanh thu
-                                                                              // theo groupBy
+        List<RevenueTrendPoint> trend = buildTrend(orders, groupBy); // xây dựng dữ liệu xu hướng doanh thu theo groupBy
         List<CategoryRevenueItem> byCategory = buildCategoryRevenue(orders); // xây dựng dữ liệu doanh thu theo danh mục
         List<BrandRevenueItem> byBrand = buildBrandRevenue(orders); // xây dựng dữ liệu doanh thu theo thương hiệu
         List<TopProductItem> topProducts = buildTopProducts(orders);// xây dựng dữ liệu top sản phẩm bán chạy nhất
-        List<PaymentMethodRevenueItem> byPaymentMethod = buildPaymentMethodRevenue(orders);// xây dựng dữ liệu doanh thu
-                                                                                           // theo phương thức thanh
-                                                                                           // toán
+        List<PaymentMethodRevenueItem> byPaymentMethod = buildPaymentMethodRevenue(orders);// xây dựng dữ liệu doanh thu theo phương thức thanh toán
 
         return new RevenueReportResponse(
                 totalRevenue,

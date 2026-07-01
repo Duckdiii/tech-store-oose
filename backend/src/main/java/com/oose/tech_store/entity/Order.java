@@ -109,7 +109,7 @@ public class Order extends BaseEntity {
     }
 
     public void confirm() {
-        orderStatus = OrderStatus.PROCESSING;
+        orderStatus.confirm(this);
     }
 
     public void markPaid() {
@@ -120,24 +120,15 @@ public class Order extends BaseEntity {
     }
 
     public void markShipping() {
-        if (!OrderStatus.PROCESSING.equals(orderStatus)) {
-            throw new IllegalStateException("Order can only be marked as shipping when in PROCESSING status");
-        }
-        orderStatus = OrderStatus.SHIPPING;
+        orderStatus.ship(this);
     }
 
     public void complete() {
-        if (!OrderStatus.SHIPPING.equals(orderStatus)) {
-            throw new IllegalStateException("Order can only be completed when in SHIPPING status");
-        }
-        orderStatus = OrderStatus.COMPLETED;
+        orderStatus.complete(this);
     }
 
     public void cancel() {
-        if (!canCancel()) {
-            throw new IllegalStateException("Order cannot be cancelled in current status");
-        }
-        orderStatus = OrderStatus.CANCELLED;
+        orderStatus.cancel(this);
     }
 
     public boolean canCancel() { // chỉ cho phép hủy khi đang chờ xác nhận hoặc đang xử lý
@@ -150,10 +141,7 @@ public class Order extends BaseEntity {
     }
 
     public void refund() {
-        if (!canRefund()) {
-            throw new IllegalStateException("Order can only be refunded when COMPLETED");
-        }
-        orderStatus = OrderStatus.REFUNDED;
+        orderStatus.refund(this);
     }
 
     public boolean canRefund() {
