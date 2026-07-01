@@ -202,7 +202,7 @@ export function CheckoutPage() {
           name: form.name
         });
       } else if (initResponse.paymentType === 'REDIRECT') {
-        window.location.href = initResponse.paymentUrl;
+        window.location.href = initResponse.paymentUrl; // Redirect to payment gateway
       }
     } catch (error) {
       console.error('Error placing order:', error);

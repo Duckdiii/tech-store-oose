@@ -4,13 +4,10 @@ import com.oose.tech_store.dto.payment.*;
 import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
 import com.oose.tech_store.exception.ResourceNotFoundException;
-import com.oose.tech_store.payment.CheckoutSessionStore;
 import com.oose.tech_store.payment.PendingCheckout;
-import com.oose.tech_store.payment.gateway.MomoPaymentGateway;
-import com.oose.tech_store.payment.gateway.VNPayPaymentGateway;
+import com.oose.tech_store.payment.gateway.PaymentStrategy;
 import com.oose.tech_store.repository.CartRepository;
 import com.oose.tech_store.repository.PaymentMethodRepository;
-import com.oose.tech_store.service.OrderFulfillmentService;
 import com.oose.tech_store.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,10 +24,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final CartRepository cartRepository;
     private final PaymentMethodRepository paymentMethodRepository;
-    private final CheckoutSessionStore sessionStore;
-    private final MomoPaymentGateway momoGateway;
-    private final VNPayPaymentGateway vnpayGateway;
-    private final OrderFulfillmentService fulfillmentService;
+    private final List<PaymentStrategy> paymentStrategies;
 
     @Override
     public CheckoutSummaryResponse getCheckoutSummary(String customerId) {
@@ -89,100 +83,31 @@ public class PaymentServiceImpl implements PaymentService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        if (paymentMethod instanceof CODPaymentMethod cod) {
-            if (!cod.isAmountAllowed(amount)) {
-                throw new IllegalArgumentException("Order amount exceeds COD limit of " + cod.getMaxAmount());
-            }
-            OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
-                    PaymentLogStatus.PENDING);
-            return new PaymentInitResponse("COD", checkout.getTxnRef(), null,
-                    result.orderId(), result.invoiceId(), "Order placed successfully");
-        }
+        PaymentStrategy strategy = paymentStrategies.stream()
+                .filter(s -> s.supports(paymentMethod))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported payment method"));
 
-        sessionStore.save(checkout);
-
-        if (paymentMethod instanceof MomoPaymentMethod) {
-            String payUrl = momoGateway.createPaymentUrl(checkout);
-            return new PaymentInitResponse("REDIRECT", checkout.getTxnRef(), payUrl, null, null, null);
-        }
-
-        if (paymentMethod instanceof VNPayPaymentMethod) {
-            String payUrl = vnpayGateway.createPaymentUrl(checkout, clientIp);
-            return new PaymentInitResponse("REDIRECT", checkout.getTxnRef(), payUrl, null, null, null);
-        }
-
-        throw new IllegalArgumentException("Unsupported payment method");
+        return strategy.initialize(checkout, paymentMethod, clientIp);
     }
 
     @Override
     @Transactional
-    public PaymentResultResponse handleMomoReturn(Map<String, String> params) {
-        if (!momoGateway.verifyReturnSignature(params)) { // xác minh chữ ký HMAC-SHA256 trên callback return từ MoMo
-            return new PaymentResultResponse(false, null, null, "Invalid payment signature");
-        }
+    public PaymentResultResponse handlePaymentReturn(String paymentType, Map<String, String> params) {
+        PaymentStrategy strategy = paymentStrategies.stream()
+                .filter(s -> {
+                    if ("MOMO".equalsIgnoreCase(paymentType)) {
+                        return s instanceof com.oose.tech_store.payment.gateway.MomoPaymentStrategy;
+                    }
+                    if ("VNPAY".equalsIgnoreCase(paymentType)) {
+                        return s instanceof com.oose.tech_store.payment.gateway.VNPayPaymentStrategy;
+                    }
+                    return false;
+                })
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unsupported payment type: " + paymentType));
 
-        String txnRef = params.get("orderId");
-        int resultCode;
-        try {
-            resultCode = Integer.parseInt(params.getOrDefault("resultCode", "-1"));
-        } catch (NumberFormatException e) {
-            return new PaymentResultResponse(false, null, null, "Invalid payment response from MoMo");
-        }
-
-        PendingCheckout checkout = sessionStore.getAndRemove(txnRef);
-        if (checkout == null) { // nếu không tìm thấy session checkout, có thể là do session đã hết hạn hoặc đã
-                                // được xử lý trước đó
-            return new PaymentResultResponse(false, null, null,
-                    "Payment session not found or already processed");
-        }
-
-        if (resultCode == 0) { // thanh toán thành công
-            OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
-                    PaymentLogStatus.SUCCESS);
-            return new PaymentResultResponse(true, result.orderId(), result.invoiceId(),
-                    "Payment completed successfully");
-        }
-
-        if (resultCode == 1006) { // user hủy thanh toán trên MoMo
-            return new PaymentResultResponse(false, null, null,
-                    "Payment was cancelled. Please try again.");
-        }
-
-        return new PaymentResultResponse(false, null, null,
-                "Payment failed. Please try again or choose another payment method.");
-    }
-
-    @Override
-    @Transactional
-    public PaymentResultResponse handleVNPayReturn(Map<String, String> params) {
-        if (!vnpayGateway.verifySignature(params)) {
-            return new PaymentResultResponse(false, null, null, "Invalid payment signature");
-        }
-
-        String txnRef = params.get("vnp_TxnRef"); // vnp_TxnRef là transaction reference mà mình đã gửi cho VNPay khi
-                                                  // tạo payment URL
-
-        PendingCheckout checkout = sessionStore.getAndRemove(txnRef);
-        if (checkout == null) { // nếu không tìm thấy session checkout, có thể là do session đã hết hạn hoặc đã
-                                // được xử lý trước đó
-            return new PaymentResultResponse(false, null, null,
-                    "Payment session not found or already processed");
-        }
-
-        if (vnpayGateway.isSuccessful(params)) { // thanh toán thành công
-            OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
-                    PaymentLogStatus.SUCCESS);
-            return new PaymentResultResponse(true, result.orderId(), result.invoiceId(),
-                    "Payment completed successfully");
-        }
-
-        if (vnpayGateway.isCancelled(params)) { // user hủy thanh toán trên VNPay
-            return new PaymentResultResponse(false, null, null,
-                    "Payment was cancelled. Please try again.");
-        }
-
-        return new PaymentResultResponse(false, null, null,
-                "Payment failed. Please try again or choose another payment method.");
+        return strategy.handleReturn(params);
     }
 
     private void validateRequest(CheckoutRequest request) {

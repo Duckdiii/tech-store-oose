@@ -21,9 +21,7 @@ public class PaymentFacade {
     private final MomoPaymentGateway momoGateway;
     private final VNPayPaymentGateway vnpayGateway;
 
-    // -------------------------------------------------------------------------
     // Checkout
-    // -------------------------------------------------------------------------
 
     public CheckoutSummaryResponse getCheckoutSummary(String customerId) {
         return paymentService.getCheckoutSummary(customerId);
@@ -34,16 +32,10 @@ public class PaymentFacade {
         return paymentService.initializePayment(customerId, request, clientIp);
     }
 
-    // -------------------------------------------------------------------------
     // Return URL handlers (browser redirect sau khi thanh toán)
-    // -------------------------------------------------------------------------
 
-    public PaymentResultResponse handleMomoReturn(Map<String, String> params) {
-        return paymentService.handleMomoReturn(params);
-    }
-
-    public PaymentResultResponse handleVNPayReturn(Map<String, String> params) {
-        return paymentService.handleVNPayReturn(params);
+    public PaymentResultResponse handlePaymentReturn(String paymentType, Map<String, String> params) {
+        return paymentService.handlePaymentReturn(paymentType, params);
     }
 
     // -------------------------------------------------------------------------

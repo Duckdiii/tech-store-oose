@@ -13,7 +13,5 @@ public interface PaymentService {
 
     PaymentInitResponse initializePayment(String customerId, CheckoutRequest request, String clientIp);
 
-    PaymentResultResponse handleMomoReturn(Map<String, String> params);
-
-    PaymentResultResponse handleVNPayReturn(Map<String, String> params);
+    PaymentResultResponse handlePaymentReturn(String paymentType, Map<String, String> params);
 }

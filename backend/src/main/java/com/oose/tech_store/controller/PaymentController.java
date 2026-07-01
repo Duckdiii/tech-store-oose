@@ -42,7 +42,7 @@ public class PaymentController {
             @RequestParam Map<String, String> params) {
         // params gồm orderId, amount, resultCode, signature, extraData, message,
         // transId, payType, orderInfo, requestId, responseTime
-        return ResponseEntity.ok(paymentFacade.handleMomoReturn(params));
+        return ResponseEntity.ok(paymentFacade.handlePaymentReturn("MOMO", params));
     }
 
     // MoMo server-to-server IPN — verify signature then acknowledge
@@ -71,7 +71,7 @@ public class PaymentController {
     @GetMapping("/vnpay/return")
     public ResponseEntity<PaymentResultResponse> handleVNPayReturn(
             @RequestParam Map<String, String> params) {
-        return ResponseEntity.ok(paymentFacade.handleVNPayReturn(params));
+        return ResponseEntity.ok(paymentFacade.handlePaymentReturn("VNPAY", params));
     }
 
     // VNPay server-to-server IPN — verify signature then acknowledge
