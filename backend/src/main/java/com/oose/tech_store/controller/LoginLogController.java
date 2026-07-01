@@ -3,7 +3,7 @@ package com.oose.tech_store.controller;
 import com.oose.tech_store.dto.account.LoginLogResponse;
 import com.oose.tech_store.dto.account.PageResponse;
 import com.oose.tech_store.entity.enums.LoginStatus;
-import com.oose.tech_store.service.LoginLogService;
+import com.oose.tech_store.service.auth.LoginLogService;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

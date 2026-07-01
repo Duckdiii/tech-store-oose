@@ -3,7 +3,7 @@ package com.oose.tech_store.controller;
 import com.oose.tech_store.dto.paymentlog.PaymentLogDetailResponse;
 import com.oose.tech_store.dto.paymentlog.PaymentLogSummaryResponse;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
-import com.oose.tech_store.service.PaymentLogService;
+import com.oose.tech_store.service.payment.PaymentLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;

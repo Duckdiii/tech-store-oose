@@ -11,7 +11,7 @@ import com.oose.tech_store.dto.MembershipTierResponseDTO;
 import com.oose.tech_store.entity.enums.AccountStatus;
 import com.oose.tech_store.repository.AccountRepository;
 import com.oose.tech_store.security.CustomerSecurityHelper;
-import com.oose.tech_store.service.MembershipService;
+import com.oose.tech_store.service.customer.MembershipService;
 
 @RestController
 @RequestMapping("/api/membership")

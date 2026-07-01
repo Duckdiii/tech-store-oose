@@ -3,7 +3,7 @@ package com.oose.tech_store.controller;
 import com.oose.tech_store.dto.cart.BundleServiceResponse;
 import com.oose.tech_store.dto.cart.CartResponse;
 import com.oose.tech_store.security.CustomerSecurityHelper;
-import com.oose.tech_store.service.CartBundleService;
+import com.oose.tech_store.service.cart.CartBundleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;

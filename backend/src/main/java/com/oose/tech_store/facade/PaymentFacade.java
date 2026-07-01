@@ -7,7 +7,7 @@ import com.oose.tech_store.dto.payment.PaymentInitResponse;
 import com.oose.tech_store.dto.payment.PaymentResultResponse;
 import com.oose.tech_store.payment.gateway.MomoPaymentGateway;
 import com.oose.tech_store.payment.gateway.VNPayPaymentGateway;
-import com.oose.tech_store.service.PaymentService;
+import com.oose.tech_store.service.payment.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

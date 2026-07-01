@@ -2,7 +2,7 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.invoice.InvoiceResponse;
 import com.oose.tech_store.security.CustomerSecurityHelper;
-import com.oose.tech_store.service.InvoiceService;
+import com.oose.tech_store.service.order.InvoiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;

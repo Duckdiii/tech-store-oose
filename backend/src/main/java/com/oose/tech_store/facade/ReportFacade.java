@@ -2,7 +2,7 @@ package com.oose.tech_store.facade;
 
 import com.oose.tech_store.dto.report.GroupBy;
 import com.oose.tech_store.dto.report.RevenueReportResponse;
-import com.oose.tech_store.service.RevenueReportService;
+import com.oose.tech_store.service.report.RevenueReportService;
 import com.oose.tech_store.util.RevenueReportPdfGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

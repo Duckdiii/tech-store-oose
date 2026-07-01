@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.oose.tech_store.dto.ProductDetailResponseDTO;
 import com.oose.tech_store.dto.ProductSearchRequestDTO;
 import com.oose.tech_store.dto.ProductSearchResponseDTO;
-import com.oose.tech_store.service.ProductService;
+import com.oose.tech_store.service.product.ProductService;
 
 @RestController
 @RequestMapping("/api/products")

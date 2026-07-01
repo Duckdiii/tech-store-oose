@@ -4,7 +4,7 @@ import com.oose.tech_store.dto.order.OrderDetailResponse;
 import com.oose.tech_store.dto.order.OrderSummaryResponse;
 import com.oose.tech_store.entity.enums.OrderStatus;
 import com.oose.tech_store.security.CustomerSecurityHelper;
-import com.oose.tech_store.service.OrderService;
+import com.oose.tech_store.service.order.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;

@@ -1,4 +1,5 @@
 package com.oose.tech_store.service;
+import com.oose.tech_store.service.auth.AuthService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

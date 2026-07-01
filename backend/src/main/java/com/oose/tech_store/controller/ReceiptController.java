@@ -1,7 +1,7 @@
 package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.warehouse.ReceiptDetailResponseDTO;
-import com.oose.tech_store.service.ReceiptService;
+import com.oose.tech_store.service.warehouse.ReceiptService;
 import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;

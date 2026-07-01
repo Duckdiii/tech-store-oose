@@ -7,7 +7,7 @@ import com.oose.tech_store.entity.VNPayPaymentMethod;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
 import com.oose.tech_store.payment.CheckoutSessionStore;
 import com.oose.tech_store.payment.PendingCheckout;
-import com.oose.tech_store.service.OrderFulfillmentService;
+import com.oose.tech_store.service.order.OrderFulfillmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

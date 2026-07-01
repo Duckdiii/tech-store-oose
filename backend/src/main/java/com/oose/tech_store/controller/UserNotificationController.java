@@ -3,7 +3,7 @@ package com.oose.tech_store.controller;
 import com.oose.tech_store.dto.notification.NotificationResponse;
 import com.oose.tech_store.dto.notification.NotificationSubscriptionResponse;
 import com.oose.tech_store.security.CustomerSecurityHelper;
-import com.oose.tech_store.service.NotificationSubscriptionService;
+import com.oose.tech_store.service.customer.NotificationSubscriptionService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

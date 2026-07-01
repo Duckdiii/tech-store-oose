@@ -12,12 +12,12 @@ import com.oose.tech_store.dto.warehouse.WarehouseLogFileFormat;
 import com.oose.tech_store.dto.warehouse.WarehouseLogRequestDTO;
 import com.oose.tech_store.dto.warehouse.WarehouseLogResponseDTO;
 import com.oose.tech_store.dto.warehouse.WarehouseLogType;
-import com.oose.tech_store.service.ExportProductService;
-import com.oose.tech_store.service.ImportProductService;
-import com.oose.tech_store.service.WarehouseActorService;
-import com.oose.tech_store.service.WarehouseInventoryService;
-import com.oose.tech_store.service.WarehouseLogExportService;
-import com.oose.tech_store.service.WarehouseLogService;
+import com.oose.tech_store.service.warehouse.ExportProductService;
+import com.oose.tech_store.service.warehouse.ImportProductService;
+import com.oose.tech_store.service.warehouse.WarehouseActorService;
+import com.oose.tech_store.service.warehouse.WarehouseInventoryService;
+import com.oose.tech_store.service.warehouse.WarehouseLogExportService;
+import com.oose.tech_store.service.warehouse.WarehouseLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

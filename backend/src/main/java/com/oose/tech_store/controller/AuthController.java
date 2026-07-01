@@ -3,7 +3,7 @@ package com.oose.tech_store.controller;
 import com.oose.tech_store.dto.account.LoginRequest;
 import com.oose.tech_store.dto.auth.LoginResponse;
 import com.oose.tech_store.security.JwtService;
-import com.oose.tech_store.service.AuthService;
+import com.oose.tech_store.service.auth.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;

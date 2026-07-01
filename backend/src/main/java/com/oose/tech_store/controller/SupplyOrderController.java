@@ -4,7 +4,7 @@ import com.oose.tech_store.dto.supplyorder.CreateSupplyOrderRequestDTO;
 import com.oose.tech_store.dto.supplyorder.SupplyOrderResponseDTO;
 import com.oose.tech_store.dto.supplyorder.UpdateSupplyOrderNotesRequestDTO;
 import com.oose.tech_store.entity.enums.POStatus;
-import com.oose.tech_store.service.SupplyOrderService;
+import com.oose.tech_store.service.supplier.SupplyOrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

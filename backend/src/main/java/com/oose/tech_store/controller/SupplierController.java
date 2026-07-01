@@ -3,7 +3,7 @@ package com.oose.tech_store.controller;
 import com.oose.tech_store.dto.supplier.CreateSupplierRequestDTO;
 import com.oose.tech_store.dto.supplier.SupplierResponseDTO;
 import com.oose.tech_store.dto.supplier.UpdateSupplierRequestDTO;
-import com.oose.tech_store.service.SupplierService;
+import com.oose.tech_store.service.supplier.SupplierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

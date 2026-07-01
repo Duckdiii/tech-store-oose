@@ -2,7 +2,7 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.admin.AdminProductRequestDTO;
 import com.oose.tech_store.dto.admin.AdminProductResponseDTO;
-import com.oose.tech_store.service.AdminProductService;
+import com.oose.tech_store.service.product.AdminProductService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

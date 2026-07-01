@@ -8,7 +8,7 @@ import com.oose.tech_store.dto.account.StaffMutationResponse;
 import com.oose.tech_store.dto.account.StaffResponse;
 import com.oose.tech_store.entity.enums.AccountStatus;
 import com.oose.tech_store.security.AccountPrincipal;
-import com.oose.tech_store.service.AccountManagementService;
+import com.oose.tech_store.service.auth.AccountManagementService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;

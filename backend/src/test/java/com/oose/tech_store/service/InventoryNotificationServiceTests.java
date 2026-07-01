@@ -1,4 +1,5 @@
 package com.oose.tech_store.service;
+import com.oose.tech_store.service.customer.InventoryNotificationService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,8 +14,8 @@ import com.oose.tech_store.entity.enums.SubscriptionStatus;
 import com.oose.tech_store.repository.FavoriteProductRepository;
 import com.oose.tech_store.repository.NotificationRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
-import com.oose.tech_store.service.observer.InventoryObserver;
-import com.oose.tech_store.service.observer.InventoryStatusChangedEvent;
+import com.oose.tech_store.service.customer.observer.InventoryObserver;
+import com.oose.tech_store.service.customer.observer.InventoryStatusChangedEvent;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
