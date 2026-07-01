@@ -30,7 +30,7 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
     public PaymentInitResponse initialize(PendingCheckout checkout, PaymentMethod paymentMethod, String clientIp) {
         sessionStore.save(checkout);
         String payUrl = vnpayGateway.createPaymentUrl(checkout, clientIp);
-        return new PaymentInitResponse("REDIRECT", checkout.getTxnRef(), payUrl, null, null, null);
+        return PaymentInitResponse.redirect(checkout.getTxnRef(), payUrl);
     }
 
     @Override

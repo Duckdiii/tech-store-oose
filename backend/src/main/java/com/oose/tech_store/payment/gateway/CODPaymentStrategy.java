@@ -38,7 +38,7 @@ public class CODPaymentStrategy implements PaymentStrategy {
 
         OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,
                 PaymentLogStatus.PENDING);
-        return new PaymentInitResponse("COD", checkout.getTxnRef(), null, result.orderId(), result.invoiceId(),
+        return PaymentInitResponse.cod(checkout.getTxnRef(), result.orderId(), result.invoiceId(),
                 "Order placed successfully");
     }
 

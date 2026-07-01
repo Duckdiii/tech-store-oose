@@ -30,7 +30,7 @@ public class MomoPaymentStrategy implements PaymentStrategy {
     public PaymentInitResponse initialize(PendingCheckout checkout, PaymentMethod paymentMethod, String clientIp) {
         sessionStore.save(checkout);
         String payUrl = momoGateway.createPaymentUrl(checkout);
-        return new PaymentInitResponse("REDIRECT", checkout.getTxnRef(), payUrl, null, null, null);
+        return PaymentInitResponse.redirect(checkout.getTxnRef(), payUrl);
     }
 
     @Override
