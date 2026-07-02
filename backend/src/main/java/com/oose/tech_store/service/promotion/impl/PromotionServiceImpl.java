@@ -106,7 +106,7 @@ public class PromotionServiceImpl implements PromotionService {
         List<String> restrictedFields = restrictedFields(promotion, request, requestedProducts, usageCount);
 
         if (restrictedFields.isEmpty()) {
-            updateEditableFields(promotion, request, requestedProducts, true);
+            updateEditableFields(promotion, request, requestedProducts, restrictedFields);
             Promotion saved = promotionRepository.save(promotion);
             return new PromotionOperationResponseDTO(
                     "Promotion updated successfully",
@@ -114,7 +114,7 @@ public class PromotionServiceImpl implements PromotionService {
                     toResponse(saved));
         }
 
-        updateEditableFields(promotion, request, requestedProducts, false);
+        updateEditableFields(promotion, request, requestedProducts, restrictedFields);
         Promotion saved = promotionRepository.save(promotion);
         return new PromotionOperationResponseDTO(
                     usageCount > 0
@@ -147,7 +147,7 @@ public class PromotionServiceImpl implements PromotionService {
             Promotion promotion,
             UpdatePromotionRequestDTO request,
             List<Product> requestedProducts,
-            boolean includeRestrictedFields) {
+            List<String> restrictedFields) {
         promotion.setName(request.name().trim());
 
         if (request.active() != null && request.active()) {
@@ -156,22 +156,27 @@ public class PromotionServiceImpl implements PromotionService {
             promotion.deactivate();
         }
 
-        if (!includeRestrictedFields) {
-            return;
+        if (!restrictedFields.contains("code")) {
+            String code = normalizeCode(request.code());
+            promotionRepository.findByCodeIgnoreCase(code)
+                    .filter(existing -> !existing.getId().equals(promotion.getId()))
+                    .ifPresent(existing -> {
+                        throw new DuplicatePromotionCodeException();
+                    });
+            promotion.setCode(code);
         }
 
-        String code = normalizeCode(request.code());
-        promotionRepository.findByCodeIgnoreCase(code)
-                .filter(existing -> !existing.getId().equals(promotion.getId()))
-                .ifPresent(existing -> {
-                    throw new DuplicatePromotionCodeException();
-                });
+        if (!restrictedFields.contains("discountType") && !restrictedFields.contains("discountValue")) {
+            PromotionDiscountType discountType = parseDiscountType(request.discountType());
+            promotion.changeDiscount(discountType, resolveDiscountValue(discountType, request.discountValue(), request.discountPercent()));
+        }
 
-        promotion.setCode(code);
-        PromotionDiscountType discountType = parseDiscountType(request.discountType());
-        promotion.changeDiscount(discountType, resolveDiscountValue(discountType, request.discountValue(), request.discountPercent()));
-        promotion.changeDates(request.startAt(), request.endAt());
-        replaceProducts(promotion, requestedProducts);
+        LocalDateTime nextStartAt = restrictedFields.contains("startAt") ? promotion.getStartAt() : request.startAt();
+        promotion.changeDates(nextStartAt, request.endAt());
+
+        if (!restrictedFields.contains("productIds")) {
+            replaceProducts(promotion, requestedProducts);
+        }
     }
 
     private void replaceProducts(Promotion promotion, List<Product> requestedProducts) {
@@ -201,7 +206,7 @@ public class PromotionServiceImpl implements PromotionService {
         if (LocalDateTime.now().isAfter(promotion.getStartAt()) && !Objects.equals(promotion.getStartAt(), request.startAt())) {
             fields.add("startAt");
         }
-        if (hasUsage && !sameProductIds(promotion.getProducts(), requestedProducts)) {
+        if (hasUsage && removesExistingProducts(promotion.getProducts(), requestedProducts)) {
             fields.add("productIds");
         }
         return fields;
@@ -217,6 +222,15 @@ public class PromotionServiceImpl implements PromotionService {
                 .sorted()
                 .toList();
         return currentIds.equals(requestedIds);
+    }
+
+    private boolean removesExistingProducts(List<Product> currentProducts, List<Product> requestedProducts) {
+        List<String> requestedIds = requestedProducts.stream()
+                .map(Product::getId)
+                .toList();
+        return currentProducts.stream()
+                .map(Product::getId)
+                .anyMatch(currentId -> !requestedIds.contains(currentId));
     }
 
     private List<Product> resolveProducts(List<String> productIds) {

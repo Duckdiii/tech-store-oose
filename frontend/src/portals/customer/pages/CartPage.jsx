@@ -59,8 +59,10 @@ export function CartPage() {
   const membershipDiscount = Math.round((cartSubtotal * membershipDiscountRate) / 100);
   const currentTierName = tierInfo?.tierName || tierInfo?.currentTierName || '';
   const appliedVoucher = vouchers.find((voucher) => voucher.code === appliedPromotionCode);
-  const appliedVoucherType = String(appliedVoucher?.discountType || 'PERCENTAGE').toUpperCase();
   const appliedVoucherValue = Number(appliedVoucher?.discountValue ?? appliedVoucher?.discountPercent ?? 0);
+  const appliedVoucherType = String(
+    appliedVoucher?.discountType || (appliedVoucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')
+  ).toUpperCase();
   const canUseAppliedVoucher = Boolean(appliedVoucher?.usableNow);
   const isNewMemberVoucherAllowed = appliedPromotionCode !== 'NEWMEM50K'
     || String(currentTierName).toUpperCase() === 'STANDARD';
@@ -109,7 +111,8 @@ export function CartPage() {
       return;
     }
     setAppliedPromotionCode(code);
-    const voucherType = String(voucher.discountType || 'PERCENTAGE').toUpperCase();
+    const voucherValue = Number(voucher.discountValue ?? voucher.discountPercent ?? 0);
+    const voucherType = String(voucher.discountType || (voucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')).toUpperCase();
     setPromotionMessage(voucherType === 'FREE_SHIPPING' ? 'Da ap dung mien phi van chuyen.' : 'Da ap dung ma giam gia.');
   };
 

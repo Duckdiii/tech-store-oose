@@ -167,8 +167,8 @@ export function ProductDetailPage() {
   const attributes = Object.entries(buildAttributes(product)).filter(([, value]) => value != null && value !== '');
   const inStock = (product.variants || []).length > 0;
 
-  const handleAddToCart = () => {
-    addItem({
+  const handleAddToCart = async () => {
+    await addItem({
       id: selectedVariant?.id || product.id,
       productId: product.id,
       name: `${product.name} ${selectedVariant?.storageGb ? `${selectedVariant.storageGb}GB` : ''}`.trim(),
@@ -182,8 +182,8 @@ export function ProductDetailPage() {
     setTimeout(() => setAdded(false), 1800);
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
+  const handleBuyNow = async () => {
+    await handleAddToCart();
     navigate('/checkout');
   };
 

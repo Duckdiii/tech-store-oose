@@ -173,13 +173,28 @@ export function CheckoutPage() {
     }
   }, [isVnPayReturn, isMomoReturn, user]);
 
-  const checkoutTotal = summary ? summary.subtotal : total;
+  const summarySubtotal = Number(summary?.subtotal || 0);
+  const localSubtotal = Number(total || 0);
+  const hasBackendCheckoutItems = Boolean(summary?.items?.length);
+  const checkoutTotal = summarySubtotal > 0 ? summarySubtotal : localSubtotal;
+  const checkoutItems = hasBackendCheckoutItems
+    ? summary.items
+    : items.map(item => ({
+        id: item.id,
+        productName: item.name,
+        variantDisplayName: item.variantDisplay,
+        unitPrice: item.price,
+        quantity: item.qty,
+        subtotal: item.price * item.qty,
+      }));
   const membershipDiscountRate = Number(tierInfo?.discountPercentage || 0);
   const membershipDiscount = Math.round((checkoutTotal * membershipDiscountRate) / 100);
   const currentTierName = tierInfo?.tierName || tierInfo?.currentTierName || '';
   const appliedVoucher = vouchers.find((voucher) => voucher.code === appliedPromotionCode);
-  const appliedVoucherType = String(appliedVoucher?.discountType || 'PERCENTAGE').toUpperCase();
   const appliedVoucherValue = Number(appliedVoucher?.discountValue ?? appliedVoucher?.discountPercent ?? 0);
+  const appliedVoucherType = String(
+    appliedVoucher?.discountType || (appliedVoucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')
+  ).toUpperCase();
   const canUseAppliedVoucher = Boolean(appliedVoucher?.usableNow);
   const isNewMemberVoucherAllowed = appliedPromotionCode !== 'NEWMEM50K'
     || String(currentTierName).toUpperCase() === 'STANDARD';
@@ -239,9 +254,41 @@ export function CheckoutPage() {
       return;
     }
     setAppliedPromotionCode(code);
-    const voucherType = String(voucher.discountType || 'PERCENTAGE').toUpperCase();
+    const voucherValue = Number(voucher.discountValue ?? voucher.discountPercent ?? 0);
+    const voucherType = String(voucher.discountType || (voucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')).toUpperCase();
     setPromotionMessage(voucherType === 'FREE_SHIPPING' ? 'Da ap dung mien phi van chuyen.' : 'Da ap dung ma giam gia.');
   };
+
+  useEffect(() => {
+    if (!appliedPromotionCode || vouchers.length === 0) return;
+
+    const voucher = vouchers.find((item) => item.code === appliedPromotionCode);
+    if (!voucher) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('Ma giam gia khong ton tai.');
+      return;
+    }
+    if (!voucher.usableNow) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('Ma giam gia da het han hoac chua duoc kich hoat.');
+      return;
+    }
+    if (appliedPromotionCode === 'TECH10OFF' && checkoutTotal < 5000000) {
+      setAppliedPromotionCode('');
+      setPromotionMessage('TECH10OFF chi ap dung cho don tu 5.000.000d.');
+      return;
+    }
+    if (appliedPromotionCode === 'NEWMEM50K' && String(currentTierName).toUpperCase() !== 'STANDARD') {
+      setAppliedPromotionCode('');
+      setPromotionMessage('NEWMEM50K chi ap dung cho thanh vien STANDARD.');
+      return;
+    }
+
+    setPromotionCode(appliedPromotionCode);
+    const voucherValue = Number(voucher.discountValue ?? voucher.discountPercent ?? 0);
+    const voucherType = String(voucher.discountType || (voucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')).toUpperCase();
+    setPromotionMessage(voucherType === 'FREE_SHIPPING' ? 'Da ap dung mien phi van chuyen.' : 'Da ap dung ma giam gia.');
+  }, [appliedPromotionCode, vouchers, checkoutTotal, currentTierName]);
 
   const handleOrder = async () => {
     const addrStr = selectedAddr
@@ -252,11 +299,16 @@ export function CheckoutPage() {
       return;
     }
     
+    if (!hasBackendCheckoutItems) {
+      alert('Gio hang chua dong bo voi he thong. Vui long quay lai gio hang, tai lai trang va thu lai.');
+      return;
+    }
+
     setPlacing(true);
     try {
       const customerId = user?.id || '1';
       const addressId = String(selectedAddr?.id || '1');
-      const selectedCartItemIds = summary?.items?.map(item => item.id) || [];
+      const selectedCartItemIds = summary.items.map(item => item.id);
 
       const payload = {
         addressId,
@@ -276,12 +328,12 @@ export function CheckoutPage() {
         clearCart();
         setSuccess({
           orderId,
-          items: summary.items.map(item => ({
+          items: checkoutItems.map(item => ({
             name: item.productName + (item.variantDisplayName ? ` - ${item.variantDisplayName}` : ''),
             qty: item.quantity,
             price: item.unitPrice
           })),
-          total: summary.subtotal,
+          total: checkoutTotal,
           finalTotal,
           method: methodLabel,
           address: addrStr,
@@ -593,7 +645,7 @@ export function CheckoutPage() {
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '24px', position: 'sticky', top: 88 }}>
             <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', marginBottom: 18, letterSpacing: -0.3 }}>Đơn hàng của bạn</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              {(summary?.items || []).map(item => (
+              {checkoutItems.map(item => (
                 <div key={item.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ width: 52, height: 52, background: '#f4f5f7', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
                     <svg width="24" height="40" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/></svg>

@@ -51,8 +51,9 @@ function parseProductIds(value) {
     .filter(Boolean);
 }
 
-function normalizeDiscountType(value) {
-  return String(value || 'PERCENTAGE').toUpperCase();
+function normalizeDiscountType(value, discountValue = 0) {
+  if (value) return String(value).toUpperCase();
+  return Number(discountValue || 0) > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE';
 }
 
 function discountValueOf(promotion) {
@@ -60,8 +61,8 @@ function discountValueOf(promotion) {
 }
 
 function formatPromotionDiscount(promotion) {
-  const type = normalizeDiscountType(promotion?.discountType);
   const value = discountValueOf(promotion);
+  const type = normalizeDiscountType(promotion?.discountType, value);
   if (type === 'FREE_SHIPPING') return 'Freeship';
   if (type === 'FIXED_AMOUNT') return formatMoney(value);
   return `${value}%`;
@@ -72,7 +73,7 @@ function normalizePromotion(item) {
     ...item,
     code: item?.code || item?.promotionCode || item?.couponCode || '',
     name: item?.name || item?.promotionName || '',
-    discountType: normalizeDiscountType(item?.discountType),
+    discountType: normalizeDiscountType(item?.discountType, item?.discountValue ?? item?.discountPercent ?? 0),
     discountValue: item?.discountValue ?? item?.discountPercent ?? 0,
     productIds: Array.isArray(item?.productIds) ? item.productIds : [],
     usageCount: Number(item?.usageCount || 0),
@@ -110,7 +111,7 @@ function formFromPromotion(promotion) {
   return {
     code: promotion.code || '',
     name: promotion.name || '',
-    discountType: normalizeDiscountType(promotion.discountType),
+    discountType: normalizeDiscountType(promotion.discountType, discountValueOf(promotion)),
     discountValue: String(discountValueOf(promotion)),
     startAt: toInputDateTime(promotion.startAt),
     endAt: toInputDateTime(promotion.endAt),
@@ -165,7 +166,7 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
       <section
         className="admin-modal"
         onMouseDown={(event) => event.stopPropagation()}
-        style={{ width: 'min(720px, calc(100vw - 36px))', maxHeight: 'calc(100vh - 42px)', overflow: 'auto' }}
+        style={{ width: 'min(960px, calc(100vw - 36px))', maxHeight: 'calc(100vh - 42px)', overflow: 'auto' }}
       >
         <div className="admin-modal__head">
           <div>
@@ -188,6 +189,21 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
             }}>
               <b style={{ display: 'block', marginBottom: 4 }}>Promotion đang ACTIVE</b>
               Các field nhạy cảm đã bị khóa: mã, giảm giá, thời gian và sản phẩm áp dụng. Có thể sửa tên hoặc tắt trạng thái trước khi cập nhật các field này.
+            </div>
+          )}
+
+          {hasUsage && (
+            <div style={{
+              border: '1px solid #bfdbfe',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 12.5,
+              lineHeight: 1.45,
+            }}>
+              <b style={{ display: 'block', marginBottom: 4 }}>Promotion da co {usageCount} luot su dung</b>
+              Ma, loai giam, gia tri giam va san pham ap dung duoc khoa de giu lich su don hang.
             </div>
           )}
 
@@ -238,20 +254,44 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
             </label>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.9fr) minmax(220px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr)', gap: 12 }}>
             <label className="admin-field">
-              Giảm giá (%)
+              Loại khuyến mãi
+              <select
+                value={form.discountType}
+                onChange={(event) => {
+                  const nextType = event.target.value;
+                  setField('discountType', nextType);
+                  if (nextType === 'FREE_SHIPPING') setField('discountValue', '0');
+                }}
+                disabled={lockRestricted('discountType')}
+                style={lockRestricted('discountType') ? disabledStyle : undefined}
+              >
+                {DISCOUNT_TYPES.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+
+            {form.discountType !== 'FREE_SHIPPING' ? (
+            <label className="admin-field">
+              {form.discountType === 'FIXED_AMOUNT' ? 'Số tiền giảm (VNĐ)' : 'Giảm giá (%)'}
               <input
                 type="number"
-                min="0"
-                max="100"
+                min={form.discountType === 'FIXED_AMOUNT' ? '1' : '0'}
+                max={form.discountType === 'FIXED_AMOUNT' ? undefined : '100'}
                 step="0.1"
-                value={form.discountPercent}
-                onChange={(event) => setField('discountPercent', event.target.value)}
-                disabled={lockRestricted('discountPercent')}
-                style={lockRestricted('discountPercent') ? disabledStyle : undefined}
+                value={form.discountValue}
+                onChange={(event) => setField('discountValue', event.target.value)}
+                disabled={lockRestricted('discountValue')}
+                style={lockRestricted('discountValue') ? disabledStyle : undefined}
               />
             </label>
+            ) : (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '9px 10px', background: '#f8fafc', color: '#16a34a', fontSize: 12.5, fontWeight: 750 }}>
+              Mã này sẽ miễn toàn bộ phí vận chuyển.
+            </div>
+            )}
 
             <label className="admin-field">
               Bắt đầu
@@ -275,18 +315,6 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
               />
             </label>
           </div>
-
-          <label className="admin-field">
-            ID sản phẩm áp dụng
-            <textarea
-              value={form.productIdsText}
-              onChange={(event) => setField('productIdsText', event.target.value)}
-              placeholder="Để trống nếu chưa áp dụng cho sản phẩm cụ thể. Có thể nhập nhiều ID, phân tách bằng dấu phẩy hoặc xuống dòng."
-              rows={4}
-              disabled={lockRestricted('productIds')}
-              style={{ resize: 'vertical', minHeight: 86, lineHeight: 1.45, ...(lockRestricted('productIds') ? disabledStyle : {}) }}
-            />
-          </label>
 
           <div style={{
             display: 'flex',
@@ -425,7 +453,7 @@ function PromotionPerformanceDialog({ promotion, performance, loading, error, on
             </span>
             <b style={{ color: '#0d1117', fontSize: 16 }}>{promotion.code}</b>
             <span style={{ color: '#64748b', fontSize: 12.5 }}>
-              {promotion.name} · {promotion.discountPercent}% · {promotion.active ? 'ACTIVE' : 'Đã tắt'}
+              {promotion.name} · {formatPromotionDiscount(promotion)} · {promotion.active ? 'ACTIVE' : 'Đã tắt'}
             </span>
           </div>
 
@@ -631,9 +659,13 @@ export function PromotionsPage() {
   const validate = () => {
     if (!form.code.trim()) return 'Vui lòng nhập mã khuyến mãi.';
     if (!form.name.trim()) return 'Vui lòng nhập tên chương trình.';
-    const discount = Number(form.discountPercent);
-    if (Number.isNaN(discount) || discount < 0 || discount > 100) {
+    const discountType = normalizeDiscountType(form.discountType);
+    const discount = Number(form.discountValue);
+    if (discountType === 'PERCENTAGE' && (Number.isNaN(discount) || discount < 0 || discount > 100)) {
       return 'Phần trăm giảm giá phải nằm trong khoảng 0 đến 100.';
+    }
+    if (discountType === 'FIXED_AMOUNT' && (Number.isNaN(discount) || discount <= 0)) {
+      return 'Số tiền giảm phải lớn hơn 0.';
     }
     if (!form.startAt || !form.endAt) return 'Vui lòng nhập thời gian bắt đầu và kết thúc.';
     if (new Date(form.endAt) <= new Date(form.startAt)) {
@@ -645,7 +677,9 @@ export function PromotionsPage() {
   const requestPayload = () => ({
     code: form.code.trim(),
     name: form.name.trim(),
-    discountPercent: Number(form.discountPercent),
+    discountType: normalizeDiscountType(form.discountType),
+    discountValue: normalizeDiscountType(form.discountType) === 'FREE_SHIPPING' ? 0 : Number(form.discountValue),
+    discountPercent: normalizeDiscountType(form.discountType) === 'FREE_SHIPPING' ? 0 : Number(form.discountValue),
     startAt: form.startAt,
     endAt: form.endAt,
     active: form.active,
@@ -881,7 +915,7 @@ export function PromotionsPage() {
                     </span>
                   </td>
                   <td><b style={{ color: '#0d1117' }}>{promotion.name || 'Chưa đặt tên'}</b></td>
-                  <td><b style={{ color: '#6d28d9' }}>{promotion.discountPercent}%</b></td>
+                  <td><b style={{ color: '#6d28d9' }}>{formatPromotionDiscount(promotion)}</b></td>
                   <td style={{ color: '#64748b', lineHeight: 1.35, fontSize: 12.5 }}>
                     <span style={{ display: 'block' }}>{formatDateTime(promotion.startAt)}</span>
                     <span style={{ display: 'block' }}>{formatDateTime(promotion.endAt)}</span>

@@ -114,7 +114,12 @@ public class Promotion extends BaseEntity {
         }
 
         public PromotionDiscountType effectiveDiscountType() {
-                return discountType == null ? PromotionDiscountType.PERCENTAGE : discountType;
+                if (discountType != null) {
+                        return discountType;
+                }
+                return discountPercent != null && discountPercent > 100
+                                ? PromotionDiscountType.FIXED_AMOUNT
+                                : PromotionDiscountType.PERCENTAGE;
         }
 
         public Double discountValue() {
