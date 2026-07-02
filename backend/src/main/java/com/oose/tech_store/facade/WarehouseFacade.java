@@ -23,10 +23,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Principal;
 
-/**
- * Facade Pattern — cung cấp một điểm vào duy nhất cho toàn bộ Warehouse subsystem.
- * Controller không cần biết chi tiết các sub-service bên dưới.
- */
+
 @Component
 @RequiredArgsConstructor
 public class WarehouseFacade {
