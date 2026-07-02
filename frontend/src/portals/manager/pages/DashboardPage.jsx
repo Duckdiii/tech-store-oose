@@ -98,7 +98,7 @@ function TodoSection({ pendingOrders, lowStockItems, navigate }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontSize: 13, color: '#0d1117', display: 'block' }}>{item.name}</b>
               <span style={{ fontSize: 12, color: '#6b7280' }}>
-                {item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} serial`}
+                {item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} sản phẩm`}
               </span>
             </div>
             <span style={{
@@ -138,10 +138,37 @@ export function DashboardPage({ data }) {
     [data.products, data.variants]
   );
 
-  const totalRevenue = useMemo(
-    () => data.orders.filter((o) => o.status === 'Hoàn thành').reduce((s, o) => s + o.total, 0),
-    [data.orders]
-  );
+  const monthlyRevenue = useMemo(() => {
+    const parseDate = (dateStr) => {
+      // dateStr format: DD/MM/YYYY (see formatDateString in ManagerPortal.jsx)
+      const [, month, year] = (dateStr || '').split('/').map(Number);
+      return { month, year };
+    };
+
+    const now = new Date();
+    const curMonth = now.getMonth() + 1;
+    const curYear = now.getFullYear();
+    const prevRef = new Date(curYear, now.getMonth() - 1, 1);
+    const prevMonth = prevRef.getMonth() + 1;
+    const prevYear = prevRef.getFullYear();
+
+    let current = 0;
+    let previous = 0;
+    data.orders
+      .filter((o) => o.status === 'Hoàn thành')
+      .forEach((o) => {
+        const { month, year } = parseDate(o.date);
+        if (month === curMonth && year === curYear) current += o.total;
+        else if (month === prevMonth && year === prevYear) previous += o.total;
+      });
+
+    const changePercent = previous > 0 ? ((current - previous) / previous) * 100 : null;
+    return { current, previous, changePercent };
+  }, [data.orders]);
+
+  const revenueHint = monthlyRevenue.previous <= 0
+    ? (monthlyRevenue.current > 0 ? 'Chưa có dữ liệu tháng trước để so sánh' : 'Chưa có doanh thu tháng này')
+    : `${monthlyRevenue.changePercent >= 0 ? '↑' : '↓'} ${Math.abs(monthlyRevenue.changePercent).toFixed(1).replace('.', ',')}% so với tháng trước`;
 
   const availableVariants = useMemo(
     () => data.variants.filter((v) => v.status === 'AVAILABLE').length,
@@ -166,8 +193,8 @@ export function DashboardPage({ data }) {
       <div className="admin-metrics">
         <ClickableMetric
           label="Doanh thu tháng"
-          value={totalRevenue > 0 ? `${(totalRevenue / 1_000_000).toFixed(0)} triệu` : '428,5 triệu'}
-          hint="↑ 12,8% so với tháng trước"
+          value={`${(monthlyRevenue.current / 1_000_000).toFixed(1).replace('.', ',')} triệu`}
+          hint={revenueHint}
           tone="dark"
           to="/manager/reports"
           navigate={navigate}
@@ -274,7 +301,7 @@ export function DashboardPage({ data }) {
               {lowStockItems.slice(0, 4).map((item) => (
                 <div key={item.id}>
                   <b>{item.name}</b>
-                  <span>{item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} serial`}</span>
+                  <span>{item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} sản phẩm`}</span>
                   <Status>{item.stock === 0 ? 'Hết hàng' : 'Sắp hết hàng'}</Status>
                 </div>
               ))}

@@ -264,7 +264,7 @@ export function Navbar() {
                             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
                           </span>
                           <span style={{ minWidth: 0 }}>
-                            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#0d1117', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName || 'San pham'}</span>
+                            <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: '#0d1117', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName || t('Sản phẩm')}</span>
                             <span style={{ display: 'block', fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{t('Đang theo dõi thông báo')}</span>
                           </span>
                         </button>

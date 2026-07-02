@@ -10,6 +10,7 @@ import com.oose.tech_store.service.order.OrderFulfillmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.text.DecimalFormat;
 import java.util.Map;
 
 @Component
@@ -33,7 +34,11 @@ public class CODPaymentStrategy implements PaymentStrategy {
         }
 
         if (!cod.isAmountAllowed(checkout.getAmount())) {
-            throw new IllegalArgumentException("Order amount exceeds COD limit of " + cod.getMaxAmount());
+            DecimalFormat vnCurrency = new DecimalFormat("#,##0");
+            throw new IllegalArgumentException(
+                    "Đơn hàng vượt quá hạn mức thanh toán khi nhận hàng (COD) là "
+                            + vnCurrency.format(cod.getMaxAmount()) + "₫. "
+                            + "Vui lòng chọn phương thức thanh toán khác như MoMo hoặc VNPAY.");
         }
 
         OrderFulfillmentService.OrderFulfillmentResult result = fulfillmentService.fulfill(checkout,

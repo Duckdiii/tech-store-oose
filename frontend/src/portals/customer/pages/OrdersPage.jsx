@@ -2,9 +2,18 @@ import { useState, useEffect } from 'react';
 import { fmt } from '../../../utils/format';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useToast } from '../../../shared/context/ToastContext';
 import { httpClient } from '../../../api/httpClient';
 
-
+function PackageIcon({ size = 32, color = '#6b7280' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
 
 const BACKEND_STATUS_MAP = {
   AWAITING_CONFIRMATION: { label: 'Chờ xác nhận', color: '#f59e0b', bg: '#fffbeb' },
@@ -24,6 +33,7 @@ const STATUS_API_MAP = {
 
 export function OrdersPage() {
   const { isLoggedIn, user } = useAuth();
+  const { showToast } = useToast();
   const [params] = useSearchParams();
   const [expanded, setExpanded] = useState(params.get('new') === '1' ? 'new' : null);
   const [filter, setFilter] = useState('all');
@@ -134,7 +144,9 @@ export function OrdersPage() {
           </div>
         ) : orders.length === 0 ? (
           <div style={{ background: '#fff', borderRadius: 16, padding: '64px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>📦</div>
+            <div style={{ width: 72, height: 72, background: '#f8f9fa', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '1.5px solid #f1f3f5' }}>
+              <PackageIcon size={32} color="#6b7280" />
+            </div>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Không có đơn hàng nào</h3>
             <Link to="/products" style={{ fontSize: 14, color: '#0d1117', fontWeight: 700, textDecoration: 'none' }}>Mua sắm ngay →</Link>
           </div>
@@ -200,10 +212,10 @@ export function OrdersPage() {
                           <div style={{ borderTop: '1px solid #e9ecef', marginTop: 16, paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', gap: 8 }}>
                               {detail.orderStatus === 'AWAITING_CONFIRMATION' && (
-                                <button onClick={() => alert('Yêu cầu hủy đơn hàng đã được gửi đến cửa hàng.')} style={{ padding: '8px 14px', background: '#fef2f2', color: '#e11d48', border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Hủy đơn</button>
+                                <button onClick={() => showToast('Yêu cầu hủy đơn hàng đã được gửi đến cửa hàng.', 'success')} style={{ padding: '8px 14px', background: '#fef2f2', color: '#e11d48', border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Hủy đơn</button>
                               )}
                               {detail.orderStatus === 'COMPLETED' && (
-                                <button onClick={() => alert('Tính năng đánh giá đang được phát triển.')} style={{ padding: '8px 14px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Đánh giá</button>
+                                <button onClick={() => showToast('Tính năng đánh giá đang được phát triển.', 'info')} style={{ padding: '8px 14px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Đánh giá</button>
                               )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>

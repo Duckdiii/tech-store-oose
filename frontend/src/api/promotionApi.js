@@ -24,4 +24,8 @@ export const promotionApi = {
   removePromotion(id) {
     return httpClient.delete(`/promotions/${id}`).then((res) => res.data);
   },
+
+  getFlashSale() {
+    return httpClient.get('/promotions/flash-sale').then((res) => res.data);
+  },
 };

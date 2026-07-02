@@ -1,6 +1,8 @@
 package com.oose.tech_store.exception;
 
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, String>> handleApiException(ApiException ex) {
@@ -37,6 +41,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.error("Data integrity violation", ex);
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", "Data conflicts with an existing record"));
     }
@@ -49,6 +54,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PaymentServiceUnavailableException.class)
     public ResponseEntity<Map<String, String>> handlePaymentServiceUnavailable(PaymentServiceUnavailableException ex) {
+        log.error("Payment gateway call failed: {}", ex.getMessage(), ex.getCause());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of("message", ex.getMessage()));
     }

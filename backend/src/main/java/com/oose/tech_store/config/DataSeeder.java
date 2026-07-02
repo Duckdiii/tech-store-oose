@@ -4,6 +4,7 @@ import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.AccountStatus;
 import com.oose.tech_store.entity.enums.MembershipTier;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
+import com.oose.tech_store.entity.enums.BundleServiceType;
 import com.oose.tech_store.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,10 +35,18 @@ public class DataSeeder implements CommandLineRunner {
     private final ManagerRepository managerRepository;
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PromotionRepository promotionRepository;
+    private final BundleServiceRepository bundleServiceRepository;
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        if (bundleServiceRepository.count() == 0) {
+            log.info("Seeding Bundle Services...");
+            bundleServiceRepository.save(new BundleService("Bảo hành VIP 12 tháng", BundleServiceType.WARRANTY, "Gói bảo hành vàng toàn diện 12 tháng", BigDecimal.valueOf(1290000.0), 12, true));
+            bundleServiceRepository.save(new BundleService("Bảo hiểm rơi vỡ màn hình 6 tháng", BundleServiceType.SCREEN_PROTECTION, "Bảo hiểm rơi vỡ, nứt màn hình trong vòng 6 tháng", BigDecimal.valueOf(690000.0), 6, true));
+        }
+
         if (brandRepository.count() > 0) {
             log.info("Database already seeded. Skipping seeder.");
             return;
@@ -425,6 +434,23 @@ public class DataSeeder implements CommandLineRunner {
 
         createVariant(savedS24p, 12, 256, "Tím Coban", 21990000.0);
         createVariant(savedS24p, 12, 512, "Vàng Hổ Phách", 24490000.0);
+
+        // 7. Seed Flash Sale Promotion
+        log.info("Seeding Flash Sale Promotion...");
+        Promotion flashSalePromo = new Promotion(
+                "FLASHSALE",
+                "Flash Sale Giá Sốc 2026",
+                15.0,
+                java.time.LocalDateTime.now().minusDays(1),
+                java.time.LocalDateTime.now().plusDays(7),
+                true,
+                null
+        );
+        flashSalePromo.addProduct(savedIp15pm);
+        flashSalePromo.addProduct(savedS24u);
+        flashSalePromo.addProduct(savedMi14p);
+        flashSalePromo.addProduct(savedOppofx7);
+        promotionRepository.save(flashSalePromo);
 
         log.info("Database seeding completed successfully!");
     }

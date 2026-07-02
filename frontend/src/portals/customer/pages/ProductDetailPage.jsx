@@ -14,15 +14,15 @@ function unique(values) {
 
 function buildAttributes(product) {
   return {
-    'Man hinh': product.screenSize ? `${product.screenSize} inch` : null,
-    'Do phan giai': product.screenResolution,
+    'Màn hình': product.screenSize ? `${product.screenSize} inch` : null,
+    'Độ phân giải': product.screenResolution,
     Chipset: product.chipset,
     'Camera sau': product.rearCamera,
-    'Camera truoc': product.frontCamera,
+    'Camera trước': product.frontCamera,
     Pin: product.batteryCapacity ? `${product.batteryCapacity} mAh` : null,
     SIM: product.simType,
-    'He dieu hanh': product.operatingSystem,
-    NFC: product.nfcSupported == null ? null : product.nfcSupported ? 'Co' : 'Khong',
+    'Hệ điều hành': product.operatingSystem,
+    NFC: product.nfcSupported == null ? null : product.nfcSupported ? 'Có' : 'Không',
   };
 }
 
@@ -94,7 +94,7 @@ export function ProductDetailPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError('Khong tai duoc thong tin san pham.');
+          setError('Không tải được thông tin sản phẩm.');
           setProduct(null);
         }
       } finally {
@@ -145,7 +145,7 @@ export function ProductDetailPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', background: '#f4f5f7' }}>
-        <h2 style={{ fontSize: 20, color: '#374151' }}>Dang tai thong tin san pham...</h2>
+        <h2 style={{ fontSize: 20, color: '#374151' }}>Đang tải thông tin sản phẩm...</h2>
       </div>
     );
   }
@@ -153,9 +153,9 @@ export function ProductDetailPage() {
   if (!product) {
     return (
       <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', background: '#f4f5f7', gap: 16 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0d1117' }}>{error || 'Khong tim thay san pham'}</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0d1117' }}>{error || 'Không tìm thấy sản phẩm'}</h2>
         <Link to="/products" style={{ padding: '12px 28px', background: '#0d1117', color: '#fff', borderRadius: 10, textDecoration: 'none', fontWeight: 700 }}>
-          Quay lai danh muc
+          Quay lại danh mục
         </Link>
       </div>
     );
@@ -166,7 +166,6 @@ export function ProductDetailPage() {
   const oldPrice = Math.round(currentPrice * 1.1);
   const attributes = Object.entries(buildAttributes(product)).filter(([, value]) => value != null && value !== '');
   const inStock = (product.variants || []).length > 0;
-
   const handleAddToCart = () => {
     addItem({
       id: selectedVariant?.id || product.id,
@@ -174,14 +173,25 @@ export function ProductDetailPage() {
       name: `${product.name} ${selectedVariant?.storageGb ? `${selectedVariant.storageGb}GB` : ''}`.trim(),
       price: currentPrice,
       brand: product.brandName,
+      brandName: product.brandName,
       storage: selectedVariant?.storageGb ? `${selectedVariant.storageGb}GB` : null,
       color: selectedVariant?.color,
       thumbnailUrl: imageUrl,
+      screenSize: product.screenSize,
+      screenResolution: product.screenResolution,
+      chipset: product.chipset,
+      rearCamera: product.rearCamera,
+      frontCamera: product.frontCamera,
+      batteryCapacity: product.batteryCapacity,
+      simType: product.simType,
+      operatingSystem: product.operatingSystem,
+      nfcSupported: product.nfcSupported,
+      ramGb: selectedVariant?.ramGb,
+      storageGb: selectedVariant?.storageGb
     }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   };
-
   const handleBuyNow = () => {
     handleAddToCart();
     navigate('/checkout');
@@ -201,14 +211,14 @@ export function ProductDetailPage() {
       if (subscribed) {
         await notificationApi.unsubscribeProduct(selectedVariant.id);
         setSubscribed(false);
-        setSubscriptionMessage('Da huy dang ky thong bao cho san pham nay.');
+        setSubscriptionMessage('Đã hủy đăng ký thông báo cho sản phẩm này.');
       } else {
         await notificationApi.subscribeProduct(selectedVariant.id);
         setSubscribed(true);
-        setSubscriptionMessage('Da dang ky nhan thong bao khi san pham co cap nhat ton kho.');
+        setSubscriptionMessage('Đã đăng ký nhận thông báo khi sản phẩm có cập nhật tồn kho.');
       }
     } catch (err) {
-      setSubscriptionMessage(err.response?.data?.message || 'Khong the cap nhat dang ky thong bao.');
+      setSubscriptionMessage(err.response?.data?.message || 'Không thể cập nhật đăng ký thông báo.');
     } finally {
       setSubscriptionBusy(false);
     }
@@ -218,9 +228,9 @@ export function ProductDetailPage() {
     <div style={{ background: '#f4f5f7', minHeight: '80vh', paddingBottom: 80 }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #f1f3f5' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Link to="/" style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>Trang chu</Link>
+          <Link to="/" style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>Trang chủ</Link>
           <span style={{ color: '#d1d5db' }}>/</span>
-          <Link to="/products" style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>San pham</Link>
+          <Link to="/products" style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>Sản phẩm</Link>
           <span style={{ color: '#d1d5db' }}>/</span>
           <span style={{ fontSize: 13, color: '#0d1117', fontWeight: 600 }}>{product.name}</span>
         </div>
@@ -243,17 +253,17 @@ export function ProductDetailPage() {
           </div>
 
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10 }}>
               {product.brandName || product.categoryName || 'Tech Store'}
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
-              <h1 style={{ flex: 1, fontSize: 26, fontWeight: 900, color: '#0d1117', letterSpacing: -0.8, lineHeight: 1.25, margin: 0 }}>{product.name}</h1>
+              <h1 style={{ flex: 1, fontSize: 32, fontWeight: 800, color: '#0d1117', letterSpacing: -0.8, lineHeight: 1.25, margin: 0 }}>{product.name}</h1>
               <button
                 type="button"
                 onClick={handleToggleSubscription}
                 disabled={subscriptionBusy}
-                title={subscribed ? 'Huy dang ky thong bao' : 'Dang ky nhan thong bao'}
-                aria-label={subscribed ? 'Huy dang ky thong bao' : 'Dang ky nhan thong bao'}
+                title={subscribed ? 'Hủy đăng ký thông báo' : 'Đăng ký nhận thông báo'}
+                aria-label={subscribed ? 'Hủy đăng ký thông báo' : 'Đăng ký nhận thông báo'}
                 style={{
                   width: 46,
                   height: 46,
@@ -273,20 +283,20 @@ export function ProductDetailPage() {
                 <HeartIcon broken={subscribed} />
               </button>
             </div>
-            {subscriptionMessage && <p style={{ margin: '-4px 0 14px', color: subscribed ? '#15803d' : '#6b7280', fontSize: 13 }}>{subscriptionMessage}</p>}
+            {subscriptionMessage && <p style={{ margin: '-4px 0 14px', color: subscribed ? '#15803d' : '#6b7280', fontSize: 13.5, fontWeight: 500 }}>{subscriptionMessage}</p>}
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-              <span style={{ fontSize: 34, fontWeight: 900, color: '#e11d48', letterSpacing: -1 }}>{fmt(currentPrice)}d</span>
-              {currentPrice > 0 && <span style={{ fontSize: 16, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(oldPrice)}d</span>}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 24 }}>
+              <span style={{ fontSize: 36, fontWeight: 900, color: '#e11d48', letterSpacing: -1 }}>{fmt(currentPrice)}₫</span>
+              {currentPrice > 0 && <span style={{ fontSize: 17, color: '#9ca3af', textDecoration: 'line-through', fontWeight: 500 }}>{fmt(oldPrice)}₫</span>}
             </div>
 
             {colors.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Mau sac</div>
+              <div style={{ marginBottom: 22 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#111827', marginBottom: 10 }}>Màu sắc</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {colors.map((color, index) => (
                     <button key={color} onClick={() => setSelectedColor(index)}
-                      style={{ padding: '8px 16px', border: `2px solid ${selectedColor === index ? '#0d1117' : '#e9ecef'}`, borderRadius: 9, background: '#fff', cursor: 'pointer' }}>
+                      style={{ padding: '9px 18px', border: `2px solid ${selectedColor === index ? '#0d1117' : '#e9ecef'}`, borderRadius: 9, background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
                       {color}
                     </button>
                   ))}
@@ -295,12 +305,12 @@ export function ProductDetailPage() {
             )}
 
             {storages.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#374151', marginBottom: 10 }}>Dung luong</div>
+              <div style={{ marginBottom: 26 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#111827', marginBottom: 10 }}>Dung lượng</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {storages.map((storage, index) => (
                     <button key={storage} onClick={() => setSelectedStorage(index)}
-                      style={{ padding: '10px 20px', border: `2px solid ${selectedStorage === index ? '#0d1117' : '#e9ecef'}`, borderRadius: 9, background: selectedStorage === index ? '#0d1117' : '#fff', color: selectedStorage === index ? '#fff' : '#374151', cursor: 'pointer' }}>
+                      style={{ padding: '10px 22px', border: `2px solid ${selectedStorage === index ? '#0d1117' : '#e9ecef'}`, borderRadius: 9, background: selectedStorage === index ? '#0d1117' : '#fff', color: selectedStorage === index ? '#fff' : '#374151', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
                       {storage}
                     </button>
                   ))}
@@ -309,15 +319,15 @@ export function ProductDetailPage() {
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <button onClick={() => setQty((value) => Math.max(1, value - 1))} style={{ width: 44, height: 44, border: '1.5px solid #e9ecef', background: '#fff', borderRadius: 10 }}>-</button>
-              <span style={{ width: 36, textAlign: 'center', fontWeight: 800 }}>{qty}</span>
-              <button onClick={() => setQty((value) => value + 1)} style={{ width: 44, height: 44, border: '1.5px solid #e9ecef', background: '#fff', borderRadius: 10 }}>+</button>
+              <button onClick={() => setQty((value) => Math.max(1, value - 1))} style={{ width: 44, height: 44, border: '1.5px solid #e9ecef', background: '#fff', borderRadius: 10, cursor: 'pointer', fontSize: 18, fontWeight: 600 }}>-</button>
+              <span style={{ width: 36, textAlign: 'center', fontWeight: 800, fontSize: 16 }}>{qty}</span>
+              <button onClick={() => setQty((value) => value + 1)} style={{ width: 44, height: 44, border: '1.5px solid #e9ecef', background: '#fff', borderRadius: 10, cursor: 'pointer', fontSize: 18, fontWeight: 600 }}>+</button>
               <button onClick={handleAddToCart} disabled={!inStock}
-                style={{ flex: 1, height: 48, background: added ? '#16a34a' : '#fff', color: added ? '#fff' : '#0d1117', border: '2px solid #0d1117', borderRadius: 11, fontWeight: 800, cursor: inStock ? 'pointer' : 'not-allowed' }}>
-                {added ? 'Da them' : 'Them vao gio'}
+                style={{ flex: 1, height: 48, background: added ? '#16a34a' : '#fff', color: added ? '#fff' : '#0d1117', border: '2px solid #0d1117', borderRadius: 11, fontWeight: 800, cursor: inStock ? 'pointer' : 'not-allowed', fontSize: 15 }}>
+                {added ? 'Đã thêm' : 'Thêm vào giỏ'}
               </button>
               <button onClick={handleBuyNow} disabled={!inStock}
-                style={{ flex: 1, height: 48, background: '#0d1117', color: '#fff', border: 'none', borderRadius: 11, fontWeight: 800, cursor: inStock ? 'pointer' : 'not-allowed' }}>
+                style={{ flex: 1, height: 48, background: '#0d1117', color: '#fff', border: 'none', borderRadius: 11, fontWeight: 800, cursor: inStock ? 'pointer' : 'not-allowed', fontSize: 15 }}>
                 Mua ngay
               </button>
             </div>
@@ -327,9 +337,9 @@ export function ProductDetailPage() {
 
         <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #f1f3f5', overflow: 'hidden' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid #f1f3f5' }}>
-            {[['specs', 'Thong so ky thuat'], ['desc', 'Mo ta san pham']].map(([key, label]) => (
+            {[['specs', 'Thông số kỹ thuật'], ['desc', 'Mô tả sản phẩm']].map(([key, label]) => (
               <button key={key} onClick={() => setTab(key)}
-                style={{ padding: '16px 28px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === key ? '#0d1117' : 'transparent'}`, fontWeight: tab === key ? 800 : 500, cursor: 'pointer' }}>
+                style={{ padding: '16px 28px', background: 'none', border: 'none', borderBottom: `2.5px solid ${tab === key ? '#0d1117' : 'transparent'}`, fontWeight: tab === key ? 800 : 600, cursor: 'pointer', fontSize: 15, color: tab === key ? '#0d1117' : '#6b7280' }}>
                 {label}
               </button>
             ))}
@@ -338,14 +348,14 @@ export function ProductDetailPage() {
             {tab === 'specs' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 40px' }}>
                 {attributes.map(([key, value]) => (
-                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #f4f5f7', gap: 16 }}>
-                    <span style={{ color: '#9ca3af' }}>{key}</span>
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #f4f5f7', gap: 16, fontSize: 14.5 }}>
+                    <span style={{ color: '#6b7280', fontWeight: 500 }}>{key}</span>
                     <span style={{ color: '#0d1117', fontWeight: 700, textAlign: 'right' }}>{value}</span>
                   </div>
                 ))}
               </div>
             )}
-            {tab === 'desc' && <p style={{ maxWidth: 760, fontSize: 15, color: '#374151', lineHeight: 1.8 }}>{product.description || 'San pham chua co mo ta.'}</p>}
+            {tab === 'desc' && <p style={{ maxWidth: 760, fontSize: 15.5, color: '#374151', lineHeight: 1.8 }}>{product.description || 'Sản phẩm chưa có mô tả.'}</p>}
           </div>
         </div>
       </div>

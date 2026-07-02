@@ -38,12 +38,16 @@ public class MembershipService {
 
         BigDecimal accumulatedSpending = calculateAccumulatedSpending(customerId);
         Membership recalculatedMembership = findTierForSpending(accumulatedSpending);
-        boolean upgraded = customer.getMembership() == null
-                || !customer.getMembership().getId().equals(recalculatedMembership.getId());
+        
+        boolean upgraded = false;
+        if (recalculatedMembership != null) {
+            upgraded = customer.getMembership() == null
+                    || !customer.getMembership().getId().equals(recalculatedMembership.getId());
 
-        if (upgraded) {
-            customer.assignMembership(recalculatedMembership);
-            customerRepository.save(customer);
+            if (upgraded) {
+                customer.assignMembership(recalculatedMembership);
+                customerRepository.save(customer);
+            }
         }
 
         return calculateTier(customer.getMembership(), accumulatedSpending, upgraded);
@@ -56,18 +60,31 @@ public class MembershipService {
 
     @Transactional(readOnly = true)
     public MembershipTierResponseDTO calculateTier(Membership membership, BigDecimal accumulatedSpending, boolean upgraded) {
+        MembershipTierResponseDTO response = new MembershipTierResponseDTO();
+        
         if (membership == null) {
-            throw new RuntimeException("Membership not found");
+            response.setCurrentTierId("default-std");
+            response.setCurrentTierName("STANDARD");
+            response.setCurrentTierDescription("Standard customer benefits");
+            response.setDiscountPercentage(0.0);
+            response.setFreeShipping(false);
+            response.setMinSpending(BigDecimal.ZERO);
+            response.setMaxSpending(BigDecimal.valueOf(5000000));
+            response.setAccumulatedSpending(accumulatedSpending);
+            response.setActiveBenefits(List.of("Standard customer benefits"));
+            response.setUpgraded(false);
+            response.setSpendingToNextTier(BigDecimal.valueOf(5000000).subtract(accumulatedSpending).max(BigDecimal.ZERO));
+            response.setNextTierName("BRONZE");
+            return response;
         }
 
         Membership nextTier = findNextTier(membership);
 
-        MembershipTierResponseDTO response = new MembershipTierResponseDTO();
         response.setCurrentTierId(membership.getId());
         response.setCurrentTierName(membership.getTier().name());
-        response.setCurrentTierDescription(membership.getBenefit().getDescription());
-        response.setDiscountPercentage(membership.getBenefit().getDiscountPercentage());
-        response.setFreeShipping(membership.getBenefit().hasFreeShipping());
+        response.setCurrentTierDescription(membership.getBenefit() != null ? membership.getBenefit().getDescription() : "Standard customer benefits");
+        response.setDiscountPercentage(membership.getBenefit() != null ? membership.getBenefit().getDiscountPercentage() : 0.0);
+        response.setFreeShipping(membership.getBenefit() != null ? membership.getBenefit().hasFreeShipping() : false);
         response.setMinSpending(membership.getMinSpending());
         response.setMaxSpending(membership.getMaxSpending());
         response.setAccumulatedSpending(accumulatedSpending);
@@ -92,8 +109,11 @@ public class MembershipService {
     public void updateSpendingAndTier(String customerId, BigDecimal totalSpending) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found: " + customerId));
-        customer.assignMembership(findTierForSpending(totalSpending));
-        customerRepository.save(customer);
+        Membership tier = findTierForSpending(totalSpending);
+        if (tier != null) {
+            customer.assignMembership(tier);
+            customerRepository.save(customer);
+        }
     }
 
     private BigDecimal calculateAccumulatedSpending(String customerId) {
@@ -105,15 +125,17 @@ public class MembershipService {
 
     private List<String> buildBenefitLabels(Membership membership) {
         List<String> benefits = new java.util.ArrayList<>();
-        if (membership.getBenefit().getDescription() != null && !membership.getBenefit().getDescription().isBlank()) {
-            benefits.add(membership.getBenefit().getDescription());
-        }
-        if (membership.getBenefit().getDiscountPercentage() != null
-                && membership.getBenefit().getDiscountPercentage() > 0) {
-            benefits.add(membership.getBenefit().getDiscountPercentage() + "% discount on eligible orders");
-        }
-        if (membership.getBenefit().hasFreeShipping()) {
-            benefits.add("Free shipping benefit");
+        if (membership.getBenefit() != null) {
+            if (membership.getBenefit().getDescription() != null && !membership.getBenefit().getDescription().isBlank()) {
+                benefits.add(membership.getBenefit().getDescription());
+            }
+            if (membership.getBenefit().getDiscountPercentage() != null
+                    && membership.getBenefit().getDiscountPercentage() > 0) {
+                benefits.add(membership.getBenefit().getDiscountPercentage() + "% discount on eligible orders");
+            }
+            if (membership.getBenefit().hasFreeShipping()) {
+                benefits.add("Free shipping benefit");
+            }
         }
         if (benefits.isEmpty()) {
             benefits.add("Standard membership benefits");
@@ -125,17 +147,23 @@ public class MembershipService {
         if (totalSpending == null) {
             throw new IllegalArgumentException("totalSpending must not be null");
         }
-        return sortedMemberships().stream()
+        List<Membership> memberships = sortedMemberships();
+        if (memberships.isEmpty()) {
+            return null;
+        }
+        return memberships.stream()
                 .filter(membership -> membership.isSpendingInRange(totalSpending))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("No membership tier found for spending: " + totalSpending));
+                .orElse(memberships.get(0));
     }
 
     private Membership findNextTier(Membership currentMembership) {
+        BigDecimal currentMinSpending = currentMembership.getMinSpending() != null
+                ? currentMembership.getMinSpending()
+                : BigDecimal.ZERO;
         return sortedMemberships().stream()
-                .filter(membership -> currentMembership.getMinSpending() == null
-                        || membership.getMinSpending() != null
-                        && membership.getMinSpending().compareTo(currentMembership.getMinSpending()) > 0)
+                .filter(membership -> membership.getMinSpending() != null
+                        && membership.getMinSpending().compareTo(currentMinSpending) > 0)
                 .findFirst()
                 .orElse(null);
     }

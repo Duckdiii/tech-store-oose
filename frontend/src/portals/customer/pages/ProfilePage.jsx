@@ -2,21 +2,15 @@ import { useState, useEffect } from 'react';
 import { fmt } from '../../../utils/format';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useToast } from '../../../shared/context/ToastContext';
 import { orderApi } from '../../../api/orderApi';
 import { membershipApi } from '../../../api/membershipApi';
+import { userApi } from '../../../api/userApi';
+import { notificationApi } from '../../../api/notificationApi';
 
 
 
 const RED = '#CC0000';
-
-const MOCK_WISHLIST = [
-  { id: 1, name: 'iPhone 15 128GB',           price: 22990000, oldPrice: 25000000 },
-  { id: 2, name: 'Samsung Galaxy Z Fold 5',   price: 43990000, oldPrice: 48000000 },
-  { id: 3, name: 'Xiaomi 14 Pro 512GB',       price: 18990000, oldPrice: 21000000 },
-  { id: 4, name: 'OPPO Find X7 Pro 256GB',    price: 24990000, oldPrice: 27000000 },
-  { id: 5, name: 'iPhone 14 128GB',           price: 18990000, oldPrice: 22990000 },
-  { id: 6, name: 'Vivo X100 Pro 256GB',       price: 19990000, oldPrice: 22000000 },
-];
 
 const MOCK_VOUCHERS = [
   { code: 'TECH10OFF', desc: 'Giảm 10% cho đơn từ 5 triệu', expire: '30/06/2026' },
@@ -24,18 +18,22 @@ const MOCK_VOUCHERS = [
   { code: 'NEWMEM50K', desc: 'Giảm 50.000đ cho thành viên mới', expire: '15/07/2026' },
 ];
 
-const ADDRESSES = [
-  { id: 1, tag: 'Nhà riêng', name: 'Nguyễn Văn An', phone: '0901 234 567', address: '123 Nguyễn Huệ, P. Bến Nghé, Q.1, TP.HCM', isDefault: true },
-  { id: 2, tag: 'Công ty',   name: 'Nguyễn Văn An', phone: '0901 234 567', address: '456 Lê Lợi, P. Bến Thành, Q.1, TP.HCM',    isDefault: false },
-];
-
 const STATUS_MAP = {
-  pending:   { label: 'Chờ xác nhận', color: '#f59e0b', bg: '#fffbeb' },
-  confirmed: { label: 'Đã xác nhận',  color: '#3b82f6', bg: '#eff6ff' },
-  shipping:  { label: 'Đang giao',    color: '#8b5cf6', bg: '#f5f3ff' },
-  delivered: { label: 'Đã nhận hàng', color: '#16a34a', bg: '#f0fdf4' },
-  cancelled: { label: 'Đã hủy',       color: '#e11d48', bg: '#fef2f2' },
+  AWAITING_CONFIRMATION: { label: 'Chờ xác nhận', color: '#f59e0b', bg: '#fffbeb' },
+  PROCESSING:            { label: 'Đang xử lý',   color: '#3b82f6', bg: '#eff6ff' },
+  SHIPPING:              { label: 'Đang giao',    color: '#8b5cf6', bg: '#f5f3ff' },
+  COMPLETED:             { label: 'Đã nhận hàng', color: '#16a34a', bg: '#f0fdf4' },
+  CANCELLED:             { label: 'Đã hủy',       color: '#e11d48', bg: '#fef2f2' },
+  REFUNDED:              { label: 'Đã hoàn tiền', color: '#e11d48', bg: '#fef2f2' },
 };
+
+const ORDER_DATE_FILTERS = [
+  { id: 'all', label: 'Tất cả' },
+  { id: '7d', label: '7 ngày qua' },
+  { id: '30d', label: '30 ngày qua' },
+  { id: '3m', label: '3 tháng qua' },
+  { id: 'custom', label: 'Tùy chỉnh' },
+];
 
 const SIDEBAR_ITEMS = [
   { id: 'overview',   label: 'Tổng quan',
@@ -68,6 +66,7 @@ const SIDEBAR_FOOTER = [
 
 export function ProfilePage() {
   const { user, login, logout, isLoggedIn } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('overview');
   const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', birthday: '', gender: '' });
@@ -76,9 +75,17 @@ export function ProfilePage() {
   const [copied, setCopied] = useState(null);
 
   const [orders, setOrders] = useState([]);
+  const [orderDateFilter, setOrderDateFilter] = useState('all');
+  const [customDateRange, setCustomDateRange] = useState({ from: '', to: '' });
   const [tierInfo, setTierInfo] = useState(null);
   const [membershipError, setMembershipError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const [addresses, setAddresses] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
+  const [addressForm, setAddressForm] = useState({ street: '', ward: '', district: '', province: '' });
+  const [editingAddressId, setEditingAddressId] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -86,7 +93,38 @@ export function ProfilePage() {
     const fetchProfileData = async () => {
       setLoading(true);
       try {
-        // Fetch membership tier
+        // 1. Fetch user profile & addresses
+        try {
+          const profile = await userApi.getProfile();
+          setForm({
+            name: profile.fullName || '',
+            email: profile.email || '',
+            phone: profile.phone || '',
+            birthday: '',
+            gender: ''
+          });
+          setAddresses(profile.addresses || []);
+        } catch (err) {
+          console.error("Failed to fetch user profile", err);
+        }
+
+        // 2. Fetch wishlist (notification subscriptions)
+        try {
+          const subs = await notificationApi.getSubscriptions();
+          const activeSubs = subs.filter(s => s.status === 'SUBSCRIBED');
+          setWishlist(activeSubs.map(s => ({
+            id: s.productId,
+            variantId: s.productVariantId,
+            name: s.productName + (s.productVariantName ? ` (${s.productVariantName})` : ''),
+            price: s.price || 0,
+            oldPrice: (s.price || 0) * 1.1,
+            imageUrl: s.thumbnailUrl
+          })));
+        } catch (err) {
+          console.error("Failed to fetch favorites", err);
+        }
+
+        // 3. Fetch membership tier
         try {
           const tierData = await membershipApi.getMyTier();
           setTierInfo(tierData);
@@ -96,9 +134,8 @@ export function ProfilePage() {
           setMembershipError(err.response?.data?.message || 'Unable to load membership information. Please try again later');
         }
         
-        // Fetch orders
+        // 4. Fetch orders
         try {
-          // Assume user.id exists, or default to some ID if mock auth
           const customerId = user?.id || 'CUST001'; 
           const ordersData = await orderApi.getOrderHistory(customerId);
           setOrders(ordersData || []);
@@ -126,11 +163,107 @@ export function ProfilePage() {
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   const setPw = k => e => setPwForm(f => ({ ...f, [k]: e.target.value }));
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    login({ ...user, name: form.name, email: form.email, phone: form.phone });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      const updatedProfile = await userApi.updateProfile({
+        fullName: form.name,
+        phone: form.phone
+      });
+      setForm({
+        name: updatedProfile.fullName,
+        email: updatedProfile.email,
+        phone: updatedProfile.phone,
+        birthday: '',
+        gender: ''
+      });
+      const localUser = JSON.parse(localStorage.getItem('ts_user') || '{}');
+      localUser.name = updatedProfile.fullName;
+      localStorage.setItem('ts_user', JSON.stringify(localUser));
+      setSaved(true);
+      setTimeout(() => {
+        setSaved(false);
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      console.error("Failed to update profile", err);
+      showToast(err.response?.data?.message || "Không thể cập nhật hồ sơ", 'error');
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (pwForm.next !== pwForm.confirm) {
+      showToast("Xác nhận mật khẩu mới không trùng khớp!", 'warning');
+      return;
+    }
+    try {
+      await userApi.changePassword({
+        currentPassword: pwForm.current,
+        newPassword: pwForm.next
+      });
+      showToast('Đổi mật khẩu thành công!', 'success');
+      setPwForm({ current: '', next: '', confirm: '' });
+    } catch (err) {
+      console.error("Failed to change password", err);
+      showToast(err.response?.data?.message || "Mật khẩu hiện tại không chính xác!", 'error');
+    }
+  };
+
+  const handleSaveAddress = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingAddressId) {
+        await userApi.updateAddress(editingAddressId, addressForm);
+      } else {
+        await userApi.addAddress(addressForm);
+      }
+      setShowAddressForm(false);
+      const profile = await userApi.getProfile();
+      setAddresses(profile.addresses || []);
+    } catch (err) {
+      console.error("Failed to save address", err);
+      showToast(err.response?.data?.message || "Không thể lưu địa chỉ", 'error');
+    }
+  };
+
+  const handleEditAddressClick = (addr) => {
+    setEditingAddressId(addr.id);
+    setAddressForm({
+      street: addr.street,
+      ward: addr.ward,
+      district: addr.district,
+      province: addr.province
+    });
+    setShowAddressForm(true);
+  };
+
+  const handleAddAddressClick = () => {
+    setEditingAddressId(null);
+    setAddressForm({ street: '', ward: '', district: '', province: '' });
+    setShowAddressForm(true);
+  };
+
+  const handleDeleteAddress = async (addrId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
+    try {
+      await userApi.removeAddress(addrId);
+      const profile = await userApi.getProfile();
+      setAddresses(profile.addresses || []);
+    } catch (err) {
+      console.error("Failed to delete address", err);
+      showToast(err.response?.data?.message || "Không thể xóa địa chỉ", 'error');
+    }
+  };
+
+  const handleRemoveFavorite = async (e, variantId) => {
+    e.stopPropagation();
+    try {
+      await notificationApi.unsubscribeProduct(variantId);
+      setWishlist(prev => prev.filter(p => p.variantId !== variantId));
+    } catch (err) {
+      console.error("Failed to unsubscribe", err);
+    }
   };
 
   const copyCode = (code) => {
@@ -169,40 +302,44 @@ export function ProfilePage() {
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {orders.slice(0, 3).map(order => {
-            const st = STATUS_MAP[order.status.toLowerCase()] || STATUS_MAP.pending;
-            return (
-              <div key={order.id} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12.5, color: '#6b7280' }}>Đơn hàng:</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0d1117' }}>#{order.id}</span>
-                    <span style={{ fontSize: 11.5, color: '#6b7280' }}>·</span>
-                    <span style={{ fontSize: 12.5, color: '#6b7280' }}>Ngày đặt hàng: <strong style={{ color: '#0d1117' }}>{order.date}</strong></span>
+          {orders.length === 0 ? (
+            <div style={{ color: '#9ca3af', fontSize: 13.5, textAlign: 'center', padding: '24px 0' }}>Không có đơn hàng nào.</div>
+          ) : (
+            orders.slice(0, 3).map(order => {
+              const st = STATUS_MAP[order.orderStatus] || STATUS_MAP.AWAITING_CONFIRMATION;
+              return (
+                <div key={order.orderId} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 12.5, color: '#6b7280' }}>Đơn hàng:</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0d1117' }}>#{order.orderId}</span>
+                      <span style={{ fontSize: 11.5, color: '#6b7280' }}>·</span>
+                      <span style={{ fontSize: 12.5, color: '#6b7280' }}>Ngày đặt hàng: <strong style={{ color: '#0d1117' }}>{new Date(order.orderDate).toLocaleDateString('vi-VN')}</strong></span>
+                    </div>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, background: st.bg, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
                   </div>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, background: st.bg, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
+                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 64, height: 64, background: 'linear-gradient(135deg,#f4f5f7,#eaecf0)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="32" height="52" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/><circle cx="36" cy="105" r="5" fill="#b8bdc8"/></svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 4, lineHeight: 1.3 }}>{order.items && order.items.length > 0 ? order.items[0].productName : 'Đơn hàng'}</div>
+                      <div style={{ fontSize: 12.5, color: '#9ca3af' }}>{order.items && order.items.length > 0 ? fmt(order.items[0].unitPrice) : 0}₫</div>
+                      {order.items && order.items.length > 1 && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Cùng {order.items.length - 1} sản phẩm khác</div>}
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 3 }}>Tổng thanh toán:</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.totalAmount)}₫</div>
+                      <button onClick={() => navigate('/orders')} style={{ marginTop: 6, fontSize: 12.5, color: '#374151', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
+                        Xem chi tiết
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 64, height: 64, background: 'linear-gradient(135deg,#f4f5f7,#eaecf0)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="32" height="52" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/><circle cx="36" cy="105" r="5" fill="#b8bdc8"/></svg>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 4, lineHeight: 1.3 }}>{order.items && order.items.length > 0 ? order.items[0].productName : 'Đơn hàng'}</div>
-                    <div style={{ fontSize: 12.5, color: '#9ca3af' }}>{order.items && order.items.length > 0 ? fmt(order.items[0].unitPrice) : 0}₫</div>
-                    {order.items && order.items.length > 1 && <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>Cùng {order.items.length - 1} sản phẩm khác</div>}
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 3 }}>Tổng thanh toán:</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.totalAmount)}₫</div>
-                    <button onClick={() => navigate('/orders')} style={{ marginTop: 6, fontSize: 12.5, color: '#374151', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
-                      Xem chi tiết
-                      <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -212,61 +349,116 @@ export function ProfilePage() {
           <button style={{ fontSize: 13, color: RED, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Xem tất cả →</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {MOCK_WISHLIST.map(p => (
-            <div key={p.id} onClick={() => navigate(`/products/${p.id}`)}
-              style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: '12px', cursor: 'pointer', position: 'relative' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor='#d1d5db'}
-              onMouseLeave={e => e.currentTarget.style.borderColor='#f0f0f0'}>
-              <div style={{ width: '100%', aspectRatio: '1', background: 'linear-gradient(135deg,#f4f5f7,#eaecf0)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                <svg width="28" height="46" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/></svg>
+          {wishlist.length === 0 ? (
+            <div style={{ gridColumn: 'span 3', color: '#9ca3af', fontSize: 13.5, textAlign: 'center', padding: '24px 0' }}>Chưa có sản phẩm yêu thích nào.</div>
+          ) : (
+            wishlist.slice(0, 3).map(p => (
+              <div key={p.id} onClick={() => navigate(`/products/${p.id}`)}
+                style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: '12px', cursor: 'pointer', position: 'relative' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor='#d1d5db'}
+                onMouseLeave={e => e.currentTarget.style.borderColor='#f0f0f0'}>
+                <div style={{ width: '100%', aspectRatio: '1', background: 'linear-gradient(135deg,#f4f5f7,#eaecf0)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, overflow: 'hidden' }}>
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.name} style={{ width: '70%', height: '70%', objectFit: 'contain' }} />
+                  ) : (
+                    <svg width="28" height="46" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/></svg>
+                  )}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0d1117', marginBottom: 5, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.name}>{p.name}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 900, color: RED }}>{fmt(p.price)}₫</div>
+                <div style={{ fontSize: 11.5, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(p.oldPrice)}₫</div>
+                <button type="button" onClick={(e) => handleRemoveFavorite(e, p.variantId)}
+                  style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: '#fff', border: '1px solid #f0f0f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <svg width="13" height="13" fill={RED} stroke={RED} strokeWidth="1.5" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </button>
               </div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0d1117', marginBottom: 5, lineHeight: 1.3 }}>{p.name}</div>
-              <div style={{ fontSize: 13.5, fontWeight: 900, color: RED }}>{fmt(p.price)}₫</div>
-              <div style={{ fontSize: 11.5, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(p.oldPrice)}₫</div>
-              <button style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, background: '#fff', border: '1px solid #f0f0f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <svg width="13" height="13" fill={RED} stroke={RED} strokeWidth="1.5" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              </button>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </>
   );
 
-  const renderOrders = () => (
+  const getDateFilteredOrders = () => {
+    if (orderDateFilter === 'all') return orders;
+    const now = new Date();
+    let from = null;
+    let to = null;
+    if (orderDateFilter === '7d') { from = new Date(now); from.setDate(now.getDate() - 7); }
+    else if (orderDateFilter === '30d') { from = new Date(now); from.setDate(now.getDate() - 30); }
+    else if (orderDateFilter === '3m') { from = new Date(now); from.setMonth(now.getMonth() - 3); }
+    else if (orderDateFilter === 'custom') {
+      from = customDateRange.from ? new Date(customDateRange.from) : null;
+      to = customDateRange.to ? new Date(`${customDateRange.to}T23:59:59`) : null;
+    }
+    return orders.filter(o => {
+      const d = new Date(o.orderDate);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  };
+
+  const renderOrders = () => {
+    const filteredOrders = getDateFilteredOrders();
+    return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
       <SectionTitle>Lịch sử mua hàng</SectionTitle>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        {ORDER_DATE_FILTERS.map(f => (
+          <button key={f.id} onClick={() => setOrderDateFilter(f.id)}
+            style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${orderDateFilter === f.id ? '#0d1117' : '#e9ecef'}`, background: orderDateFilter === f.id ? '#0d1117' : '#fff', color: orderDateFilter === f.id ? '#fff' : '#374151', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            {f.label}
+          </button>
+        ))}
+        {orderDateFilter === 'custom' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="date" value={customDateRange.from} onChange={e => setCustomDateRange(r => ({ ...r, from: e.target.value }))}
+              style={{ padding: '6px 10px', border: '1.5px solid #e9ecef', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', color: '#374151' }}/>
+            <span style={{ color: '#9ca3af', fontSize: 12.5 }}>đến</span>
+            <input type="date" value={customDateRange.to} onChange={e => setCustomDateRange(r => ({ ...r, to: e.target.value }))}
+              style={{ padding: '6px 10px', border: '1.5px solid #e9ecef', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', color: '#374151' }}/>
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {orders.map(order => {
-          const st = STATUS_MAP[order.status.toLowerCase()] || STATUS_MAP.pending;
-          return (
-            <div key={order.id} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0d1117' }}>#{order.id}</span>
-                  <span style={{ fontSize: 12.5, color: '#9ca3af' }}>· {order.date}</span>
+        {filteredOrders.length === 0 ? (
+          <div style={{ color: '#9ca3af', fontSize: 13.5, textAlign: 'center', padding: '24px 0' }}>
+            {orders.length === 0 ? 'Không có đơn hàng nào.' : 'Không có đơn hàng nào trong khoảng thời gian này.'}
+          </div>
+        ) : (
+          filteredOrders.map(order => {
+            const st = STATUS_MAP[order.orderStatus] || STATUS_MAP.AWAITING_CONFIRMATION;
+            return (
+              <div key={order.orderId} style={{ border: '1px solid #f0f0f0', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0d1117' }}>#{order.orderId}</span>
+                    <span style={{ fontSize: 12.5, color: '#9ca3af' }}>· {new Date(order.orderDate).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, background: st.bg, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
                 </div>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: st.color, background: st.bg, padding: '3px 10px', borderRadius: 20 }}>{st.label}</span>
+                <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    {order.items && order.items.map((item, i) => (
+                      <div key={i} style={{ fontSize: 13.5, color: '#374151', marginBottom: 2 }}>
+                        {item.productName} <span style={{ color: '#9ca3af' }}>×{item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.totalAmount)}₫</div>
+                    <button onClick={() => navigate('/orders')} style={{ marginTop: 4, fontSize: 12.5, color: '#374151', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Xem chi tiết →</button>
+                  </div>
+                </div>
               </div>
-              <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  {order.items && order.items.map((item, i) => (
-                    <div key={i} style={{ fontSize: 13.5, color: '#374151', marginBottom: 2 }}>
-                      {item.productName} <span style={{ color: '#9ca3af' }}>×{item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 15, fontWeight: 900, color: RED }}>{fmt(order.totalAmount)}₫</div>
-                  <button onClick={() => navigate('/orders')} style={{ marginTop: 4, fontSize: 12.5, color: '#374151', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Xem chi tiết →</button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderMembership = () => (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
@@ -375,24 +567,78 @@ export function ProfilePage() {
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f3f5' }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: '#0d1117' }}>Số địa chỉ</span>
-        <button style={{ padding: '8px 16px', background: RED, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>+ Thêm địa chỉ</button>
+        {!showAddressForm && (
+          <button onClick={handleAddAddressClick}
+            style={{ padding: '8px 16px', background: RED, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            + Thêm địa chỉ
+          </button>
+        )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {ADDRESSES.map(addr => (
-          <div key={addr.id} style={{ padding: '16px 18px', border: `1.5px solid ${addr.isDefault ? RED : '#e9ecef'}`, borderRadius: 12, position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, background: '#0d1117', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>{addr.tag}</span>
-              {addr.isDefault && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#16a34a' }}>● Mặc định</span>}
-            </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0d1117', marginBottom: 3 }}>{addr.name}</div>
-            <div style={{ fontSize: 13.5, color: '#6b7280', marginBottom: 2 }}>{addr.phone}</div>
-            <div style={{ fontSize: 13.5, color: '#6b7280' }}>{addr.address}</div>
-            <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
-              <button style={{ fontSize: 13, color: RED, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Chỉnh sửa</button>
-              {!addr.isDefault && <button style={{ fontSize: 13, color: '#e11d48', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Xóa</button>}
-            </div>
+
+      {showAddressForm && (
+        <form onSubmit={handleSaveAddress} style={{ border: '1.5px solid #f1f3f5', borderRadius: 12, padding: 18, marginBottom: 20, background: '#fafafa' }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0d1117', marginBottom: 14 }}>
+            {editingAddressId ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}
           </div>
-        ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Field label="Địa chỉ cụ thể (Số nhà, tên đường) *">
+              <InputEl value={addressForm.street} onChange={e => setAddressForm(prev => ({ ...prev, street: e.target.value }))} required placeholder="Ví dụ: 123 Nguyễn Trãi"/>
+            </Field>
+            <Field label="Phường / Xã *">
+              <InputEl value={addressForm.ward} onChange={e => setAddressForm(prev => ({ ...prev, ward: e.target.value }))} required placeholder="Ví dụ: Phường 2"/>
+            </Field>
+            <Field label="Quận / Huyện *">
+              <InputEl value={addressForm.district} onChange={e => setAddressForm(prev => ({ ...prev, district: e.target.value }))} required placeholder="Ví dụ: Quận 5"/>
+            </Field>
+            <Field label="Tỉnh / Thành phố *">
+              <select value={addressForm.province} onChange={e => setAddressForm(prev => ({ ...prev, province: e.target.value }))} required
+                style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', background: '#fff' }}>
+                <option value="">Chọn tỉnh / thành phố</option>
+                {['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng', 'Biên Hòa', 'Nha Trang'].map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <button type="submit" style={{ padding: '9px 20px', background: RED, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {editingAddressId ? 'Cập nhật' : 'Thêm mới'}
+            </button>
+            <button type="button" onClick={() => setShowAddressForm(false)}
+              style={{ padding: '9px 20px', background: '#fff', color: '#374151', border: '1.5px solid #e9ecef', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Hủy
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {addresses.length === 0 ? (
+          <div style={{ color: '#9ca3af', fontSize: 13.5, textAlign: 'center', padding: '24px 0' }}>Chưa có địa chỉ nào được lưu.</div>
+        ) : (
+          addresses.map((addr, idx) => (
+            <div key={addr.id} style={{ padding: '16px 18px', border: `1.5px solid ${idx === 0 ? RED : '#e9ecef'}`, borderRadius: 12, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, background: '#0d1117', color: '#fff', padding: '2px 8px', borderRadius: 4 }}>
+                  {idx === 0 ? 'Mặc định' : `Địa chỉ ${idx + 1}`}
+                </span>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0d1117', marginBottom: 3 }}>{form.name}</div>
+              <div style={{ fontSize: 13.5, color: '#6b7280', marginBottom: 2 }}>{form.phone}</div>
+              <div style={{ fontSize: 13.5, color: '#6b7280' }}>{addr.fullAddress}</div>
+              <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
+                <button onClick={() => handleEditAddressClick(addr)}
+                  style={{ fontSize: 13, color: RED, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Chỉnh sửa
+                </button>
+                {addresses.length > 1 && (
+                  <button onClick={() => handleDeleteAddress(addr.id)}
+                    style={{ fontSize: 13, color: '#e11d48', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Xóa
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -428,7 +674,7 @@ export function ProfilePage() {
   const renderPassword = () => (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
       <SectionTitle>Đổi mật khẩu</SectionTitle>
-      <form onSubmit={e => { e.preventDefault(); alert('Đổi mật khẩu thành công!'); setPwForm({ current: '', next: '', confirm: '' }); }} style={{ maxWidth: 420 }}>
+      <form onSubmit={handlePasswordSubmit} style={{ maxWidth: 420 }}>
         {[{ key: 'current', label: 'Mật khẩu hiện tại' },{ key: 'next', label: 'Mật khẩu mới' },{ key: 'confirm', label: 'Xác nhận mật khẩu mới' }].map(f => (
           <Field key={f.key} label={f.label}><InputEl type="password" value={pwForm[f.key]} onChange={setPw(f.key)} placeholder="••••••••"/></Field>
         ))}

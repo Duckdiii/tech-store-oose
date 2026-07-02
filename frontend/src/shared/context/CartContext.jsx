@@ -15,40 +15,112 @@ export function CartProvider({ children }) {
     localStorage.setItem('ts_cart', JSON.stringify(items));
   }, [items]);
 
-  const addItem = (product, qty = 1) => {
-    setItems(prev => {
-      const existing = prev.find(i => i.id === product.id);
-      if (existing) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + qty } : i);
-      return [...prev, { ...product, qty }];
-    });
-  };
-
-  const removeItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
-
-  const updateQty = (id, qty) => {
-    if (qty <= 0) { removeItem(id); return; }
-    setItems(prev => prev.map(i => i.id === id ? { ...i, qty } : i));
-  };
-
-  const clearCart = () => setItems([]);
-
   const updateCartState = (cartData) => {
     if (!cartData || !cartData.items) return;
     const mappedItems = cartData.items.map(item => ({
       id: item.cartItemId, // backend cartItemId
+      variantId: item.productVariantId, // keep the variant ID for synchronization
       name: item.productName,
       variantDisplay: item.variantDisplay,
       price: item.unitPrice,
       qty: item.quantity,
-      brand: '',
-      bundleServices: item.bundleServices || []
+      brand: item.brandName || '',
+      brandName: item.brandName || '',
+      thumbnailUrl: item.thumbnailUrl || '',
+      bundleServices: item.bundleServices || [],
+      screenSize: item.screenSize,
+      screenResolution: item.screenResolution,
+      chipset: item.chipset,
+      rearCamera: item.rearCamera,
+      frontCamera: item.frontCamera,
+      batteryCapacity: item.batteryCapacity,
+      simType: item.simType,
+      operatingSystem: item.operatingSystem,
+      nfcSupported: item.nfcSupported,
+      ramGb: item.ramGb,
+      storageGb: item.storageGb,
+      color: item.color
     }));
     setItems(mappedItems);
   };
 
+  const syncCartWithBackend = (currentItems) => {
+    if (!user) return;
+    const payload = {
+      items: currentItems.map(item => ({
+        productVariantId: item.variantId || item.id,
+        quantity: item.qty,
+        bundleServiceIds: (item.bundleServices || []).map(b => b.id)
+      }))
+    };
+    httpClient.post('/cart/sync', payload)
+      .then(response => {
+        updateCartState(response.data);
+      })
+      .catch(error => {
+        console.error('Error syncing cart:', error);
+      });
+  };
+
+  // Sync cart with backend on mount/login
+  useEffect(() => {
+    if (user) {
+      httpClient.get('/cart')
+        .then(response => {
+          const backendCart = response.data;
+          if (backendCart.items && backendCart.items.length > 0) {
+            updateCartState(backendCart);
+          } else if (items.length > 0) {
+            syncCartWithBackend(items);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching backend cart:', error);
+        });
+    }
+  }, [user]);
+
+  const addItem = (product, qty = 1) => {
+    const targetVariantId = product.variantId || product.id;
+    const existing = items.find(i => i.id === product.id || i.variantId === targetVariantId);
+    let updated;
+    if (existing) {
+      updated = items.map(i => i.id === existing.id ? { ...i, qty: i.qty + qty } : i);
+    } else {
+      updated = [...items, { ...product, variantId: targetVariantId, qty }];
+    }
+    setItems(updated);
+    if (user) {
+      syncCartWithBackend(updated);
+    }
+  };
+
+  const removeItem = (id) => {
+    const updated = items.filter(i => i.id !== id);
+    setItems(updated);
+    if (user) {
+      syncCartWithBackend(updated);
+    }
+  };
+
+  const updateQty = (id, qty) => {
+    if (qty <= 0) { removeItem(id); return; }
+    const updated = items.map(i => i.id === id ? { ...i, qty } : i);
+    setItems(updated);
+    if (user) {
+      syncCartWithBackend(updated);
+    }
+  };
+
+  const clearCart = () => {
+    setItems([]);
+    if (user) {
+      syncCartWithBackend([]);
+    }
+  };
+
   const addBundleServiceToItem = (cartItemId, bundleServiceId) => {
-    const customerId = user?.id || '1';
-    httpClient.post(`/cart/items/${cartItemId}/bundle-services/${bundleServiceId}?customerId=${customerId}`)
+    httpClient.post(`/cart/items/${cartItemId}/bundle-services/${bundleServiceId}`)
       .then(response => {
         updateCartState(response.data);
       })
@@ -58,8 +130,7 @@ export function CartProvider({ children }) {
   };
 
   const removeBundleServiceFromItem = (cartItemId, bundleServiceId) => {
-    const customerId = user?.id || '1';
-    httpClient.delete(`/cart/items/${cartItemId}/bundle-services/${bundleServiceId}?customerId=${customerId}`)
+    httpClient.delete(`/cart/items/${cartItemId}/bundle-services/${bundleServiceId}`)
       .then(response => {
         updateCartState(response.data);
       })

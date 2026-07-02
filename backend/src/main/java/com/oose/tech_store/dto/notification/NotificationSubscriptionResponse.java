@@ -9,6 +9,8 @@ public record NotificationSubscriptionResponse(
         String productVariantName,
         String productId,
         String productName,
+        java.math.BigDecimal price,
+        String thumbnailUrl,
         SubscriptionStatus status,
         LocalDateTime subscribedAt,
         LocalDateTime unsubscribedAt) {

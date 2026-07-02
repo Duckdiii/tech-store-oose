@@ -2,6 +2,7 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.cart.BundleServiceResponse;
 import com.oose.tech_store.dto.cart.CartResponse;
+import com.oose.tech_store.dto.cart.CartSyncRequest;
 import com.oose.tech_store.security.CustomerSecurityHelper;
 import com.oose.tech_store.service.cart.CartBundleService;
 import lombok.RequiredArgsConstructor;
@@ -41,5 +42,21 @@ public class CartItemController {
         String customerId = securityHelper.resolveCustomerId(authentication);
         return ResponseEntity.ok(
                 cartBundleService.removeBundleService(customerId, cartItemId, bundleServiceId));
+    }
+
+    @PostMapping("/api/cart/sync")
+    public ResponseEntity<CartResponse> syncCart(
+            Authentication authentication,
+            @RequestBody CartSyncRequest request) {
+        String customerId = securityHelper.resolveCustomerId(authentication);
+        return ResponseEntity.ok(
+                cartBundleService.syncCart(customerId, request.items()));
+    }
+
+    @GetMapping("/api/cart")
+    public ResponseEntity<CartResponse> getCart(Authentication authentication) {
+        String customerId = securityHelper.resolveCustomerId(authentication);
+        return ResponseEntity.ok(
+                cartBundleService.getCart(customerId));
     }
 }

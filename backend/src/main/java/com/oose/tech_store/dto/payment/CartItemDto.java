@@ -10,5 +10,7 @@ public record CartItemDto(
         Integer quantity,
         BigDecimal unitPrice,
         List<BundleServiceDto> bundleServices,
-        BigDecimal subtotal
+        BigDecimal subtotal,
+        String brandName,
+        String thumbnailUrl
 ) {}

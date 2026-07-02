@@ -38,6 +38,11 @@ public class PromotionController {
         return ResponseEntity.ok(promotionService.listPromotions());
     }
 
+    @GetMapping("/flash-sale")
+    public ResponseEntity<com.oose.tech_store.dto.promotion.FlashSaleResponseDTO> getFlashSale() {
+        return ResponseEntity.ok(promotionService.getFlashSale());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PromotionResponseDTO> getPromotion(@PathVariable String id) {
         return ResponseEntity.ok(promotionService.getPromotion(id));

@@ -1,5 +1,6 @@
 package com.oose.tech_store.service.payment.impl;
 
+import com.oose.tech_store.config.MomoProperties;
 import com.oose.tech_store.dto.payment.*;
 import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
@@ -25,6 +26,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final CartRepository cartRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final List<PaymentStrategy> paymentStrategies;
+    private final MomoProperties momoProperties;
 
     @Override
     public CheckoutSummaryResponse getCheckoutSummary(String customerId) {
@@ -123,30 +125,46 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private CartItemDto toCartItemDto(CartItem item) {
+        var pv = item.getProductVariant();
+        var product = pv.getProduct();
         List<BundleServiceDto> bundleServices = item.getBundleServices().stream()
                 .map(bs -> new BundleServiceDto(bs.getName(), bs.getPrice()))
                 .toList();
+
+        String brandName = product.getBrand() != null ? product.getBrand().getName() : "";
+        String thumbnailUrl = (product.getImages() != null && !product.getImages().isEmpty()) 
+                ? product.getImages().get(0).getImageUrl() 
+                : "";
+
         return new CartItemDto(
                 item.getId(),
-                item.getProductVariant().getProduct().getName(),
-                item.getProductVariant().getDisplayName(),
+                product.getName(),
+                pv.getDisplayName(),
                 item.getQuantity(),
                 item.getUnitPrice(),
                 bundleServices,
-                item.calculateSubtotal());
+                item.calculateSubtotal(),
+                brandName,
+                thumbnailUrl
+        );
     }
 
     private PaymentMethodDto toPaymentMethodDto(PaymentMethod pm) {
         String type;
-        if (pm instanceof CODPaymentMethod) {
+        BigDecimal maxAmount;
+        if (pm instanceof CODPaymentMethod cod) {
             type = "COD";
+            maxAmount = cod.getMaxAmount();
         } else if (pm instanceof MomoPaymentMethod) {
             type = "MOMO";
+            maxAmount = momoProperties.getMaxAmount();
         } else if (pm instanceof VNPayPaymentMethod) {
             type = "VNPAY";
+            maxAmount = null;
         } else {
             type = "UNKNOWN";
+            maxAmount = null;
         }
-        return new PaymentMethodDto(pm.getId(), pm.getName(), type, pm.getDescription());
+        return new PaymentMethodDto(pm.getId(), pm.getName(), type, pm.getDescription(), maxAmount);
     }
 }

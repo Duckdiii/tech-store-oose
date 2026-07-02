@@ -278,8 +278,8 @@ export function ProductListingPage() {
                       type="button"
                       onClick={(event) => handleToggleSubscription(event, item.id)}
                       disabled={subscriptionBusyId === item.id}
-                      title={subscribedProductIds.has(item.id) ? 'Huy dang ky thong bao' : 'Dang ky nhan thong bao'}
-                      aria-label={subscribedProductIds.has(item.id) ? 'Huy dang ky thong bao' : 'Dang ky nhan thong bao'}
+                      title={subscribedProductIds.has(item.id) ? 'Hủy đăng ký thông báo' : 'Đăng ký nhận thông báo'}
+                      aria-label={subscribedProductIds.has(item.id) ? 'Hủy đăng ký thông báo' : 'Đăng ký nhận thông báo'}
                       style={{
                         position: 'absolute',
                         top: 11,

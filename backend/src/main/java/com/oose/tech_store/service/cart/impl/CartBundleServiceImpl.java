@@ -3,14 +3,19 @@ package com.oose.tech_store.service.cart.impl;
 import com.oose.tech_store.dto.cart.BundleServiceResponse;
 import com.oose.tech_store.dto.cart.CartItemResponse;
 import com.oose.tech_store.dto.cart.CartResponse;
+import com.oose.tech_store.dto.cart.CartSyncRequest;
 import com.oose.tech_store.entity.BundleService;
 import com.oose.tech_store.entity.Cart;
 import com.oose.tech_store.entity.CartItem;
+import com.oose.tech_store.entity.Customer;
+import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.exception.BundleServiceUnavailableException;
 import com.oose.tech_store.exception.BundleServiceUpdateException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.repository.BundleServiceRepository;
 import com.oose.tech_store.repository.CartRepository;
+import com.oose.tech_store.repository.CustomerRepository;
+import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.service.cart.CartBundleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +29,9 @@ import java.util.List;
 public class CartBundleServiceImpl implements CartBundleService {
 
     private final CartRepository cartRepository;
+    private final CustomerRepository customerRepository;
     private final BundleServiceRepository bundleServiceRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     @Override
     public List<BundleServiceResponse> getActiveBundleServices() {
@@ -75,9 +82,50 @@ public class CartBundleServiceImpl implements CartBundleService {
         return toCartResponse(cart);
     }
 
+    @Override
+    @Transactional
+    public CartResponse syncCart(String customerId, List<CartSyncRequest.CartSyncItem> items) {
+        Cart cart = loadCustomerCart(customerId);
+        
+        cart.getItems().clear();
+        
+        if (items != null) {
+            for (CartSyncRequest.CartSyncItem itemDto : items) {
+                ProductVariant variant = productVariantRepository.findById(itemDto.productVariantId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Product variant not found: " + itemDto.productVariantId()));
+                
+                CartItem cartItem = new CartItem(cart, variant, itemDto.quantity());
+                
+                if (itemDto.bundleServiceIds() != null) {
+                    for (String bsId : itemDto.bundleServiceIds()) {
+                        BundleService bs = loadBundleService(bsId);
+                        cartItem.addBundleService(bs);
+                    }
+                }
+            }
+        }
+        
+        cartRepository.saveAndFlush(cart);
+        return toCartResponse(cart);
+    }
+
+    @Override
+    @Transactional
+    public CartResponse getCart(String customerId) {
+        Cart cart = loadCustomerCart(customerId);
+        return toCartResponse(cart);
+    }
+
     private Cart loadCustomerCart(String customerId) {
-        return cartRepository.findByCustomerId(customerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart not found for customer"));
+        return cartRepository.findByCustomerIdWithItems(customerId)
+                .orElseGet(() -> createCartForCustomer(customerId));
+    }
+
+    private Cart createCartForCustomer(String customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + customerId));
+        customer.createCartIfAbsent();
+        return cartRepository.save(customer.getCart());
     }
 
     private CartItem findCartItem(Cart cart, String cartItemId) {
@@ -101,17 +149,40 @@ public class CartBundleServiceImpl implements CartBundleService {
     }
 
     private CartItemResponse toCartItemResponse(CartItem item) {
+        var pv = item.getProductVariant();
+        var product = pv.getProduct();
         List<BundleServiceResponse> bundleServices = item.getBundleServices().stream()
                 .map(this::toBundleServiceResponse)
                 .toList();
+
+        String brandName = product.getBrand() != null ? product.getBrand().getName() : "";
+        String thumbnailUrl = (product.getImages() != null && !product.getImages().isEmpty()) 
+                ? product.getImages().get(0).getImageUrl() 
+                : "";
+
         return new CartItemResponse(
                 item.getId(),
-                item.getProductVariant().getProduct().getName(),
-                item.getProductVariant().getDisplayName(),
+                pv.getId(),
+                product.getName(),
+                pv.getDisplayName(),
                 item.getQuantity(),
                 item.getUnitPrice(),
                 bundleServices,
-                item.calculateSubtotal()
+                item.calculateSubtotal(),
+                brandName,
+                thumbnailUrl,
+                product.getScreenSize(),
+                product.getScreenResolution(),
+                product.getChipset(),
+                product.getRearCamera(),
+                product.getFrontCamera(),
+                product.getBatteryCapacity(),
+                product.getSimType(),
+                product.getOperatingSystem(),
+                product.getNfcSupported(),
+                pv.getRamGb(),
+                pv.getStorageGb(),
+                pv.getColor()
         );
     }
 

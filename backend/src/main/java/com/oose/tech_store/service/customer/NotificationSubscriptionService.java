@@ -31,7 +31,7 @@ public class NotificationSubscriptionService {
         ProductVariant productVariant = findProductVariant(productVariantId);
 
         FavoriteProduct subscription = favoriteProductRepository
-                .findByCustomer_IdAndProductVariant_Id(customerId, productVariantId)
+                .findByCustomer_IdAndProductVariant_Id(customerId, productVariant.getId())
                 .map(existing -> {
                     existing.subscribe();
                     return existing;
@@ -43,12 +43,14 @@ public class NotificationSubscriptionService {
 
     @Transactional
     public NotificationSubscriptionResponse unsubscribe(String customerId, String productVariantId) {
+        ProductVariant productVariant = findProductVariant(productVariantId);
         FavoriteProduct subscription = favoriteProductRepository
-                .findByCustomer_IdAndProductVariant_Id(customerId, productVariantId)
+                .findByCustomer_IdAndProductVariant_Id(customerId, productVariant.getId())
                 .orElseGet(() -> {
-                    List<FavoriteProduct> subs = favoriteProductRepository.findByCustomer_IdOrderByUpdatedAtDesc(customerId);
+                    List<FavoriteProduct> subs = favoriteProductRepository
+                            .findByCustomer_IdOrderByUpdatedAtDesc(customerId);
                     for (FavoriteProduct sub : subs) {
-                        if (sub.getProductVariant().getProduct().getId().equals(productVariantId)) {
+                        if (sub.getProductVariant().getProduct().getId().equals(productVariant.getProduct().getId())) {
                             return sub;
                         }
                     }
@@ -108,7 +110,8 @@ public class NotificationSubscriptionService {
                                 return v;
                             }
                         }
-                        throw new ResourceNotFoundException("Product variant or product not found with ID: " + productVariantId);
+                        throw new ResourceNotFoundException(
+                                "Product variant or product not found with ID: " + productVariantId);
                     }
                     return variants.get(0);
                 });
@@ -116,12 +119,18 @@ public class NotificationSubscriptionService {
 
     private NotificationSubscriptionResponse toSubscriptionResponse(FavoriteProduct subscription) {
         ProductVariant productVariant = subscription.getProductVariant();
+        String imageUrl = null;
+        if (productVariant.getProduct().getImages() != null && !productVariant.getProduct().getImages().isEmpty()) {
+            imageUrl = productVariant.getProduct().getImages().get(0).getImageUrl();
+        }
         return new NotificationSubscriptionResponse(
                 subscription.getId(),
                 productVariant.getId(),
                 productVariant.getDisplayName(),
                 productVariant.getProduct().getId(),
                 productVariant.getProduct().getName(),
+                productVariant.getPrice(),
+                imageUrl,
                 subscription.getStatus(),
                 subscription.getSubscribedAt(),
                 subscription.getUnsubscribedAt());

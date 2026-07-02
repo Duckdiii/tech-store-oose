@@ -5,6 +5,7 @@ import com.oose.tech_store.dto.payment.MomoIpnRequest;
 import com.oose.tech_store.exception.PaymentServiceUnavailableException;
 import com.oose.tech_store.payment.PendingCheckout;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -69,9 +70,13 @@ public class MomoPaymentGateway {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
+                    // MoMo returns a JSON error body (with resultCode/message) even on non-2xx
+                    // statuses (e.g. amount exceeds sandbox limit). Without this, RestClient
+                    // throws before that body can be read, and the real reason is lost.
+                    .onStatus(HttpStatusCode::isError, (req, res) -> {})
                     .body(Map.class);
 
-            if (response == null || !response.containsKey("payUrl")) {
+            if (response == null || !response.containsKey("resultCode")) {
                 throw new PaymentServiceUnavailableException(
                         "Payment service is currently unavailable. Please try again later.");
             }
@@ -81,13 +86,20 @@ public class MomoPaymentGateway {
                                                                                             // để xác nhận request thành
                                                                                             // công
             if (resultCode != 0) {
+                // MoMo actively rejected the request (e.g. amount exceeds their limit) —
+                // this is a client-fixable issue, not a service outage.
+                throw new IllegalArgumentException(
+                        "MoMo từ chối giao dịch: " + response.getOrDefault("message", "Unknown error"));
+            }
+
+            if (!response.containsKey("payUrl")) {
                 throw new PaymentServiceUnavailableException(
-                        "MoMo rejected payment: " + response.get("message"));
+                        "Payment service is currently unavailable. Please try again later.");
             }
 
             return (String) response.get("payUrl"); // trả về URL để redirect người dùng tới MoMo
 
-        } catch (PaymentServiceUnavailableException e) {
+        } catch (PaymentServiceUnavailableException | IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             throw new PaymentServiceUnavailableException(

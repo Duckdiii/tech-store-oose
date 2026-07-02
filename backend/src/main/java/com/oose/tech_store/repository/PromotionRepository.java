@@ -10,4 +10,9 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     boolean existsByCodeIgnoreCase(String code);
 
     Optional<Promotion> findByCodeIgnoreCase(String code);
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Promotion p WHERE UPPER(p.code) = UPPER(:code) AND p.active = true AND :now BETWEEN p.startAt AND p.endAt")
+    Optional<Promotion> findActivePromotionByCode(
+            @org.springframework.data.repository.query.Param("code") String code,
+            @org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
 }

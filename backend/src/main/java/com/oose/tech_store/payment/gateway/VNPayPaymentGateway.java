@@ -42,8 +42,11 @@ public class VNPayPaymentGateway {
         params.put("vnp_IpAddr", clientIp != null && !clientIp.isBlank() ? clientIp : "127.0.0.1");
         params.put("vnp_CreateDate", LocalDateTime.now().format(DATE_FMT));
 
+        // VNPay requires the hash to be computed over the URL-encoded values —
+        // the same encoding used to build the actual query string below — otherwise
+        // the signature VNPay recomputes from the received URL won't match.
         String hashData = params.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
+                .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
                 .collect(Collectors.joining("&"));
         String secureHash = hmacSHA512(hashData, properties.getHashSecret());
 
@@ -65,8 +68,10 @@ public class VNPayPaymentGateway {
         filteredParams.remove("vnp_SecureHash");
         filteredParams.remove("vnp_SecureHashType");
 
+        // params arrive URL-decoded (Spring decodes @RequestParam values), so re-encode
+        // to match the encoding VNPay used when it originally computed the hash.
         String hashData = filteredParams.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
+                .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
                 .collect(Collectors.joining("&"));
 
         return hmacSHA512(hashData, properties.getHashSecret()).equalsIgnoreCase(receivedHash);

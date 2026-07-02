@@ -3,22 +3,113 @@ import { fmt } from '../../../utils/format';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { productApi } from '../../../api/productApi';
+import { promotionApi } from '../../../api/promotionApi';
 
-const CATEGORIES = [
-  { id: 1, icon: '🍎', name: 'Apple', count: '43 sản phẩm' },
-  { id: 2, icon: '📱', name: 'Samsung', count: '87 sản phẩm' },
-  { id: 3, icon: '⚡', name: 'Xiaomi', count: '52 sản phẩm' },
-  { id: 4, icon: '🔵', name: 'OPPO', count: '38 sản phẩm' },
-  { id: 5, icon: '🌟', name: 'Vivo', count: '29 sản phẩm' },
-  { id: 6, icon: '🎯', name: 'Realme', count: '24 sản phẩm' },
-];
+// Brand SVG Icons (Simple Icons optimized)
+function AppleIcon({ size = 20, color = '#fff' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }}>
+      <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+    </svg>
+  );
+}
 
-const FLASH_PRODUCTS = [
-  { id: 101, name: 'iPhone 14 128GB', price: 18990000, oldPrice: 22990000, discount: '-17%', sold: 87, total: 100, soldPct: 87, thumbnailUrl: 'https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=300' },
-  { id: 102, name: 'Samsung S23 FE 256GB', price: 10990000, oldPrice: 14990000, discount: '-27%', sold: 64, total: 80, soldPct: 80, thumbnailUrl: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=300' },
-  { id: 103, name: 'Xiaomi Redmi 12C 128GB', price: 3490000, oldPrice: 4290000, discount: '-19%', sold: 112, total: 150, soldPct: 75, thumbnailUrl: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=300' },
-  { id: 104, name: 'OPPO A78 256GB', price: 6290000, oldPrice: 8490000, discount: '-26%', sold: 53, total: 70, soldPct: 76, thumbnailUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300' },
-  { id: 105, name: 'Realme C55 128GB', price: 4490000, oldPrice: 5790000, discount: '-22%', sold: 38, total: 60, soldPct: 63, thumbnailUrl: 'https://images.unsplash.com/photo-1565849906660-754d90c6a858?w=300' },
+function SamsungIcon({ size = 20, color = '#fff' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }}>
+      <path d="M19.8166 10.2808l.0459 2.6934h-.023l-.7793-2.6934h-1.2837v3.3925h.8481l-.0458-2.785h.023l.8366 2.785h1.2264v-3.3925zm-16.149 0l-.6418 3.427h.9284l.4699-3.1175h.0229l.4585 3.1174h.9169l-.6304-3.4269zm5.1805 0l-.424 2.6132h-.023l-.424-2.6132H6.5788l-.0688 3.427h.8596l.023-3.0832h.0114l.573 3.0831h.8711l.5731-3.083h.023l.0228 3.083h.8596l-.0802-3.4269zm-7.2664 2.4527c.0343.0802.0229.1949.0114.2522-.0229.1146-.1031.2292-.3324.2292-.2177 0-.3438-.126-.3438-.3095v-.3323H0v.2636c0 .7679.6074.9971 1.2493.9971.6189 0 1.1346-.2178 1.2149-.7794.0458-.298.0114-.4928 0-.5616-.1605-.722-1.467-.9283-1.5588-1.3295-.0114-.0688-.0114-.1375 0-.1834.023-.1146.1032-.2292.3095-.2292.2063 0 .321.126.321.3095v.2063h.8595v-.2407c0-.745-.6762-.8596-1.1576-.8596-.6074 0-1.1117.2063-1.2034.7564-.023.149-.0344.2866.0114.4585.1376.7106 1.364.9169 1.5358 1.3524m11.152 0c.0343.0803.0228.1834.0114.2522-.023.1146-.1032.2292-.3324.2292-.2178 0-.3438-.126-.3438-.3095v-.3323h-.917v.2636c0 .7564.596.9857 1.2379.9857.6189 0 1.1232-.2063 1.2034-.7794.0459-.298.0115-.4814 0-.5616-.1375-.7106-1.4327-.9284-1.5243-1.318-.0115-.0688-.0115-.1376 0-.1835.0229-.1146.1031-.2292.3094-.2292.1948 0 .321.126.321.3095v.2063h.848v-.2407c0-.745-.6647-.8596-1.146-.8596-.6075 0-1.1004.1948-1.192.7564-.023.149-.023.2866.0114.4585.1376.7106 1.341.9054 1.513 1.3524m2.8882.4585c.2407 0 .3094-.1605.3323-.2522.0115-.0343.0115-.0917.0115-.126v-2.533h.871v2.4642c0 .0688 0 .1948-.0114.2292-.0573.6419-.5616.8482-1.192.8482-.6303 0-1.1346-.2063-1.192-.8482 0-.0344-.0114-.1604-.0114-.2292v-2.4642h.871v2.533c0 .0458 0 .0916.0115.126 0 .0917.0688.2522.3095.2522m7.1518-.0344c.2522 0 .3324-.1605.3553-.2522.0115-.0343.0115-.0917.0115-.126v-.4929h-.3553v-.5043H24v.917c0 .0687 0 .1145-.0115.2292-.0573.6303-.596.8481-1.2034.8481-.6075 0-1.1461-.2178-1.2034-.8481-.0115-.1147-.0115-.1605-.0115-.2293v-1.444c0-.0574.0115-.172.0115-.2293.0802-.6419.596-.8482 1.2034-.8482s1.1347.2063 1.2034.8482c.0115.1031.0115.2292.0115.2292v.1146h-.8596v-.1948s0-.0803-.0115-.1261c-.0114-.0802-.0802-.2521-.3438-.2521-.2521 0-.321.1604-.3438.2521-.0115.0458-.0115.1032-.0115.1605v1.5702c0 .0458 0 .0916.0115.126 0 .0917.0917.2522.3323.2522" />
+    </svg>
+  );
+}
+
+function XiaomiIcon({ size = 20, color = '#FF6700' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }}>
+      <path d="M12 0C8.016 0 4.756.255 2.493 2.516.23 4.776 0 8.033 0 12.012c0 3.98.23 7.235 2.494 9.497C4.757 23.77 8.017 24 12 24c3.983 0 7.243-.23 9.506-2.491C23.77 19.247 24 15.99 24 12.012c0-3.984-.233-7.243-2.502-9.504C19.234.252 15.978 0 12 0zM4.906 7.405h5.624c1.47 0 3.007.068 3.764.827.746.746.827 2.233.83 3.676v4.54a.15.15 0 0 1-.152.147h-1.947a.15.15 0 0 1-.152-.148V11.83c-.002-.806-.048-1.634-.464-2.051-.358-.36-1.026-.441-1.72-.458H7.158a.15.15 0 0 0-.151.147v6.98a.15.15 0 0 1-.152.148H4.906a.15.15 0 0 1-.15-.148V7.554a.15.15 0 0 1 .15-.149zm12.131 0h1.949a.15.15 0 0 1 .15.15v8.892a.15.15 0 0 1-.15.148h-1.949a.15.15 0 0 1-.151-.148V7.554a.15.15 0 0 1 .151-.149zM8.92 10.948h2.046c.083 0 .15.066.15.147v5.352a.15.15 0 0 1-.15.148H8.92a.15.15 0 0 1-.152-.148v-5.352a.15.15 0 0 1 .152-.147Z" />
+    </svg>
+  );
+}
+
+function OppoIcon({ size = 20, color = '#00c070' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }}>
+      <path d="M2.85 12.786h-.001C1.639 12.774.858 12.2.858 11.321s.781-1.452 1.99-1.465c1.21.013 1.992.588 1.992 1.465s-.782 1.453-1.99 1.465zm.034-3.638h-.073C1.156 9.175 0 10.068 0 11.32s1.156 2.147 2.811 2.174h.073c1.655-.027 2.811-.921 2.811-2.174S4.54 9.175 2.885 9.148zm18.27 3.638c-1.21-.012-1.992-.587-1.992-1.465s.782-1.452 1.991-1.465c1.21.013 1.991.588 1.991 1.465s-.781 1.453-1.99 1.465zm.035-3.638h-.073c-1.655.027-2.811.92-2.811 2.173s1.156 2.147 2.81 2.174h.074C22.844 13.468 24 12.574 24 11.32s-1.156-2.146-2.811-2.173zm-6.126 3.638c-1.21-.012-1.99-.587-1.99-1.465s.78-1.452 1.99-1.465c1.21.013 1.991.588 1.991 1.465s-.781 1.453-1.99 1.465zm.036-3.638h-.073c-.789.013-1.464.222-1.955.574v-.37h-.857v5.5h.857v-1.931c.49.351 1.166.56 1.954.574h.074c1.655-.027 2.81-.921 2.81-2.174s-1.155-2.146-2.81-2.173zm-6.144 3.638c-1.21-.012-1.99-.587-1.99-1.465s.78-1.452 1.99-1.465c1.21.013 1.991.588 1.991 1.465s-.781 1.453-1.99 1.465zm.037-3.638H8.92c-.789.013-1.464.222-1.955.574v-.37h-.856v5.5h.856v-1.931c.491.351 1.166.56 1.955.574a3.728 3.728 0 0 0 .073 0c1.655-.027 2.811-.921 2.811-2.174s-1.156-2.146-2.81-2.173z" />
+    </svg>
+  );
+}
+
+function VivoIcon({ size = 20, color = '#415fff' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }}>
+      <path d="M19.604 14.101c-1.159 0-1.262-.95-1.262-1.24 0-.29.103-1.242 1.262-1.242h2.062c1.16 0 1.263.951 1.263 1.242 0 .29-.104 1.24-1.263 1.24m-2.062-3.527c-2.142 0-2.333 1.752-2.333 2.287 0 .535.19 2.286 2.333 2.286h2.062c2.143 0 2.334-1.751 2.334-2.286 0-.535-.19-2.287-2.334-2.287m-5.477.107c-.286 0-.345.05-.456.213-.11.164-2.022 3.082-2.022 3.082-.06.09-.126.126-.206.126-.08 0-.145-.036-.206-.126 0 0-1.912-2.918-2.022-3.082-.11-.164-.17-.213-.456-.213h-.668c-.154 0-.224.12-.127.267l2.283 3.467c.354.521.614.732 1.196.732s.842-.21 1.196-.732l2.284-3.467c.096-.146.026-.267-.128-.267m-8.876.284c0-.203.08-.284.283-.284h.505c.203 0 .283.08.283.283v3.9c0 .202-.08.283-.283.283h-.505c-.203 0-.283-.08-.283-.283zm-1.769-.285c-.287 0-.346.05-.456.213-.11.164-2.022 3.082-2.022 3.082-.061.09-.126.126-.206.126-.08 0-.145-.036-.206-.126 0 0-1.912-2.918-2.023-3.082-.11-.164-.169-.213-.455-.213H.175c-.171 0-.224.12-.127.267l2.283 3.467c.355.521.615.732 1.197.732.582 0 .842-.21 1.196-.732l2.283-3.467c.097-.146.044-.267-.127-.267m1.055-.893c-.165-.164-.165-.295 0-.46l.351-.351c.165-.165.296-.165.46 0l.352.351c.165.165.165.296 0 .46l-.352.352c-.164.165-.295.165-.46 0z" />
+    </svg>
+  );
+}
+
+function RealmeIcon({ size = 20, color = '#ffc800' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ color }}>
+      <path d="M6 8h3v1.8c.8-1.2 2-2 3.5-2H13v3h-.8c-2 0-3.2 1.2-3.2 3.2V18H6V8z" />
+    </svg>
+  );
+}
+
+// Trust Badge Icons (Lucide-style outline SVGs)
+function ShieldIcon({ size = 20, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function TruckIcon({ size = 20, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  );
+}
+
+// RotateCw / Exchange Icon
+function RefreshIcon({ size = 20, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+
+function CreditCardIcon({ size = 20, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="2" y1="8" x2="22" y2="8" />
+      <line x1="6" y1="13" x2="10" y2="13" />
+    </svg>
+  );
+}
+
+function LightningIcon({ size = 16, color = '#f59e0b', style = {} }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none" style={style}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+const INITIAL_CATEGORIES = [
+  { id: 1, icon: <AppleIcon color="#fff" />, name: 'Apple', count: '... sản phẩm' },
+  { id: 2, icon: <SamsungIcon color="#60a5fa" />, name: 'Samsung', count: '... sản phẩm' },
+  { id: 3, icon: <XiaomiIcon color="#ff6700" />, name: 'Xiaomi', count: '... sản phẩm' },
+  { id: 4, icon: <OppoIcon color="#00c070" />, name: 'OPPO', count: '... sản phẩm' },
+  { id: 5, icon: <VivoIcon color="#415fff" />, name: 'Vivo', count: '... sản phẩm' },
+  { id: 6, icon: <RealmeIcon color="#ffc800" />, name: 'Realme', count: '... sản phẩm' },
 ];
 
 const BRANDS = ['Apple', 'Samsung', 'Xiaomi', 'OPPO', 'Vivo', 'Realme', 'Nokia'];
@@ -37,16 +128,31 @@ const BLOGS = [
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
-function useCountdown(h0 = 5) {
-  const [t, setT] = useState({ h: h0, m: 59, s: 59 });
+function useCountdownTarget(targetTimeStr) {
+  const [t, setT] = useState({ h: 0, m: 0, s: 0 });
+
   useEffect(() => {
-    const id = setInterval(() => setT(prev => {
-      let { h, m, s } = prev;
-      s--; if (s < 0) { s = 59; m--; } if (m < 0) { m = 59; h--; } if (h < 0) { h = h0; m = 59; s = 59; }
-      return { h, m, s };
-    }), 1000);
+    if (!targetTimeStr) return;
+    const target = new Date(targetTimeStr).getTime();
+
+    const update = () => {
+      const now = new Date().getTime();
+      const diff = target - now;
+      if (diff <= 0) {
+        setT({ h: 0, m: 0, s: 0 });
+        return;
+      }
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setT({ h, m, s });
+    };
+
+    update();
+    const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [h0]);
+  }, [targetTimeStr]);
+
   return t;
 }
 
@@ -54,10 +160,16 @@ export function HomePage() {
   const { addItem } = useCart();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Mới nhất');
-  const cd = useCountdown(5);
 
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+
+  const [flashSale, setFlashSale] = useState({ promotionId: null, discountPercent: 0, endAt: null, products: [] });
+  const [loadingFlashSale, setLoadingFlashSale] = useState(true);
+
+  const cd = useCountdownTarget(flashSale.endAt);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -76,6 +188,42 @@ export function HomePage() {
     };
     fetchProducts();
   }, [activeTab]);
+
+  useEffect(() => {
+    const fetchFlashSale = async () => {
+      setLoadingFlashSale(true);
+      try {
+        const data = await promotionApi.getFlashSale();
+        if (data && data.products) {
+          setFlashSale(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch flash sale for home", err);
+      } finally {
+        setLoadingFlashSale(false);
+      }
+    };
+    fetchFlashSale();
+  }, []);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const promises = INITIAL_CATEGORIES.map(async (cat) => {
+          const res = await productApi.searchProducts({ brand: cat.name, size: 1 });
+          return {
+            ...cat,
+            count: `${res.totalElements || 0} sản phẩm`
+          };
+        });
+        const updated = await Promise.all(promises);
+        setCategories(updated);
+      } catch (err) {
+        console.error("Failed to fetch product counts by brand", err);
+      }
+    };
+    fetchCounts();
+  }, []);
 
   return (
     <main>
@@ -96,7 +244,9 @@ export function HomePage() {
             </p>
             <div style={{ display: 'flex', gap: 12, marginBottom: 56 }}>
               <button onClick={() => navigate('/products')} style={{ padding: '14px 28px', background: '#fff', color: '#0d1117', border: 'none', borderRadius: 9, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Mua sắm ngay →</button>
-              <button style={{ padding: '14px 26px', background: 'transparent', color: '#64748b', border: '1.5px solid rgba(255,255,255,0.12)', borderRadius: 9, fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Xem Flash Sale ⚡</button>
+              <button style={{ padding: '14px 26px', background: 'transparent', color: '#64748b', border: '1.5px solid rgba(255,255,255,0.12)', borderRadius: 9, fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                Xem Flash Sale <LightningIcon size={14} color="#f59e0b" />
+              </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 32 }}>
               {[['500+','Sản phẩm'],['50K+','Khách hàng'],['4.9★','Đánh giá'],['30','Ngày đổi trả']].map(([val, label], i) => (
@@ -154,10 +304,10 @@ export function HomePage() {
       <div style={{ background: '#fff', borderBottom: '1px solid #f1f3f5' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
           {[
-            { icon: '🛡️', title: 'Bảo hành chính hãng', sub: '12 tháng tại TTBH hãng' },
-            { icon: '🚚', title: 'Giao hàng toàn quốc', sub: 'Miễn phí từ 500.000₫' },
-            { icon: '🔄', title: 'Đổi trả dễ dàng', sub: '30 ngày không cần lý do' },
-            { icon: '💳', title: 'Thanh toán linh hoạt', sub: 'Trả góp 0% lãi suất' },
+            { icon: <ShieldIcon color="#0d1117" />, title: 'Bảo hành chính hãng', sub: '12 tháng tại TTBH hãng' },
+            { icon: <TruckIcon color="#0d1117" />, title: 'Giao hàng toàn quốc', sub: 'Miễn phí từ 500.000₫' },
+            { icon: <RefreshIcon color="#0d1117" />, title: 'Đổi trả dễ dàng', sub: '30 ngày không cần lý do' },
+            { icon: <CreditCardIcon color="#0d1117" />, title: 'Thanh toán linh hoạt', sub: 'Trả góp 0% lãi suất' },
           ].map((b, i) => (
             <div key={b.title} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '22px 24px', borderRight: i < 3 ? '1px solid #f1f3f5' : 'none' }}>
               <div style={{ width: 42, height: 42, background: '#f4f5f7', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{b.icon}</div>
@@ -181,7 +331,7 @@ export function HomePage() {
             <Link to="/products" style={{ fontSize: 14, fontWeight: 700, color: '#374151', textDecoration: 'none' }}>Xem tất cả →</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 16 }}>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <Link key={cat.id} to={`/products?brand=${cat.name}`}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '28px 12px', background: '#f8f9fa', border: '1.5px solid #f1f3f5', borderRadius: 16, textDecoration: 'none', transition: 'all 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.background='#fff'; e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.07)'; e.currentTarget.style.transform='translateY(-3px)'; }}
@@ -264,75 +414,77 @@ export function HomePage() {
       </section>
 
       {/* ===== FLASH SALE ===== */}
-      <section style={{ background: '#0d1117', padding: '64px 0', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 20% 50%,rgba(225,29,72,0.06) 0%,transparent 50%)', pointerEvents: 'none' }}/>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <span style={{ fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: -1.2 }}>FLASH SALE</span>
-                  <span style={{ fontSize: 28 }}>⚡</span>
-                  <span style={{ background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 5 }}>Giá sốc</span>
+      {!loadingFlashSale && flashSale.products.length > 0 && (
+        <section style={{ background: '#0d1117', padding: '64px 0', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 20% 50%,rgba(225,29,72,0.06) 0%,transparent 50%)', pointerEvents: 'none' }}/>
+          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px', position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 36, flexWrap: 'wrap', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: -1.2 }}>FLASH SALE</span>
+                    <LightningIcon size={28} color="#f59e0b" style={{ marginLeft: 4 }} />
+                    <span style={{ background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 5 }}>Giá sốc</span>
+                  </div>
+                  <span style={{ fontSize: 13, color: '#475569' }}>Số lượng có hạn — Nhanh tay kẻo lỡ!</span>
                 </div>
-                <span style={{ fontSize: 13, color: '#475569' }}>Số lượng có hạn — Nhanh tay kẻo lỡ!</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 20px' }}>
-                <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>Kết thúc sau:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {[cd.h, cd.m, cd.s].map((v, i) => (
-                    <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ background: '#e11d48', color: '#fff', fontSize: 24, fontWeight: 900, minWidth: 52, textAlign: 'center', borderRadius: 8, padding: '7px 10px', lineHeight: 1, display: 'inline-block' }}>{pad(v)}</span>
-                      {i < 2 && <span style={{ color: '#e11d48', fontSize: 22, fontWeight: 900 }}>:</span>}
-                    </span>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '12px 20px' }}>
+                  <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>Kết thúc sau:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {[cd.h, cd.m, cd.s].map((v, i) => (
+                      <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ background: '#e11d48', color: '#fff', fontSize: 24, fontWeight: 900, minWidth: 52, textAlign: 'center', borderRadius: 8, padding: '7px 10px', lineHeight: 1, display: 'inline-block' }}>{pad(v)}</span>
+                        {i < 2 && <span style={{ color: '#e11d48', fontSize: 22, fontWeight: 900 }}>:</span>}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
+              <Link to="/products" style={{ fontSize: 14, fontWeight: 700, color: '#475569', textDecoration: 'none' }}>Xem tất cả →</Link>
             </div>
-            <Link to="/products" style={{ fontSize: 14, fontWeight: 700, color: '#475569', textDecoration: 'none' }}>Xem tất cả →</Link>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16 }}>
-            {FLASH_PRODUCTS.map(fp => (
-              <div key={fp.id}
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '20px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='translateY(-3px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.transform='none'; }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 132, marginBottom: 14, position: 'relative', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: 8 }}>
-                  {fp.thumbnailUrl ? (
-                    <img src={fp.thumbnailUrl} alt={fp.name} style={{ height: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    <svg width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" viewBox="0 0 24 24">
-                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                      <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="3" strokeLinecap="round" />
-                    </svg>
-                  )}
-                  <div style={{ position: 'absolute', top: 0, right: 0, background: '#e11d48', color: '#fff', fontSize: 13.5, fontWeight: 900, padding: '4px 10px', borderRadius: 8 }}>{fp.discount}</div>
-                </div>
-                <h4 style={{ fontSize: 13.5, fontWeight: 700, color: '#e2e8f0', marginBottom: 9, lineHeight: 1.3 }}>{fp.name}</h4>
-                <div style={{ marginBottom: 13 }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>{fmt(fp.price)}₫</div>
-                  <div style={{ fontSize: 12, color: '#334155', textDecoration: 'line-through', marginTop: 2 }}>{fmt(fp.oldPrice)}₫</div>
-                </div>
-                <div style={{ marginBottom: 13 }}>
-                  <div style={{ display: 'flex', justifycontent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: '#475569' }}>Đã bán: {fp.sold}/{fp.total}</span>
-                    <span style={{ fontSize: 11, color: '#e11d48', fontWeight: 700 }}>{fp.soldPct}%</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16 }}>
+              {flashSale.products.map(fp => (
+                <div key={fp.id}
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '20px 16px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.transform='translateY(-3px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.transform='none'; }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 132, marginBottom: 14, position: 'relative', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: 8 }}>
+                    {fp.thumbnailUrl ? (
+                      <img src={fp.thumbnailUrl} alt={fp.name} style={{ height: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <svg width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" viewBox="0 0 24 24">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="3" strokeLinecap="round" />
+                      </svg>
+                    )}
+                    <div style={{ position: 'absolute', top: 0, right: 0, background: '#e11d48', color: '#fff', fontSize: 13.5, fontWeight: 900, padding: '4px 10px', borderRadius: 8 }}>{fp.discount}</div>
                   </div>
-                  <div style={{ height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: 'linear-gradient(90deg,#e11d48,#f43f5e)', borderRadius: 3, width: `${fp.soldPct}%` }}/>
+                  <h4 style={{ fontSize: 13.5, fontWeight: 700, color: '#e2e8f0', marginBottom: 9, lineHeight: 1.3 }}>{fp.name}</h4>
+                  <div style={{ marginBottom: 13 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>{fmt(fp.price)}₫</div>
+                    <div style={{ fontSize: 12, color: '#334155', textDecoration: 'line-through', marginTop: 2 }}>{fmt(fp.oldPrice)}₫</div>
                   </div>
+                  <div style={{ marginBottom: 13 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, color: '#475569' }}>Đã bán: {fp.sold}/{fp.total}</span>
+                      <span style={{ fontSize: 11, color: '#e11d48', fontWeight: 700 }}>{fp.soldPct}%</span>
+                    </div>
+                    <div style={{ height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: 'linear-gradient(90deg,#e11d48,#f43f5e)', borderRadius: 3, width: `${fp.soldPct}%` }}/>
+                    </div>
+                  </div>
+                  <button onClick={() => addItem({ id: fp.id, name: fp.name, price: fp.price, brand: fp.brandName || '', brandName: fp.brandName || '', thumbnailUrl: fp.thumbnailUrl || '' })}
+                    style={{ width: '100%', padding: 9, background: 'rgba(225,29,72,0.12)', color: '#f43f5e', border: '1px solid rgba(225,29,72,0.2)', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    onMouseEnter={e => { e.currentTarget.style.background='#e11d48'; e.currentTarget.style.color='#fff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background='rgba(225,29,72,0.12)'; e.currentTarget.style.color='#f43f5e'; }}>
+                    Mua ngay
+                  </button>
                 </div>
-                <button onClick={() => addItem({ id: fp.id, name: fp.name, price: fp.price, brand: '' })}
-                  style={{ width: '100%', padding: 9, background: 'rgba(225,29,72,0.12)', color: '#f43f5e', border: '1px solid rgba(225,29,72,0.2)', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                  onMouseEnter={e => { e.currentTarget.style.background='#e11d48'; e.currentTarget.style.color='#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background='rgba(225,29,72,0.12)'; e.currentTarget.style.color='#f43f5e'; }}>
-                  Mua ngay
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ===== BRANDS ===== */}
       <section style={{ background: '#fff', padding: '64px 0', borderTop: '1px solid #f1f3f5' }}>
@@ -343,12 +495,12 @@ export function HomePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 12 }}>
             {BRANDS.map(brand => (
-              <Link key={brand} to={`/products?brand=${brand}`}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '22px 12px', border: '1.5px solid #f1f3f5', borderRadius: 14, textDecoration: 'none', fontSize: 17, fontWeight: 900, color: '#111827', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow='0 4px 14px rgba(0,0,0,0.06)'; e.currentTarget.style.transform='translateY(-2px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}>
+              <div key={brand}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '22px 12px', border: '1.5px solid #f1f3f5', borderRadius: 14, fontSize: 17, fontWeight: 900, color: '#111827', transition: 'all 0.2s', userSelect: 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow='0 4px 14px rgba(0,0,0,0.04)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; }}>
                 {brand}
-              </Link>
+              </div>
             ))}
           </div>
         </div>

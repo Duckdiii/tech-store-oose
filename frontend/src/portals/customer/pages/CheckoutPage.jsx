@@ -3,16 +3,52 @@ import { fmt } from '../../../utils/format';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useToast } from '../../../shared/context/ToastContext';
 import { httpClient } from '../../../api/httpClient';
+import { userApi } from '../../../api/userApi';
+
+function CartIcon({ size = 32, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="21" r="1"/>
+      <circle cx="20" cy="21" r="1"/>
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+    </svg>
+  );
+}
+
+function PackageIcon({ size = 18, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+}
+
+function CreditCardIcon({ size = 18, color = '#0d1117' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="2" y1="8" x2="22" y2="8" />
+      <line x1="6" y1="13" x2="10" y2="13" />
+    </svg>
+  );
+}
 
 
-
-const SAVED_ADDRESSES = [
-  { id: 1, tag: 'Nhà riêng', name: 'Nguyễn Văn An', phone: '0901 234 567', address: '123 Lê Lợi, P. Bến Nghé, Q.1', province: 'TP. Hồ Chí Minh', isDefault: true },
-  { id: 2, tag: 'Công ty',   name: 'Nguyễn Văn An', phone: '0901 234 567', address: '456 Nguyễn Huệ, P. Bến Thành, Q.1', province: 'TP. Hồ Chí Minh', isDefault: false },
-];
 
 const PROVINCES = ['TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng', 'Biên Hòa', 'Nha Trang'];
+
+function Field({ label, ...rest }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 7 }}>{label}</label>
+      <input {...rest} style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', ...(rest.style || {}) }}/>
+    </div>
+  );
+}
 
 function PaymentIcon({ id }) {
   const normalizedId = String(id).toLowerCase();
@@ -48,6 +84,7 @@ function PaymentIcon({ id }) {
 export function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [method, setMethod] = useState('');
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(null);
@@ -59,14 +96,16 @@ export function CheckoutPage() {
   const [summary, setSummary] = useState(null);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
 
+  const [savedAddresses, setSavedAddresses] = useState([]);
+
   const [form, setForm] = useState({
     name: user?.name || '', phone: user?.phone || '', email: user?.email || '',
-    address: '', province: '', note: '',
+    street: '', ward: '', district: '', province: '', note: '',
   });
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  // Fetch Checkout Summary on mount
+  // Fetch Checkout Summary and User profile on mount
   useEffect(() => {
     const fetchSummary = async () => {
       try {
@@ -77,19 +116,53 @@ export function CheckoutPage() {
         console.error('Error fetching checkout summary:', error);
       }
     };
+
+    const fetchUserProfile = async () => {
+      try {
+        const profile = await userApi.getProfile();
+        setForm(f => ({
+          ...f,
+          name: profile.fullName || f.name,
+          phone: profile.phone || f.phone,
+          email: profile.email || f.email
+        }));
+        
+        if (profile.addresses && profile.addresses.length > 0) {
+          const mapped = profile.addresses.map((addr, idx) => ({
+            id: addr.id,
+            tag: idx === 0 ? 'Nhà riêng' : `Địa chỉ ${idx + 1}`,
+            name: profile.fullName,
+            phone: profile.phone || '',
+            address: `${addr.street}, ${addr.ward}, ${addr.district}`,
+            province: addr.province,
+            isDefault: idx === 0
+          }));
+          setSavedAddresses(mapped);
+          setSelectedAddr(mapped[0]); // Pick the first address by default
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    };
+
     fetchSummary();
+    if (user) {
+      fetchUserProfile();
+    }
   }, [user]);
 
-  // Set default method when summary loads
+  // Set default method when summary loads — skip methods the order amount already exceeds
   useEffect(() => {
     if (summary?.availablePaymentMethods?.length > 0) {
-      setMethod(summary.availablePaymentMethods[0].id);
+      const eligible = summary.availablePaymentMethods.find(m => m.maxAmount == null || summary.subtotal <= m.maxAmount);
+      setMethod((eligible || summary.availablePaymentMethods[0]).id);
     }
   }, [summary]);
 
   // Check online payment redirect return parameters
   const isVnPayReturn = searchParams.has('vnp_TxnRef');
   const isMomoReturn = searchParams.has('partnerCode');
+  const paymentVerifiedRef = useRef(false);
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -126,18 +199,19 @@ export function CheckoutPage() {
             name: user?.name || ''
           });
         } else {
-          alert(response?.data?.message || 'Thanh toán trực tuyến thất bại hoặc đã bị hủy.');
+          showToast(response?.data?.message || 'Thanh toán trực tuyến thất bại hoặc đã bị hủy.', 'error');
         }
       } catch (error) {
         console.error('Error verifying payment:', error);
-        alert('Có lỗi xảy ra khi xác nhận giao dịch thanh toán.');
+        showToast('Có lỗi xảy ra khi xác nhận giao dịch thanh toán.', 'error');
       } finally {
         setVerifyingPayment(false);
         setSearchParams({});
       }
     };
 
-    if (isVnPayReturn || isMomoReturn) {
+    if ((isVnPayReturn || isMomoReturn) && !paymentVerifiedRef.current) {
+      paymentVerifiedRef.current = true;
       verifyPayment();
     }
   }, [isVnPayReturn, isMomoReturn, user]);
@@ -161,19 +235,27 @@ export function CheckoutPage() {
   };
 
   const handleOrder = async () => {
-    const addrStr = selectedAddr
-      ? `${selectedAddr.address}, ${selectedAddr.province}`
-      : `${form.address}${form.province ? ', ' + form.province : ''}`;
-    if (!form.name || !form.phone || (!selectedAddr && !form.address)) {
-      alert('Vui lòng điền đầy đủ thông tin giao hàng.');
+    const hasManualAddress = form.street && form.ward && form.district && form.province;
+    if (!form.name || !form.phone || (!selectedAddr && !hasManualAddress)) {
+      showToast('Vui lòng điền đầy đủ thông tin giao hàng.', 'warning');
       return;
     }
-    
+
     setPlacing(true);
     try {
       const customerId = user?.id || '1';
-      const addressId = String(selectedAddr?.id || '1');
-      const selectedCartItemIds = summary?.items?.map(item => item.id) || [];
+      let addressId = selectedAddr?.id;
+      let addrStr = selectedAddr ? `${selectedAddr.address}, ${selectedAddr.province}` : '';
+
+      if (!selectedAddr) {
+        const newAddress = await userApi.addAddress({
+          street: form.street, ward: form.ward, district: form.district, province: form.province,
+        });
+        addressId = newAddress.id;
+        addrStr = newAddress.fullAddress || `${form.street}, ${form.ward}, ${form.district}, ${form.province}`;
+      }
+
+      const selectedCartItemIds = summary?.items?.map(item => item.cartItemId) || [];
 
       const payload = {
         addressId,
@@ -184,7 +266,7 @@ export function CheckoutPage() {
       const response = await httpClient.post(`/payments/checkout?customerId=${customerId}`, payload);
       const initResponse = response.data;
 
-      if (initResponse.paymentType === 'COD') {
+      if (initResponse.type === 'COD') {
         const orderId = initResponse.orderId;
         const methodLabel = summary?.availablePaymentMethods?.find(m => m.id === method)?.name || 'COD';
         
@@ -192,7 +274,7 @@ export function CheckoutPage() {
         setSuccess({
           orderId,
           items: summary.items.map(item => ({
-            name: item.productName + (item.variantDisplayName ? ` - ${item.variantDisplayName}` : ''),
+            name: item.productName + (item.variantDisplay ? ` - ${item.variantDisplay}` : ''),
             qty: item.quantity,
             price: item.unitPrice
           })),
@@ -202,12 +284,14 @@ export function CheckoutPage() {
           address: addrStr,
           name: form.name
         });
-      } else if (initResponse.paymentType === 'REDIRECT') {
-        window.location.href = initResponse.paymentUrl; // Redirect to payment gateway
+      } else if (initResponse.type === 'REDIRECT') {
+        window.location.href = initResponse.redirectUrl; // Redirect to payment gateway
+      } else {
+        showToast('Không nhận được phản hồi hợp lệ từ máy chủ thanh toán.', 'error');
       }
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Đặt hàng không thành công. Vui lòng thử lại.');
+      showToast(error.response?.data?.message || 'Đặt hàng không thành công. Vui lòng thử lại.', 'error');
     } finally {
       setPlacing(false);
     }
@@ -284,14 +368,17 @@ export function CheckoutPage() {
       setTimeout(() => win.print(), 400);
     } catch (error) {
       console.error('Error fetching invoice details:', error);
-      alert('Không thể lấy thông tin hóa đơn từ máy chủ.');
+      showToast('Không thể lấy thông tin hóa đơn từ máy chủ.', 'error');
     }
   };
 
   if (verifyingPayment) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f4f5f7' }}>
-        <div style={{ fontSize: 56, animation: 'spin 2s linear infinite' }}>🔄</div>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0d1117" strokeWidth="3" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
+          <circle cx="12" cy="12" r="10" stroke="rgba(0,0,0,0.1)" />
+          <circle cx="12" cy="12" r="10" stroke="#0d1117" strokeDasharray="32" strokeDashoffset="8" />
+        </svg>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0d1117' }}>Đang xác thực giao dịch...</h2>
         <p style={{ fontSize: 14, color: '#6b7280' }}>Vui lòng không đóng hoặc tải lại trang web này.</p>
       </div>
@@ -373,19 +460,14 @@ export function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f4f5f7' }}>
-        <div style={{ fontSize: 56 }}>🛒</div>
+        <div style={{ width: 72, height: 72, background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.04)', border: '1.5px solid #f1f3f5', marginBottom: 10 }}>
+          <CartIcon size={32} color="#0d1117" />
+        </div>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0d1117' }}>Giỏ hàng trống</h2>
         <Link to="/products" style={{ padding: '12px 28px', background: '#0d1117', color: '#fff', borderRadius: 10, textDecoration: 'none', fontWeight: 700 }}>Tiếp tục mua sắm</Link>
       </div>
     );
   }
-
-  const Field = ({ label, ...rest }) => (
-    <div style={{ marginBottom: 16 }}>
-      <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 7 }}>{label}</label>
-      <input {...rest} style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#0d1117', outline: 'none', ...(rest.style || {}) }}/>
-    </div>
-  );
 
   return (
     <div style={{ background: '#f4f5f7', minHeight: '80vh', padding: '32px 0 80px' }}>
@@ -402,7 +484,7 @@ export function CheckoutPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', letterSpacing: -0.3 }}>📦 Thông tin giao hàng</h2>
+                <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', letterSpacing: -0.3, display: 'flex', alignItems: 'center', gap: 8 }}><PackageIcon /> Thông tin giao hàng</h2>
                 <div ref={addrRef} style={{ position: 'relative' }}>
                   <button onClick={() => setShowAddrPicker(v => !v)}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#f4f5f7', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 13, fontWeight: 700, color: '#374151', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -418,7 +500,7 @@ export function CheckoutPage() {
                       <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f3f5' }}>
                         <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0d1117' }}>Địa chỉ đã lưu</span>
                       </div>
-                      {SAVED_ADDRESSES.map(addr => (
+                      {(savedAddresses || []).map(addr => (
                         <div key={addr.id} onClick={() => pickAddress(addr)}
                           style={{ padding: '14px 16px', cursor: 'pointer', borderBottom: '1px solid #f4f5f7', background: selectedAddr?.id === addr.id ? '#f0fdf4' : '#fff', transition: 'background 0.1s' }}
                           onMouseEnter={e => { if (selectedAddr?.id !== addr.id) e.currentTarget.style.background = '#f4f5f7'; }}
@@ -435,7 +517,7 @@ export function CheckoutPage() {
                         </div>
                       ))}
                       <button
-                        onClick={() => { setSelectedAddr(null); setForm(f => ({ ...f, address: '', province: '' })); setShowAddrPicker(false); }}
+                        onClick={() => { setSelectedAddr(null); setForm(f => ({ ...f, street: '', ward: '', district: '', province: '' })); setShowAddrPicker(false); }}
                         style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', textAlign: 'left' }}>
                         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         Nhập địa chỉ mới
@@ -471,9 +553,13 @@ export function CheckoutPage() {
 
               {!selectedAddr && (
                 <>
-                  <Field label="Địa chỉ *" placeholder="Số nhà, tên đường, phường/xã" value={form.address} onChange={set('address')}/>
+                  <Field label="Số nhà, tên đường *" placeholder="123 Nguyễn Trãi" value={form.street} onChange={set('street')}/>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <Field label="Phường / Xã *" placeholder="Phường 2" value={form.ward} onChange={set('ward')}/>
+                    <Field label="Quận / Huyện *" placeholder="Quận 5" value={form.district} onChange={set('district')}/>
+                  </div>
                   <div style={{ marginBottom: 16 }}>
-                    <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 7 }}>Tỉnh / Thành phố</label>
+                    <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 7 }}>Tỉnh / Thành phố *</label>
                     <select value={form.province} onChange={set('province')}
                       style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #e9ecef', borderRadius: 9, fontSize: 14, fontFamily: 'inherit', color: '#374151', outline: 'none', background: '#fff' }}>
                       <option value="">Chọn tỉnh / thành phố</option>
@@ -491,16 +577,35 @@ export function CheckoutPage() {
             </div>
 
             <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '24px' }}>
-              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', marginBottom: 20, letterSpacing: -0.3 }}>💳 Phương thức thanh toán</h2>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', marginBottom: 20, letterSpacing: -0.3, display: 'flex', alignItems: 'center', gap: 8 }}><svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Phương thức thanh toán</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {(summary?.availablePaymentMethods || []).map(m => (
-                  <label key={m.id}
-                    style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', border: `1.5px solid ${method === m.id ? '#0d1117' : '#e9ecef'}`, borderRadius: 11, cursor: 'pointer', background: method === m.id ? '#f8f9fa' : '#fff', transition: 'all 0.15s' }}>
-                    <input type="radio" name="method" value={m.id} checked={method === m.id} onChange={() => setMethod(m.id)} style={{ accentColor: '#0d1117', width: 16, height: 16 }}/>
-                    <PaymentIcon id={m.type}/>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0d1117' }}>{m.name}</span>
-                  </label>
-                ))}
+                {(summary?.availablePaymentMethods || []).map(m => {
+                  const overLimit = m.maxAmount != null && checkoutTotal > m.maxAmount;
+                  return (
+                    <label key={m.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                        border: `1.5px solid ${overLimit ? '#fde68a' : method === m.id ? '#0d1117' : '#e9ecef'}`,
+                        borderRadius: 11, cursor: overLimit ? 'not-allowed' : 'pointer',
+                        background: overLimit ? '#fffbeb' : method === m.id ? '#f8f9fa' : '#fff',
+                        opacity: overLimit ? 0.85 : 1, transition: 'all 0.15s',
+                      }}>
+                      <input type="radio" name="method" value={m.id} checked={method === m.id} disabled={overLimit}
+                        onChange={() => setMethod(m.id)} style={{ accentColor: '#0d1117', width: 16, height: 16 }}/>
+                      <PaymentIcon id={m.type}/>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#0d1117' }}>{m.name}</span>
+                        {m.maxAmount != null && (
+                          <div style={{ fontSize: 12, marginTop: 2, color: overLimit ? '#b45309' : '#9ca3af', fontWeight: overLimit ? 600 : 400 }}>
+                            {overLimit
+                              ? `Đơn hàng vượt hạn mức ${fmt(m.maxAmount)}₫ — vui lòng chọn phương thức khác`
+                              : `Áp dụng cho đơn hàng dưới ${fmt(m.maxAmount)}₫`}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -509,9 +614,16 @@ export function CheckoutPage() {
             <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0d1117', marginBottom: 18, letterSpacing: -0.3 }}>Đơn hàng của bạn</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
               {(summary?.items || []).map(item => (
-                <div key={item.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div style={{ width: 52, height: 52, background: '#f4f5f7', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
-                    <svg width="24" height="40" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/></svg>
+                <div key={item.cartItemId} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ width: 52, height: 52, background: '#fff', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden', border: '1px solid #f1f3f5' }}>
+                    {item.thumbnailUrl ? (
+                      <img src={item.thumbnailUrl} alt={item.productName} style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }} />
+                    ) : (
+                      <svg width="24" height="40" viewBox="0 0 72 120" fill="none">
+                        <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/>
+                        <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/>
+                      </svg>
+                    )}
                     <span style={{ position: 'absolute', top: -6, right: -6, background: '#0d1117', color: '#fff', fontSize: 10, fontWeight: 800, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{item.quantity}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
