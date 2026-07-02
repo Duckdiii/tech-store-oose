@@ -44,6 +44,10 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "selected_payment_method_id", nullable = false)
     private PaymentMethod selectedPaymentMethod;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion_id")
+    private Promotion promotion;
+
     @Column(name = "order_date", nullable = false)
     private LocalDateTime orderDate;
 

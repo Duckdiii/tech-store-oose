@@ -5,5 +5,6 @@ import java.util.List;
 public record CheckoutRequest(
         String addressId,
         String paymentMethodId,
-        List<String> selectedCartItemIds
+        List<String> selectedCartItemIds,
+        String promotionCode
 ) {}

@@ -7,10 +7,13 @@ public record PromotionResponseDTO(
         String id,
         String code,
         String name,
+        String discountType,
+        Double discountValue,
         Double discountPercent,
         LocalDateTime startAt,
         LocalDateTime endAt,
         Boolean active,
+        long usageCount,
         List<String> productIds,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {

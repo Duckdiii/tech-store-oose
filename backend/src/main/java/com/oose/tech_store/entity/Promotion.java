@@ -1,6 +1,7 @@
 package com.oose.tech_store.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.oose.tech_store.entity.enums.PromotionDiscountType;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,6 +33,10 @@ public class Promotion extends BaseEntity {
         @Column(name = "discount_percent", nullable = false)
         private Double discountPercent;
 
+        @Enumerated(EnumType.STRING)
+        @Column(name = "discount_type", length = 30)
+        private PromotionDiscountType discountType = PromotionDiscountType.PERCENTAGE;
+
         @Column(name = "start_at", nullable = false)
         private LocalDateTime startAt;
 
@@ -43,14 +48,16 @@ public class Promotion extends BaseEntity {
 
         public Promotion(String code, String name, Double discountPercent, LocalDateTime startAt, LocalDateTime endAt,
                         Boolean active, Product product) {
+                this(code, name, PromotionDiscountType.PERCENTAGE, discountPercent, startAt, endAt, active, product);
+        }
+
+        public Promotion(String code, String name, PromotionDiscountType discountType, Double discountValue,
+                        LocalDateTime startAt, LocalDateTime endAt, Boolean active, Product product) {
                 if (code == null || code.isBlank()) {
                         throw new IllegalArgumentException("code must not be blank");
                 }
                 if (name == null || name.isBlank()) {
                         throw new IllegalArgumentException("name must not be blank");
-                }
-                if (discountPercent == null) {
-                        throw new IllegalArgumentException("discountPercent must not be null");
                 }
                 if (startAt == null) {
                         throw new IllegalArgumentException("startAt must not be null");
@@ -66,7 +73,7 @@ public class Promotion extends BaseEntity {
                 }
                 this.code = code;
                 this.name = name;
-                this.discountPercent = discountPercent;
+                changeDiscount(discountType, discountValue);
                 this.startAt = startAt;
                 this.endAt = endAt;
                 this.active = active;
@@ -106,6 +113,19 @@ public class Promotion extends BaseEntity {
                 return isActiveNow() && products.contains(product);
         }
 
+        public PromotionDiscountType effectiveDiscountType() {
+                if (discountType != null) {
+                        return discountType;
+                }
+                return discountPercent != null && discountPercent > 100
+                                ? PromotionDiscountType.FIXED_AMOUNT
+                                : PromotionDiscountType.PERCENTAGE;
+        }
+
+        public Double discountValue() {
+                return discountPercent;
+        }
+
         public BigDecimal calculateDiscount(BigDecimal amount) {
                 if (amount == null) {
                         throw new IllegalArgumentException("amount must not be null");
@@ -116,16 +136,44 @@ public class Promotion extends BaseEntity {
                 if (discountPercent == null) {
                         throw new IllegalStateException("discountPercent must not be null");
                 }
-                return amount.multiply(BigDecimal.valueOf(discountPercent))
-                                .divide(BigDecimal.valueOf(100));
+                return switch (effectiveDiscountType()) {
+                        case PERCENTAGE -> amount.multiply(BigDecimal.valueOf(discountPercent))
+                                        .divide(BigDecimal.valueOf(100));
+                        case FIXED_AMOUNT -> BigDecimal.valueOf(discountPercent).min(amount);
+                        case FREE_SHIPPING -> BigDecimal.ZERO;
+                };
         }
 
         public void changeDiscountPercent(Double discountPercent) {
-                if (discountPercent == null) {
-                        throw new IllegalArgumentException("discountPercent must not be null");
+                changeDiscount(PromotionDiscountType.PERCENTAGE, discountPercent);
+        }
+
+        public void changeDiscount(PromotionDiscountType discountType, Double discountValue) {
+                PromotionDiscountType resolvedType = discountType == null
+                                ? PromotionDiscountType.PERCENTAGE
+                                : discountType;
+                if (PromotionDiscountType.FREE_SHIPPING.equals(resolvedType)) {
+                        this.discountType = resolvedType;
+                        this.discountPercent = 0.0;
+                        return;
                 }
-                if (discountPercent < 0 || discountPercent > 100) {
-                        throw new IllegalArgumentException("discountPercent must be between 0 and 100");
+                if (discountValue == null) {
+                        throw new IllegalArgumentException("discountValue must not be null");
+                }
+                if (PromotionDiscountType.PERCENTAGE.equals(resolvedType)) {
+                        if (discountValue < 0 || discountValue > 100) {
+                                throw new IllegalArgumentException("percentage discount must be between 0 and 100");
+                        }
+                } else if (discountValue <= 0) {
+                        throw new IllegalArgumentException("fixed amount discount must be greater than 0");
+                }
+                this.discountType = resolvedType;
+                this.discountPercent = discountValue;
+        }
+
+        public void changeDiscountValue(Double discountPercent) {
+                if (discountPercent == null) {
+                        throw new IllegalArgumentException("discountValue must not be null");
                 }
                 this.discountPercent = discountPercent;
         }

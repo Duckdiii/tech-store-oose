@@ -11,7 +11,7 @@ public class ShippingFeeProcessor implements PriceProcessor {
 
     @Override
     public void process(PriceContext context) {
-        boolean isFreeShip = false;
+        boolean isFreeShip = context.isFreeShippingByPromotion();
         
         if (context.getCustomer().getMembership() != null) {
             MembershipBenefit benefit = context.getCustomer().getMembership().getBenefit();

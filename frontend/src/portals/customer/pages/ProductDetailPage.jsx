@@ -92,7 +92,7 @@ export function ProductDetailPage() {
           setSelectedColor(0);
           setSelectedStorage(0);
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setError('Không tải được thông tin sản phẩm.');
           setProduct(null);

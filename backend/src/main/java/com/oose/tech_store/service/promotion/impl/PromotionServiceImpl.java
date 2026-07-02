@@ -8,6 +8,7 @@ import com.oose.tech_store.dto.promotion.FlashSaleResponseDTO;
 import com.oose.tech_store.dto.promotion.UpdatePromotionRequestDTO;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.Promotion;
+import com.oose.tech_store.entity.enums.PromotionDiscountType;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.PromotionRepository;
 import com.oose.tech_store.repository.OrderRepository;
@@ -19,6 +20,7 @@ import com.oose.tech_store.service.promotion.PromotionNotFoundException;
 import com.oose.tech_store.service.promotion.PromotionService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,10 +84,13 @@ public class PromotionServiceImpl implements PromotionService {
         }
 
         List<Product> products = resolveProducts(request.productIds());
+        PromotionDiscountType discountType = parseDiscountType(request.discountType());
+        Double discountValue = resolveDiscountValue(discountType, request.discountValue(), request.discountPercent());
         Promotion promotion = new Promotion(
                 code,
                 name,
-                request.discountPercent(),
+                discountType,
+                discountValue,
                 request.startAt(),
                 request.endAt(),
                 request.active() == null || request.active(),
@@ -102,12 +107,11 @@ public class PromotionServiceImpl implements PromotionService {
                 .orElseThrow(PromotionNotFoundException::new);
 
         List<Product> requestedProducts = resolveProducts(request.productIds());
-        List<String> restrictedFields = Boolean.TRUE.equals(promotion.getActive())
-                ? restrictedActiveFields(promotion, request, requestedProducts)
-                : List.of();
+        long usageCount = getUsageCount(promotion.getId());
+        List<String> restrictedFields = restrictedFields(promotion, request, requestedProducts, usageCount);
 
         if (restrictedFields.isEmpty()) {
-            updateEditableFields(promotion, request, requestedProducts, true);
+            updateEditableFields(promotion, request, requestedProducts, restrictedFields);
             Promotion saved = promotionRepository.save(promotion);
             return new PromotionOperationResponseDTO(
                     "Promotion updated successfully",
@@ -115,12 +119,14 @@ public class PromotionServiceImpl implements PromotionService {
                     toResponse(saved));
         }
 
-        updateEditableFields(promotion, request, requestedProducts, false);
+        updateEditableFields(promotion, request, requestedProducts, restrictedFields);
         Promotion saved = promotionRepository.save(promotion);
         return new PromotionOperationResponseDTO(
-                "Some fields cannot be edited while ACTIVE",
-                restrictedFields,
-                toResponse(saved));
+                    usageCount > 0
+                            ? "Some fields cannot be edited because this promotion already has usage history"
+                            : "Some fields cannot be edited in the current time window",
+                    restrictedFields,
+                    toResponse(saved));
     }
 
     @Override
@@ -146,7 +152,7 @@ public class PromotionServiceImpl implements PromotionService {
             Promotion promotion,
             UpdatePromotionRequestDTO request,
             List<Product> requestedProducts,
-            boolean includeRestrictedFields) {
+            List<String> restrictedFields) {
         promotion.setName(request.name().trim());
 
         if (request.active() != null && request.active()) {
@@ -155,21 +161,27 @@ public class PromotionServiceImpl implements PromotionService {
             promotion.deactivate();
         }
 
-        if (!includeRestrictedFields) {
-            return;
+        if (!restrictedFields.contains("code")) {
+            String code = normalizeCode(request.code());
+            promotionRepository.findByCodeIgnoreCase(code)
+                    .filter(existing -> !existing.getId().equals(promotion.getId()))
+                    .ifPresent(existing -> {
+                        throw new DuplicatePromotionCodeException();
+                    });
+            promotion.setCode(code);
         }
 
-        String code = normalizeCode(request.code());
-        promotionRepository.findByCodeIgnoreCase(code)
-                .filter(existing -> !existing.getId().equals(promotion.getId()))
-                .ifPresent(existing -> {
-                    throw new DuplicatePromotionCodeException();
-                });
+        if (!restrictedFields.contains("discountType") && !restrictedFields.contains("discountValue")) {
+            PromotionDiscountType discountType = parseDiscountType(request.discountType());
+            promotion.changeDiscount(discountType, resolveDiscountValue(discountType, request.discountValue(), request.discountPercent()));
+        }
 
-        promotion.setCode(code);
-        promotion.changeDiscountPercent(request.discountPercent());
-        promotion.changeDates(request.startAt(), request.endAt());
-        replaceProducts(promotion, requestedProducts);
+        LocalDateTime nextStartAt = restrictedFields.contains("startAt") ? promotion.getStartAt() : request.startAt();
+        promotion.changeDates(nextStartAt, request.endAt());
+
+        if (!restrictedFields.contains("productIds")) {
+            replaceProducts(promotion, requestedProducts);
+        }
     }
 
     private void replaceProducts(Promotion promotion, List<Product> requestedProducts) {
@@ -178,24 +190,28 @@ public class PromotionServiceImpl implements PromotionService {
         requestedProducts.forEach(promotion::addProduct);
     }
 
-    private List<String> restrictedActiveFields(
+    private List<String> restrictedFields(
             Promotion promotion,
             UpdatePromotionRequestDTO request,
-            List<Product> requestedProducts) {
+            List<Product> requestedProducts,
+            long usageCount) {
         List<String> fields = new ArrayList<>();
-        if (!Objects.equals(promotion.getCode(), normalizeCode(request.code()))) {
+        PromotionDiscountType requestedType = parseDiscountType(request.discountType());
+        Double requestedValue = resolveDiscountValue(requestedType, request.discountValue(), request.discountPercent());
+        boolean hasUsage = usageCount > 0;
+        if (hasUsage && !Objects.equals(promotion.getCode(), normalizeCode(request.code()))) {
             fields.add("code");
         }
-        if (!Objects.equals(promotion.getDiscountPercent(), request.discountPercent())) {
-            fields.add("discountPercent");
+        if (hasUsage && !Objects.equals(promotion.effectiveDiscountType(), requestedType)) {
+            fields.add("discountType");
         }
-        if (!Objects.equals(promotion.getStartAt(), request.startAt())) {
+        if (hasUsage && !Objects.equals(promotion.discountValue(), requestedValue)) {
+            fields.add("discountValue");
+        }
+        if (LocalDateTime.now().isAfter(promotion.getStartAt()) && !Objects.equals(promotion.getStartAt(), request.startAt())) {
             fields.add("startAt");
         }
-        if (!Objects.equals(promotion.getEndAt(), request.endAt())) {
-            fields.add("endAt");
-        }
-        if (!sameProductIds(promotion.getProducts(), requestedProducts)) {
+        if (hasUsage && removesExistingProducts(promotion.getProducts(), requestedProducts)) {
             fields.add("productIds");
         }
         return fields;
@@ -211,6 +227,15 @@ public class PromotionServiceImpl implements PromotionService {
                 .sorted()
                 .toList();
         return currentIds.equals(requestedIds);
+    }
+
+    private boolean removesExistingProducts(List<Product> currentProducts, List<Product> requestedProducts) {
+        List<String> requestedIds = requestedProducts.stream()
+                .map(Product::getId)
+                .toList();
+        return currentProducts.stream()
+                .map(Product::getId)
+                .anyMatch(currentId -> !requestedIds.contains(currentId));
     }
 
     private List<Product> resolveProducts(List<String> productIds) {
@@ -247,10 +272,13 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getId(),
                 promotion.getCode(),
                 promotion.getName(),
+                promotion.effectiveDiscountType().name(),
+                promotion.discountValue(),
                 promotion.getDiscountPercent(),
                 promotion.getStartAt(),
                 promotion.getEndAt(),
                 promotion.getActive(),
+                getUsageCount(promotion.getId()),
                 promotion.getProducts().stream().map(Product::getId).toList(),
                 promotion.getCreatedAt(),
                 promotion.getUpdatedAt());
@@ -269,6 +297,8 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getId(),
                 promotion.getCode(),
                 promotion.getName(),
+                promotion.effectiveDiscountType().name(),
+                promotion.discountValue(),
                 promotion.getDiscountPercent(),
                 promotion.getActive(),
                 promotion.getStartAt(),
@@ -331,5 +361,44 @@ public class PromotionServiceImpl implements PromotionService {
                 .toList();
 
         return new FlashSaleResponseDTO(promo.getId(), promo.getDiscountPercent().intValue(), promo.getEndAt(), fsProducts);
+    }
+
+    private PromotionDiscountType parseDiscountType(String value) {
+        if (value == null || value.isBlank()) {
+            return PromotionDiscountType.PERCENTAGE;
+        }
+        try {
+            return PromotionDiscountType.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid promotion discount type");
+        }
+    }
+
+    private Double resolveDiscountValue(PromotionDiscountType discountType, Double discountValue, Double discountPercent) {
+        Double value = discountValue != null ? discountValue : discountPercent;
+        if (PromotionDiscountType.FREE_SHIPPING.equals(discountType)) {
+            return 0.0;
+        }
+        if (value == null) {
+            throw new IllegalArgumentException("Discount value is required");
+        }
+        if (PromotionDiscountType.PERCENTAGE.equals(discountType)) {
+            if (value < 0 || value > 100) {
+                throw new IllegalArgumentException("Percentage discount must be between 0 and 100");
+            }
+            return value;
+        }
+        if (value <= 0) {
+            throw new IllegalArgumentException("Fixed amount discount must be greater than 0");
+        }
+        return value;
+    }
+
+    private long getUsageCount(String promotionId) {
+        if (!orderRepository.hasPromotionIdColumn()) {
+            return 0L;
+        }
+        OrderRepository.PromotionPerformanceStats stats = orderRepository.getPromotionPerformanceStats(promotionId);
+        return stats.getUsageCount() == null ? 0L : stats.getUsageCount();
     }
 }

@@ -12,6 +12,11 @@ import { notificationApi } from '../../../api/notificationApi';
 
 const RED = '#CC0000';
 
+function formatVoucherExpiry(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('vi-VN');
+}
+
 const MOCK_VOUCHERS = [
   { code: 'TECH10OFF', desc: 'Giảm 10% cho đơn từ 5 triệu', expire: '30/06/2026' },
   { code: 'FREESHIP',  desc: 'Miễn phí vận chuyển toàn quốc', expire: '31/12/2026' },
@@ -46,7 +51,7 @@ const SIDEBAR_ITEMS = [
     icon: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> },
   { id: 'membership', label: 'Hạng thành viên và ưu đãi',
     icon: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
-  { id: 'vouchers',   label: 'Mã giảm giá', badge: MOCK_VOUCHERS.length,
+  { id: 'vouchers',   label: 'Mã giảm giá',
     icon: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> },
   { id: 'address',    label: 'Số địa chỉ',
     icon: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> },
@@ -78,6 +83,7 @@ export function ProfilePage() {
   const [orderDateFilter, setOrderDateFilter] = useState('all');
   const [customDateRange, setCustomDateRange] = useState({ from: '', to: '' });
   const [tierInfo, setTierInfo] = useState(null);
+  const [vouchers, setVouchers] = useState([]);
   const [membershipError, setMembershipError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -128,6 +134,8 @@ export function ProfilePage() {
         try {
           const tierData = await membershipApi.getMyTier();
           setTierInfo(tierData);
+          const voucherData = await membershipApi.getMyVouchers();
+          setVouchers(voucherData || []);
           setMembershipError('');
         } catch (err) {
           console.error("Failed to fetch tier", err);
@@ -543,14 +551,14 @@ export function ProfilePage() {
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
       <SectionTitle>Mã giảm giá của tôi</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {MOCK_VOUCHERS.map(v => (
+        {vouchers.map(v => (
           <div key={v.code} style={{ border: '1.5px dashed #e9ecef', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, background: '#fafafa' }}>
             <div style={{ width: 44, height: 44, background: RED, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="20" height="20" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0d1117', marginBottom: 3 }}>{v.desc}</div>
-              <div style={{ fontSize: 12, color: '#9ca3af' }}>HSD: {v.expire}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0d1117', marginBottom: 3 }}>{v.name}</div>
+              <div style={{ fontSize: 12, color: '#9ca3af' }}>HSD: {formatVoucherExpiry(v.endAt)}{!v.usableNow ? ' · Hết hiệu lực' : ''}</div>
             </div>
             <button onClick={() => copyCode(v.code)}
               style={{ padding: '6px 12px', background: copied === v.code ? '#f0fdf4' : '#fff', border: `1.5px solid ${copied === v.code ? '#bbf7d0' : '#e9ecef'}`, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: copied === v.code ? '#16a34a' : '#374151', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
@@ -782,7 +790,7 @@ export function ProfilePage() {
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '0 8px', marginBottom: 16, display: 'flex', overflowX: 'auto' }}>
           {[
             { id: 'membership', label: 'Hạng thành viên' },
-            { id: 'vouchers',   label: 'Mã giảm giá', badge: MOCK_VOUCHERS.length },
+            { id: 'vouchers',   label: 'Mã giảm giá', badge: vouchers.length },
             { id: 'orders',     label: 'Lịch sử mua hàng' },
             { id: 'address',    label: 'Số địa chỉ' },
             { id: 'referral',   label: 'Giới thiệu bạn bè', badge: 'Mới' },
@@ -837,15 +845,15 @@ export function ProfilePage() {
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '18px 16px' }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#0d1117', marginBottom: 14 }}>Ưu đãi của bạn</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {MOCK_VOUCHERS.map(v => (
+                {vouchers.map(v => (
                   <div key={v.code} style={{ border: '1px solid #f0f0f0', borderRadius: 10, overflow: 'hidden', display: 'flex' }}>
                     <div style={{ width: 8, background: RED, flexShrink: 0 }}/>
                     <div style={{ padding: '10px 12px', flex: 1 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0d1117', marginBottom: 3, lineHeight: 1.3 }}>{v.desc}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0d1117', marginBottom: 3, lineHeight: 1.3 }}>{v.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
                         <div>
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: RED, background: '#fff5f5', padding: '2px 6px', borderRadius: 4, letterSpacing: 0.5 }}>{v.code}</span>
-                          <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 3 }}>HSD: {v.expire}</div>
+                          <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 3 }}>HSD: {formatVoucherExpiry(v.endAt)}</div>
                         </div>
                         <button onClick={() => copyCode(v.code)}
                           style={{ fontSize: 11, fontWeight: 700, color: copied === v.code ? '#16a34a' : '#374151', background: copied === v.code ? '#f0fdf4' : '#f4f5f7', border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontFamily: 'inherit' }}>
