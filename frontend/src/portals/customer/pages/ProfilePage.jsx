@@ -124,7 +124,8 @@ export function ProfilePage() {
             name: s.productName + (s.productVariantName ? ` (${s.productVariantName})` : ''),
             price: s.price || 0,
             oldPrice: (s.price || 0) * 1.1,
-            imageUrl: s.thumbnailUrl
+            imageUrl: s.thumbnailUrl,
+            available: s.available
           })));
         } catch (err) {
           console.error("Failed to fetch favorites", err);
@@ -365,11 +366,14 @@ export function ProfilePage() {
                 style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: '12px', cursor: 'pointer', position: 'relative' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor='#d1d5db'}
                 onMouseLeave={e => e.currentTarget.style.borderColor='#f0f0f0'}>
-                <div style={{ width: '100%', aspectRatio: '1', background: 'linear-gradient(135deg,#f4f5f7,#eaecf0)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, overflow: 'hidden' }}>
+                <div style={{ width: '100%', aspectRatio: '1', background: 'linear-gradient(135deg,#f4f5f7,#eaecf0)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, overflow: 'hidden', position: 'relative' }}>
                   {p.imageUrl ? (
                     <img src={p.imageUrl} alt={p.name} style={{ width: '70%', height: '70%', objectFit: 'contain' }} />
                   ) : (
                     <svg width="28" height="46" viewBox="0 0 72 120" fill="none"><rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db"/><rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45"/></svg>
+                  )}
+                  {p.available === false && (
+                    <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 10, fontWeight: 700, color: '#fff', background: 'rgba(15,17,20,0.75)', padding: '2px 7px', borderRadius: 5 }}>Hết hàng</span>
                   )}
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0d1117', marginBottom: 5, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.name}>{p.name}</div>

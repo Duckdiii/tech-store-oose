@@ -33,10 +33,10 @@ public class NotificationSubscriptionService {
         FavoriteProduct subscription = favoriteProductRepository
                 .findByCustomer_IdAndProductVariant_Id(customerId, productVariant.getId())
                 .map(existing -> {
-                    existing.subscribe();
+                    existing.subscribe(); // đã từng yêu thích rồi bỏ → kích hoạt lại
                     return existing;
                 })
-                .orElseGet(() -> new FavoriteProduct(productVariant, customer));
+                .orElseGet(() -> new FavoriteProduct(productVariant, customer));// chưa từng có → tạo mới
 
         return toSubscriptionResponse(favoriteProductRepository.save(subscription));
     }
@@ -118,22 +118,41 @@ public class NotificationSubscriptionService {
     }
 
     private NotificationSubscriptionResponse toSubscriptionResponse(FavoriteProduct subscription) {
-        ProductVariant productVariant = subscription.getProductVariant();
+        ProductVariant favoritedVariant = subscription.getProductVariant();
+        // The favorite is pinned to one physical unit (serial). If that exact unit
+        // was sold/exported, show live price/image from another in-stock unit with
+        // the same specs instead of stale data from the sold-out one.
+        ProductVariant displayVariant = favoritedVariant.isAvailable()
+                ? favoritedVariant
+                : findLiveSibling(favoritedVariant).orElse(favoritedVariant);
+
         String imageUrl = null;
-        if (productVariant.getProduct().getImages() != null && !productVariant.getProduct().getImages().isEmpty()) {
-            imageUrl = productVariant.getProduct().getImages().get(0).getImageUrl();
+        if (displayVariant.getProduct().getImages() != null && !displayVariant.getProduct().getImages().isEmpty()) {
+            imageUrl = displayVariant.getProduct().getImages().get(0).getImageUrl();
         }
         return new NotificationSubscriptionResponse(
                 subscription.getId(),
-                productVariant.getId(),
-                productVariant.getDisplayName(),
-                productVariant.getProduct().getId(),
-                productVariant.getProduct().getName(),
-                productVariant.getPrice(),
+                favoritedVariant.getId(),
+                displayVariant.getDisplayName(),
+                displayVariant.getProduct().getId(),
+                displayVariant.getProduct().getName(),
+                displayVariant.getPrice(),
                 imageUrl,
+                displayVariant.isAvailable(),
                 subscription.getStatus(),
                 subscription.getSubscribedAt(),
                 subscription.getUnsubscribedAt());
+    }
+
+    private java.util.Optional<ProductVariant> findLiveSibling(ProductVariant exported) {
+        return productVariantRepository.findByProductIdAndSpecsAndStatus(
+                exported.getProduct().getId(),
+                exported.getRamGb(),
+                exported.getStorageGb(),
+                exported.getColor(),
+                com.oose.tech_store.entity.enums.ProductVariantStatus.AVAILABLE)
+                .stream()
+                .findFirst();
     }
 
     private NotificationResponse toNotificationResponse(Notification notification) {

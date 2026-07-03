@@ -65,6 +65,9 @@ public class Product extends BaseEntity {
     @JoinTable(name = "product_promotions", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "promotion_id"))
     private List<Promotion> promotions = new ArrayList<>();
 
+    @org.hibernate.annotations.Formula("(SELECT MIN(v.price) FROM product_variants v WHERE v.product_id = id AND v.status = 'AVAILABLE')")
+    private java.math.BigDecimal lowestPrice;
+
 
 
     public Product(String name, String description, Brand brand, Category category) {

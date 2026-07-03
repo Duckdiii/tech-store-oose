@@ -3,7 +3,7 @@ import { Metric } from '../components/index';
 import { money } from '../utils';
 import { httpClient } from '../../../api/httpClient';
 
-const TODAY = '2026-06-24';
+const TODAY = new Date().toISOString().slice(0, 10);
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr);
@@ -21,6 +21,15 @@ function formatMoney(n) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} tỷ`;
   if (n >= 1_000_000)     return `${(n / 1_000_000).toFixed(0)} triệu`;
   return money(n);
+}
+
+function formatDateVN(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function formatPeriodRange(from, to) {
+  return from === to ? formatDateVN(from) : `${formatDateVN(from)} - ${formatDateVN(to)}`;
 }
 
 function BarBreakdown({ entries }) {
@@ -84,11 +93,11 @@ export function ReportsPage() {
     return { from: customFrom, to: customTo };
   }, [period, customFrom, customTo]);
 
-  // Previous period — same duration ending the day before `from`
+  // filter tùy chọn thời gian cho report
   const { prevFrom, prevTo } = useMemo(() => {
-    const durationDays = Math.round((new Date(to) - new Date(from)) / 86400000);
-    const pTo = addDays(from, -1);
-    const pFrom = addDays(pTo, -durationDays);
+    const durationDays = Math.round((new Date(to) - new Date(from)) / 86400000); // ví dụ  từ 01/05 đến 15/05 (14 ngày lệch nhau)
+    const pTo = addDays(from, -1); // 30/04 (ngày trước customFrom)
+    const pFrom = addDays(pTo, -durationDays);// 30/04 − 14 ngày = 16/04
     return { prevFrom: pFrom, prevTo: pTo };
   }, [from, to]);
 
@@ -135,14 +144,19 @@ export function ReportsPage() {
   const prevAvgOrder   = prevOrderCount ? Math.round(Number(prevRevenue) / prevOrderCount) : 0;
 
   const pctDelta = (curr, prev) => {
-    const c = Number(curr);
-    const p = Number(prev);
-    return p ? Math.round(((c - p) / p) * 100) : null;
+    const c = Number(curr); // current value
+    const p = Number(prev); // previous value
+    return p ? Math.round(((c - p) / p) * 100) : null; // return null if previous value is 0 to avoid division by zero
   };
   
   const revenueΔ  = pctDelta(totalRevenue, prevRevenue);
   const orderΔ    = pctDelta(orderCount, prevOrderCount);
   const avgOrderΔ = pctDelta(avgOrder, prevAvgOrder);
+
+  const prevPeriodRange = formatPeriodRange(prevFrom, prevTo);
+  const revenueΔTooltip  = `So với ${prevPeriodRange}: ${formatMoney(prevRevenue)}`;
+  const orderΔTooltip    = `So với ${prevPeriodRange}: ${prevOrderCount} đơn hoàn thành`;
+  const avgOrderΔTooltip = `So với ${prevPeriodRange}: ${formatMoney(prevAvgOrder)}`;
 
   const byCategory = useMemo(() => {
     if (!report?.revenueByCategory) return [];
@@ -225,9 +239,9 @@ export function ReportsPage() {
         <>
           {/* KPI metrics */}
           <div className="admin-metrics admin-metrics--three">
-            <Metric label="Doanh thu thuần"        value={formatMoney(Number(totalRevenue))} hint={`${orderCount} đơn hàng trong kỳ`}  delta={revenueΔ}  />
-            <Metric label="Giá trị đơn trung bình" value={formatMoney(avgOrder)}     hint="Trung bình mỗi đơn hàng"            delta={avgOrderΔ} tone="blue" />
-            <Metric label="Số đơn hoàn thành"      value={String(orderCount)}        hint="Đơn hàng trong kỳ báo cáo"          delta={orderΔ}    tone="purple" />
+            <Metric label="Doanh thu thuần"        value={formatMoney(Number(totalRevenue))} hint={`${orderCount} đơn hàng trong kỳ`}  delta={revenueΔ}  deltaTooltip={revenueΔTooltip} />
+            <Metric label="Giá trị đơn trung bình" value={formatMoney(avgOrder)}     hint="Trung bình mỗi đơn hàng"            delta={avgOrderΔ} deltaTooltip={avgOrderΔTooltip} tone="blue" />
+            <Metric label="Số đơn hoàn thành"      value={String(orderCount)}        hint="Đơn hàng trong kỳ báo cáo"          delta={orderΔ}    deltaTooltip={orderΔTooltip} tone="purple" />
           </div>
 
           {/* Revenue Trend Chart */}

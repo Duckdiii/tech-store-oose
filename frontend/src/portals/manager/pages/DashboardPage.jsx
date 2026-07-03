@@ -1,13 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { Status, DataTable } from '../components/index';
-import { money } from '../utils';
+import { money, sortRows } from '../utils';
 
 const GREET_HOUR = new Date().getHours();
 const GREET = GREET_HOUR < 12 ? 'Chào buổi sáng' : GREET_HOUR < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
 const TODAY = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const chart = [45, 68, 54, 82, 61, 92, 75, 96, 88, 72, 100, 84];
+const TODAY_DMY = (() => {
+  const now = new Date();
+  return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+})();
+
+// dateStr format: DD/MM/YYYY (see formatDateString in ManagerPortal.jsx)
+function parseOrderDate(dateStr) {
+  const [, month, year] = (dateStr || '').split('/').map(Number);
+  return { month, year };
+}
 
 function ClickableMetric({ label, value, hint, tone = 'dark', to, navigate }) {
   const mark = { dark: '#0d1117', blue: '#3b82f6', purple: '#7c3aed', amber: '#f59e0b' }[tone] || '#0d1117';
@@ -127,6 +136,16 @@ export function DashboardPage({ data }) {
     [data.orders]
   );
 
+  const newOrdersToday = useMemo(
+    () => data.orders.filter((o) => o.date === TODAY_DMY).length,
+    [data.orders]
+  );
+
+  const recentOrders = useMemo(
+    () => sortRows(data.orders, 'date', 'desc').slice(0, 4),
+    [data.orders]
+  );
+
   const lowStockItems = useMemo(
     () => data.products
       .map((p) => ({
@@ -139,12 +158,6 @@ export function DashboardPage({ data }) {
   );
 
   const monthlyRevenue = useMemo(() => {
-    const parseDate = (dateStr) => {
-      // dateStr format: DD/MM/YYYY (see formatDateString in ManagerPortal.jsx)
-      const [, month, year] = (dateStr || '').split('/').map(Number);
-      return { month, year };
-    };
-
     const now = new Date();
     const curMonth = now.getMonth() + 1;
     const curYear = now.getFullYear();
@@ -157,7 +170,7 @@ export function DashboardPage({ data }) {
     data.orders
       .filter((o) => o.status === 'Hoàn thành')
       .forEach((o) => {
-        const { month, year } = parseDate(o.date);
+        const { month, year } = parseOrderDate(o.date);
         if (month === curMonth && year === curYear) current += o.total;
         else if (month === prevMonth && year === prevYear) previous += o.total;
       });
@@ -165,6 +178,55 @@ export function DashboardPage({ data }) {
     const changePercent = previous > 0 ? ((current - previous) / previous) * 100 : null;
     return { current, previous, changePercent };
   }, [data.orders]);
+
+  const availableYears = useMemo(() => {
+    const curYear = new Date().getFullYear();
+    const years = new Set([curYear]);
+    data.orders.forEach((o) => {
+      const { year } = parseOrderDate(o.date);
+      if (year) years.add(year);
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [data.orders]);
+
+  const [revenueYear, setRevenueYear] = useState(() => new Date().getFullYear());
+
+  const revenueByMonth = useMemo(() => {
+    const totals = Array(12).fill(0);
+    data.orders
+      .filter((o) => o.status === 'Hoàn thành')
+      .forEach((o) => {
+        const { month, year } = parseOrderDate(o.date);
+        if (year === revenueYear && month >= 1 && month <= 12) totals[month - 1] += o.total;
+      });
+    const max = Math.max(...totals, 1);
+    return { heights: totals.map((v) => (v / max) * 100), totals };
+  }, [data.orders, revenueYear]);
+
+  const orderStatusStats = useMemo(() => {
+    const total = data.orders.length;
+    if (total === 0) return [];
+    const cancelled = data.orders.filter((o) => o.status === 'Đã hủy' || o.status === 'Đã hoàn tiền').length;
+    const completed = data.orders.filter((o) => o.status === 'Hoàn thành').length;
+    const processing = total - completed - cancelled;
+    return [
+      { label: 'Hoàn thành', dot: 'dot--dark', percent: (completed / total) * 100 },
+      { label: 'Đang xử lý', dot: 'dot--blue', percent: (processing / total) * 100 },
+      { label: 'Đã hủy', dot: 'dot--muted', percent: (cancelled / total) * 100 },
+    ];
+  }, [data.orders]);
+
+  const orderStatusGradient = useMemo(() => {
+    if (orderStatusStats.length === 0) return null;
+    const colors = ['#0d1117', '#2563eb', '#cbd5e1'];
+    let cursor = 0;
+    const stops = orderStatusStats.map((s, i) => {
+      const start = cursor;
+      cursor += s.percent;
+      return `${colors[i]} ${start}% ${cursor}%`;
+    });
+    return `conic-gradient(${stops.join(', ')})`;
+  }, [orderStatusStats]);
 
   const revenueHint = monthlyRevenue.previous <= 0
     ? (monthlyRevenue.current > 0 ? 'Chưa có dữ liệu tháng trước để so sánh' : 'Chưa có doanh thu tháng này')
@@ -201,8 +263,8 @@ export function DashboardPage({ data }) {
         />
         <ClickableMetric
           label="Đơn hàng mới"
-          value={String(data.orders.length)}
-          hint={`${pendingOrders.length} đơn đang chờ xác nhận`}
+          value={String(newOrdersToday)}
+          hint={`${pendingOrders.length} đơn đang chờ xác nhận · ${data.orders.length} tổng đơn`}
           tone="blue"
           to="/manager/orders"
           navigate={navigate}
@@ -239,11 +301,17 @@ export function DashboardPage({ data }) {
         <article className="admin-card admin-chart-card">
           <div className="admin-card__head">
             <div><p>HIỆU QUẢ KINH DOANH</p><h3>Doanh thu theo tháng</h3></div>
-            <span className="admin-text-button">Năm 2025</span>
+            <select
+              className="admin-status-select"
+              value={revenueYear}
+              onChange={(e) => setRevenueYear(Number(e.target.value))}
+            >
+              {availableYears.map((y) => <option key={y} value={y}>Năm {y}</option>)}
+            </select>
           </div>
           <div className="admin-chart">
-            {chart.map((height, i) => (
-              <div key={i} className="admin-chart__item">
+            {revenueByMonth.heights.map((height, i) => (
+              <div key={i} className="admin-chart__item" title={money(revenueByMonth.totals[i])}>
                 <div style={{ height: `${height}%` }} />
                 <span>T{i + 1}</span>
               </div>
@@ -255,13 +323,15 @@ export function DashboardPage({ data }) {
           <div className="admin-card__head">
             <div><p>TRẠNG THÁI ĐƠN</p><h3>Phân bổ đơn hàng</h3></div>
           </div>
-          <div className="admin-donut">
+          <div className="admin-donut" style={orderStatusGradient ? { background: orderStatusGradient } : undefined}>
             <div><strong>{data.orders.length}</strong><span>đơn hàng</span></div>
           </div>
           <div className="admin-legend">
-            <span><i className="dot dot--dark" />Hoàn thành <b>62%</b></span>
-            <span><i className="dot dot--blue" />Đang xử lý <b>28%</b></span>
-            <span><i className="dot dot--muted" />Đã hủy <b>10%</b></span>
+            {orderStatusStats.length === 0
+              ? <span style={{ color: '#94a3b8' }}>Chưa có đơn hàng nào</span>
+              : orderStatusStats.map((s) => (
+                <span key={s.label}><i className={`dot ${s.dot}`} />{s.label} <b>{s.percent.toFixed(0)}%</b></span>
+              ))}
           </div>
         </article>
       </div>
@@ -276,7 +346,7 @@ export function DashboardPage({ data }) {
             </button>
           </div>
           <DataTable columns={['Mã đơn', 'Khách hàng', 'Tổng tiền', 'Trạng thái']}>
-            {data.orders.slice(0, 4).map((order) => (
+            {recentOrders.map((order) => (
               <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/manager/orders')}>
                 <td><b>{order.id}</b></td>
                 <td>{order.customer}</td>

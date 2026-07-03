@@ -19,10 +19,10 @@ public interface PaymentLogRepository extends JpaRepository<PaymentLog, String> 
 		   "JOIN FETCH p.order o " +
 		   "JOIN FETCH o.customer c " +
 		   "JOIN FETCH o.selectedPaymentMethod pm " +
-		   "WHERE (:status IS NULL OR p.status = :status) " +
-		   "AND (:paymentMethodId IS NULL OR pm.id = :paymentMethodId) " +
-		   "AND (:startDate IS NULL OR p.createdAt >= :startDate) " +
-		   "AND (:endDate IS NULL OR p.createdAt <= :endDate) " +
+		   "WHERE (CAST(:status AS string) IS NULL OR p.status = :status) " +
+		   "AND (CAST(:paymentMethodId AS string) IS NULL OR pm.id = :paymentMethodId) " +
+		   "AND (CAST(:startDate AS timestamp) IS NULL OR p.createdAt >= :startDate) " +
+		   "AND (CAST(:endDate AS timestamp) IS NULL OR p.createdAt <= :endDate) " +
 		   "ORDER BY p.createdAt DESC")
 	List<PaymentLog> findWithFilters(
 		@Param("status") PaymentLogStatus status,

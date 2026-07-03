@@ -1,5 +1,6 @@
 package com.oose.tech_store.service.product.impl;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -7,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import com.oose.tech_store.dto.ProductSearchResponseDTO;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
+import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.mapper.ProductMapper;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
@@ -41,6 +44,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public Page<ProductSearchResponseDTO> searchProducts(ProductSearchRequestDTO request) {
+        // Validate price filter inputs
+        if (request.getMinPrice() != null && request.getMinPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid filter input. Please check your search criteria");
+        }
+        if (request.getMaxPrice() != null && request.getMaxPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid filter input. Please check your search criteria");
+        }
+        if (request.getMinPrice() != null && request.getMaxPrice() != null && request.getMinPrice().compareTo(request.getMaxPrice()) > 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid filter input. Please check your search criteria");
+        }
+
         int page = Math.max(0, request.getPage());
         int size = request.getSize() > 0 ? request.getSize() : 10;
 
@@ -122,6 +136,7 @@ public class ProductServiceImpl implements ProductService {
         // Validate allowed sort fields
         return switch (field) {
             case "name", "screenSize", "batteryCapacity" -> Sort.by(direction, field);
+            case "price" -> Sort.by(direction, "lowestPrice");
             default -> Sort.by(Sort.Direction.ASC, "name");
         };
     }

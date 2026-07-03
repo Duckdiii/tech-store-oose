@@ -38,7 +38,10 @@ const translations = {
     'Hotline': 'Hotline',
     'hằng ngày': 'hằng ngày',
     'Thêm sản phẩm': 'Thêm sản phẩm',
-    'Giỏ hàng': 'Giỏ hàng'
+    'Giỏ hàng': 'Giỏ hàng',
+    'No products found matching your search criteria': 'Không tìm thấy sản phẩm nào phù hợp với tiêu chí tìm kiếm của bạn',
+    'Invalid filter input. Please check your search criteria': 'Bộ lọc đầu vào không hợp lệ. Vui lòng kiểm tra lại tiêu chí tìm kiếm',
+    'Unable to load products. Please try again later': 'Không thể tải danh sách sản phẩm. Vui lòng thử lại sau'
   },
   en: {
     'Trang chủ': 'Home',
@@ -75,7 +78,10 @@ const translations = {
     'Hotline': 'Hotline',
     'hằng ngày': 'daily',
     'Thêm sản phẩm': 'Add to Cart',
-    'Giỏ hàng': 'Cart'
+    'Giỏ hàng': 'Cart',
+    'No products found matching your search criteria': 'No products found matching your search criteria',
+    'Invalid filter input. Please check your search criteria': 'Invalid filter input. Please check your search criteria',
+    'Unable to load products. Please try again later': 'Unable to load products. Please try again later'
   }
 };
 

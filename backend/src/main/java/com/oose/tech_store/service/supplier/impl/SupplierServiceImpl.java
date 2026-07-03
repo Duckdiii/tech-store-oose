@@ -36,7 +36,7 @@ public class SupplierServiceImpl implements SupplierService {
     @Transactional
     public SupplierResponseDTO createSupplier(CreateSupplierRequestDTO request) {
         if (supplierRepository.existsByName(request.name())) {
-            throw new DuplicateSupplierException("Supplier with given name already exists");
+            throw new DuplicateSupplierException("Nhà cung cấp với tên này đã tồn tại");
         }
 
         Supplier supplier = new Supplier(request.name(), request.email(), request.phone(), request.address());
@@ -52,7 +52,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
 
         if (hasActiveSupplyOrders(id)) {
-            throw new SupplierHasActivePOException("Cannot update: supplier has active Supply Orders");
+            throw new SupplierHasActivePOException("Không thể sửa: nhà cung cấp còn đơn nhập hàng đang hoạt động");
         }
 
         supplier.setName(request.name());
@@ -71,7 +71,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
 
         if (hasActiveSupplyOrders(id)) {
-            throw new SupplierHasActivePOException("Cannot remove: supplier has active Supply Orders");
+            throw new SupplierHasActivePOException("Không thể xóa: nhà cung cấp còn đơn nhập hàng đang hoạt động");
         }
 
         supplierRepository.delete(supplier);

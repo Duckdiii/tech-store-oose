@@ -83,7 +83,7 @@ public class ManageProductServiceImpl implements ManageProductService {
         if (variantCount > 0) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Cannot delete product while warehouse items still exist");
+                    "Không thể xóa sản phẩm vì vẫn còn biến thể trong kho hàng");
         }
 
         productRepository.delete(product);

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Status, DataTable, EmptyState } from '../components/index';
+import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
 import { sortRows } from '../utils';
 
 const FILTERS = [
@@ -26,11 +26,20 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
   const [filterKey, setFilterKey] = useState('ALL');
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState('asc');
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const filtered = useMemo(
     () => products.filter((product) => matchesFilter(product, filterKey)),
     [products, filterKey]
   );
+
+  const filterCounts = useMemo(() => {
+    const counts = {};
+    FILTERS.forEach((item) => {
+      counts[item.key] = products.filter((product) => matchesFilter(product, item.key)).length;
+    });
+    return counts;
+  }, [products]);
 
   const visible = useMemo(() => sortRows(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
   const currentFilter = FILTERS.find((item) => item.key === filterKey) || FILTERS[0];
@@ -71,7 +80,7 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
               className={`admin-filter ${filterKey === item.key ? 'is-active' : ''}`}
               onClick={() => setFilterKey(item.key)}
             >
-              {item.label}
+              {item.label} ({filterCounts[item.key] ?? 0})
             </button>
           ))}
         </div>
@@ -84,34 +93,52 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
               actionLabel={isFiltering ? 'Xem tất cả' : '+ Thêm sản phẩm'}
               onAction={isFiltering ? () => setFilterKey('ALL') : onAdd}
             />
-          ) : visible.map((product) => (
-            <tr key={product.id}>
-              <td>
-                <div className="admin-product">
-                  <span>{(product.brand || product.name || '?').slice(0, 1)}</span>
-                  <div>
-                    <b>{product.name}</b>
-                    <small>{product.description ? 'Có mô tả sản phẩm' : 'Chưa có mô tả'}</small>
+          ) : visible.map((product) => {
+            const thumbnailUrl = product.images?.[0]?.imageUrl || product.images?.[0]?.url;
+            return (
+              <tr key={product.id}>
+                <td>
+                  <div className="admin-product">
+                    <span style={{ overflow: 'hidden', padding: 0 }}>
+                      {thumbnailUrl
+                        ? <img src={thumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : (product.brand || product.name || '?').slice(0, 1)}
+                    </span>
+                    <div>
+                      <b>{product.name}</b>
+                      <small>{product.description ? 'Có mô tả sản phẩm' : 'Chưa có mô tả'}</small>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td>{product.brand || '—'}</td>
-              <td>{product.category || 'Chưa phân loại'}</td>
-              <td className={getStock(product) < 6 ? 'admin-low-stock' : ''}>{getStock(product)}</td>
-              <td><Status>{product.status}</Status></td>
-              <td>
-                <div className="admin-row-actions">
-                  <button className="admin-row-action admin-row-action--primary" onClick={() => onViewDetails(product)}>
-                    Chi tiết
-                  </button>
-                  <button className="admin-row-action" onClick={() => onEdit(product)}>Sửa</button>
-                  <button className="admin-row-action admin-row-action--danger" onClick={() => onDelete(product.id)}>Xóa</button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td>{product.brand || '—'}</td>
+                <td>{product.category || 'Chưa phân loại'}</td>
+                <td className={getStock(product) < 6 ? 'admin-low-stock' : ''}>{getStock(product)}</td>
+                <td><Status>{product.status}</Status></td>
+                <td>
+                  <div className="admin-row-actions">
+                    <button className="admin-row-action admin-row-action--primary" onClick={() => onViewDetails(product)}>
+                      Chi tiết
+                    </button>
+                    <button className="admin-row-action" onClick={() => onEdit(product)}>Sửa</button>
+                    <button className="admin-row-action admin-row-action--danger" onClick={() => setDeleteConfirm(product)}>Xóa</button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </DataTable>
       </article>
+
+      {deleteConfirm && (
+        <ConfirmDialog
+          title="Xóa sản phẩm?"
+          message={`Bạn có chắc muốn xóa sản phẩm "${deleteConfirm.name}"? Hành động này không thể hoàn tác.`}
+          confirmLabel="Xóa"
+          danger
+          onConfirm={() => onDelete(deleteConfirm.id)}
+          onClose={() => setDeleteConfirm(null)}
+        />
+      )}
     </>
   );
 }

@@ -48,6 +48,12 @@ public class AccountManagementController {
         return accountManagementService.blockAccount(principal.accountId(), accountId);
     }
 
+    @PatchMapping("/accounts/{accountId}/unblock")
+    public BlockAccountResponse unblockAccount(@AuthenticationPrincipal AccountPrincipal principal,
+            @PathVariable String accountId) {
+        return accountManagementService.unblockAccount(principal.accountId(), accountId);
+    }
+
     @GetMapping("/staff")
     public PageResponse<StaffResponse> getStaff(@RequestParam(required = false) String criteria,
             @PageableDefault(size = 20, sort = "id") Pageable pageable) {

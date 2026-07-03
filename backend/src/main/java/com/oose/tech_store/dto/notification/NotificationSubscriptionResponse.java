@@ -11,6 +11,7 @@ public record NotificationSubscriptionResponse(
         String productName,
         java.math.BigDecimal price,
         String thumbnailUrl,
+        boolean available,
         SubscriptionStatus status,
         LocalDateTime subscribedAt,
         LocalDateTime unsubscribedAt) {

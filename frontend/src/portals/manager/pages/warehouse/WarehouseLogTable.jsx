@@ -3,6 +3,8 @@ import { formatDate } from './utils';
 const logTypeLabel = (type) => type === 'IMPORT' ? 'Nhập kho' : 'Xuất kho';
 const statusLabel = (status) =>
   status === 'SUCCESS' ? 'Thành công' : status === 'PENDING' ? 'Đang xử lý' : 'Thất bại';
+const STATUS_TONE = { SUCCESS: 'success', PENDING: 'warning', FAILURE: 'danger' };
+const statusTone = (status) => STATUS_TONE[status] || 'danger';
 
 export function WarehouseLogTable({ logs, loading, onShowDetail }) {
   return (
@@ -36,7 +38,7 @@ export function WarehouseLogTable({ logs, loading, onShowDetail }) {
                 <td>{log.totalQuantity}</td>
                 <td>{log.performedBy}</td>
                 <td>{formatDate(log.occurredAt)}</td>
-                <td>{statusLabel(log.status)}</td>
+                <td><span className={`admin-status admin-status--${statusTone(log.status)}`}>{statusLabel(log.status)}</span></td>
                 <td>
                   <button className="admin-row-action" onClick={() => onShowDetail(log)}>
                     Xem chi tiết
