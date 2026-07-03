@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ManagerLayout } from './layout/ManagerLayout';
+import { useTheme } from '../../shared/context/ThemeContext';
 import { StaffForm } from './components/index';
 import { ProductForm } from './components/ProductForm';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -16,7 +17,11 @@ import { SettingsPage } from './pages/SettingsPage';
 import { WarehousePage } from './pages/WarehousePage';
 import { SuppliersPage } from './pages/SuppliersPage';
 import { SupplierForm } from './components/SupplierForm';
+import { SupplyOrdersPage } from './pages/SupplyOrdersPage';
+import { SupplyOrderForm } from './components/SupplyOrderForm';
+import { SupplyOrderDetailModal } from './components/SupplyOrderDetailModal';
 import { supplierApi } from '../../api/supplierApi';
+import { supplyOrderApi } from '../../api/supplyOrderApi';
 import { getWarehouseInventory } from '../../api/warehouseApi';
 import { productApi } from '../../api/productApi';
 import { PromotionsPage } from './pages/PromotionsPage';
@@ -101,6 +106,7 @@ const formatDateString = (isoString) => {
 };
 
 export function ManagerPortal() {
+  const { t } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const section = location.pathname.split('/')[2] || 'dashboard';
@@ -122,6 +128,8 @@ export function ManagerPortal() {
   const [staffFormOpen, setStaffFormOpen] = useState(false);
   const [supplierFormOpen, setSupplierFormOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
+  const [supplyOrderFormOpen, setSupplyOrderFormOpen] = useState(false);
+  const [viewingSupplyOrder, setViewingSupplyOrder] = useState(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimerRef = useRef(null);
@@ -216,8 +224,23 @@ export function ManagerPortal() {
     fetchData();
   }, []);
 
+  const fetchSupplyOrdersFromApi = async () => {
+    try {
+      const orders = await supplyOrderApi.getAll();
+      setData(prev => ({ ...prev, supplyOrders: orders || [] }));
+    } catch (err) {
+      console.error('Failed to fetch supply orders:', err);
+    }
+  };
+
   useEffect(() => {
-    if (!['dashboard', 'products', 'warehouse'].includes(activeSection)) return;
+    if (activeSection === 'supply-orders') {
+      fetchSupplyOrdersFromApi();
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (!['dashboard', 'products', 'warehouse', 'supply-orders'].includes(activeSection)) return;
 
     const syncCatalogFromApi = async () => {
       const [catalogResult, inventoryResult] = await Promise.allSettled([
@@ -460,7 +483,7 @@ export function ManagerPortal() {
         setToast('Đã cập nhật nhà cung cấp');
       } else {
         await supplierApi.create(supplierData);
-        setToast('Đã thêm nhà cung cấp mới');
+        setToast('Supplier added successfully');
       }
       const sups = await supplierApi.getAll();
       setData(prev => ({ ...prev, suppliers: sups }));
@@ -476,10 +499,29 @@ export function ManagerPortal() {
       await supplierApi.delete(id);
       const sups = await supplierApi.getAll();
       setData(prev => ({ ...prev, suppliers: sups }));
-      setToast('Đã xóa nhà cung cấp');
+      setToast(t('Supplier removed successfully'));
     } catch (err) {
-      setToast('Lỗi: ' + (err.response?.data?.message || err.message));
+      setToast(t(apiMessage(err)));
     }
+  };
+
+  const createSupplyOrder = async (payload) => {
+    try {
+      await supplyOrderApi.create(payload);
+      setToast(t('Purchase Order created successfully'));
+      await fetchSupplyOrdersFromApi();
+      setSupplyOrderFormOpen(false);
+    } catch (err) {
+      setToast(t(apiMessage(err)));
+    }
+  };
+
+  const updateSupplyOrderStatus = async (id, status) => {
+    const updated = await supplyOrderApi.updateStatus(id, status);
+    setToast(t('Supply Order status updated successfully'));
+    await fetchSupplyOrdersFromApi();
+    setViewingSupplyOrder(updated);
+    return updated;
   };
 
   return (
@@ -532,6 +574,13 @@ export function ManagerPortal() {
             onDelete={deleteSupplier}
           />
         )}
+        {activeSection === 'supply-orders' && (
+          <SupplyOrdersPage
+            supplyOrders={data.supplyOrders}
+            onAdd={() => setSupplyOrderFormOpen(true)}
+            onView={(order) => setViewingSupplyOrder(order)}
+          />
+        )}
         {activeSection === 'promotions' && (
           <PromotionsPage />
         )}
@@ -554,6 +603,22 @@ export function ManagerPortal() {
       )}
       {staffFormOpen && <StaffForm onSave={addStaff} onClose={() => setStaffFormOpen(false)} />}
       {supplierFormOpen && <SupplierForm supplier={editingSupplier} onSave={saveSupplier} onClose={() => { setSupplierFormOpen(false); setEditingSupplier(null); }} />}
+      {supplyOrderFormOpen && (
+        <SupplyOrderForm
+          suppliers={data.suppliers}
+          products={data.products}
+          variants={data.variants}
+          onSave={createSupplyOrder}
+          onClose={() => setSupplyOrderFormOpen(false)}
+        />
+      )}
+      {viewingSupplyOrder && (
+        <SupplyOrderDetailModal
+          supplyOrder={viewingSupplyOrder}
+          onUpdateStatus={updateSupplyOrderStatus}
+          onClose={() => setViewingSupplyOrder(null)}
+        />
+      )}
       {toast && (
         <div className="admin-toast" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>✓ {toast}</span>

@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
 import { ConfirmDialog, DataTable, EmptyState } from '../components/index';
 import { sortRows } from '../utils';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
+  const { t } = useTheme();
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState('asc');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -83,9 +85,9 @@ export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
 
       {deleteConfirm && (
         <ConfirmDialog
-          title="Xóa nhà cung cấp?"
-          message={`Bạn có chắc muốn xóa nhà cung cấp "${deleteConfirm.name}"? Hành động này không thể hoàn tác.`}
-          confirmLabel="Xóa"
+          title={t('Xóa nhà cung cấp?')}
+          message={t('Are you sure you want to remove this supplier? This action cannot be undone')}
+          confirmLabel={t('Xóa')}
           danger
           onConfirm={() => onDelete(deleteConfirm.id)}
           onClose={() => setDeleteConfirm(null)}

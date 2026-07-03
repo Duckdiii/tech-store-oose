@@ -76,7 +76,7 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
   const filteredNavItems = useMemo(() => {
     const normalizedRole = String(user?.role || '').replace(/^ROLE_/, '').toUpperCase();
     if (normalizedRole === 'STAFF') {
-      return NAV_ITEMS.filter(([key]) => ['dashboard', 'orders', 'warehouse', 'suppliers'].includes(key));
+      return NAV_ITEMS.filter(([key]) => ['dashboard', 'orders', 'warehouse', 'suppliers', 'supply-orders'].includes(key));
     }
     return NAV_ITEMS;
   }, [user]);

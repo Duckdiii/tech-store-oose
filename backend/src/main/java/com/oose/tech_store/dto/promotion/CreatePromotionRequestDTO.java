@@ -2,17 +2,20 @@ package com.oose.tech_store.dto.promotion;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public record CreatePromotionRequestDTO(
-        @NotBlank(message = "Promotion code is required")
+        @NotBlank(message = "Please fill in all required fields")
         @Size(max = 80, message = "Promotion code must not exceed 80 characters")
         String code,
 
-        @NotBlank(message = "Promotion name is required")
+        @NotBlank(message = "Please fill in all required fields")
         @Size(max = 150, message = "Promotion name must not exceed 150 characters")
         String name,
 
@@ -22,13 +25,22 @@ public record CreatePromotionRequestDTO(
 
         Double discountValue,
 
-        @NotNull(message = "Start time is required")
+        @NotNull(message = "Please fill in all required fields")
         LocalDateTime startAt,
 
-        @NotNull(message = "End time is required")
+        @NotNull(message = "Please fill in all required fields")
         LocalDateTime endAt,
 
         Boolean active,
+
+        @PositiveOrZero(message = "Invalid discount value")
+        BigDecimal minOrderValue,
+
+        @Positive(message = "Invalid discount value")
+        Integer usageLimitPerCustomer,
+
+        @Positive(message = "Invalid discount value")
+        Integer totalUsageLimit,
 
         List<String> productIds) {
 }

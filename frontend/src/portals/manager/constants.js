@@ -65,7 +65,8 @@ export const INITIAL_DATA = {
     { id: 'NV-003', name: 'Lê Minh Khoa',   email: 'khoa.le@techstore.vn',    phone: '0933 555 666', staffCode: 'TS-STF-002', hireDate: '2024-02-01', role: 'Staff',   active: true },
   ],
   settings: { stockAlert: true, orderAlert: true, weeklyReport: false },
-  suppliers: []
+  suppliers: [],
+  supplyOrders: []
 };
 
 export const LAST_BACKUP = '24/06/2026 02:00';
@@ -76,6 +77,7 @@ export const NAV_ITEMS = [
   ['orders',    'Đơn hàng'],
   ['warehouse', 'Kho hàng'],
   ['suppliers', 'Nhà cung cấp'],
+  ['supply-orders', 'Đơn nhập hàng'],
   ['customers', 'Khách hàng'],
   ['staff',     'Nhân viên'],
   ['reports',   'Báo cáo'],
@@ -89,6 +91,7 @@ export const PAGE_META = {
   orders:    ['Quản lý đơn hàng',   'Theo dõi và cập nhật trạng thái đơn hàng'],
   warehouse: ['Quản lý kho',        'Nhập, xuất và theo dõi biến động tồn kho'],
   suppliers: ['Nhà cung cấp',       'Quản lý thông tin các nhà cung cấp sản phẩm'],
+  'supply-orders': ['Đơn nhập hàng', 'Tạo và theo dõi trạng thái đơn nhập hàng từ nhà cung cấp'],
   customers: ['Khách hàng',         'Quản lý thông tin và hạng thành viên khách hàng'],
   staff:     ['Nhân viên',          'Quản lý nhân sự và phân quyền hệ thống'],
   reports:   ['Báo cáo doanh thu',  'Tổng hợp kết quả kinh doanh trong tháng'],

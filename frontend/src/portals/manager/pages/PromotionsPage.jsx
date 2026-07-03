@@ -103,6 +103,9 @@ function blankForm() {
     startAt: defaultDateTime(),
     endAt: defaultDateTime(24 * 7),
     active: true,
+    minOrderValue: '0',
+    usageLimitPerCustomer: '',
+    totalUsageLimit: '',
     productIdsText: '',
   };
 }
@@ -116,6 +119,9 @@ function formFromPromotion(promotion) {
     startAt: toInputDateTime(promotion.startAt),
     endAt: toInputDateTime(promotion.endAt),
     active: Boolean(promotion.active),
+    minOrderValue: String(promotion.minOrderValue ?? 0),
+    usageLimitPerCustomer: promotion.usageLimitPerCustomer != null ? String(promotion.usageLimitPerCustomer) : '',
+    totalUsageLimit: promotion.totalUsageLimit != null ? String(promotion.totalUsageLimit) : '',
     productIdsText: (promotion.productIds || []).join('\n'),
   };
 }
@@ -141,13 +147,16 @@ function StatusPill({ active }) {
 
 function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, submitting, error, notice }) {
   const isEdit = mode === 'update';
-  const isActiveEdit = isEdit && promotion?.active;
+  const now = new Date();
+  const isActiveEdit = isEdit && Boolean(promotion?.active)
+    && promotion?.startAt && new Date(promotion.startAt) <= now
+    && promotion?.endAt && now <= new Date(promotion.endAt);
   const usageCount = Number(promotion?.usageCount || 0);
   const hasUsage = usageCount > 0;
-  const hasStarted = isEdit && promotion?.startAt && new Date(promotion.startAt) <= new Date();
+  const hasStarted = isEdit && promotion?.startAt && new Date(promotion.startAt) <= now;
   const lockRestricted = (field) => {
     if (field === 'startAt') return hasStarted;
-    return hasUsage && RESTRICTED_FIELDS.includes(field);
+    return (isActiveEdit || hasUsage) && RESTRICTED_FIELDS.includes(field);
   };
 
   const disabledStyle = {
@@ -187,8 +196,8 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
               fontSize: 12.5,
               lineHeight: 1.45,
             }}>
-              <b style={{ display: 'block', marginBottom: 4 }}>Promotion đang ACTIVE</b>
-              Các field nhạy cảm đã bị khóa: mã, giảm giá, thời gian và sản phẩm áp dụng. Có thể sửa tên hoặc tắt trạng thái trước khi cập nhật các field này.
+              <b style={{ display: 'block', marginBottom: 4 }}>Some fields cannot be edited while the promotion is active</b>
+              Mã, loại giảm giá và giá trị giảm đã bị khóa vì promotion đang ACTIVE. Bạn chỉ có thể sửa ngày kết thúc, giới hạn sử dụng, hoặc tắt promotion trước khi sửa các field này.
             </div>
           )}
 
@@ -316,6 +325,45 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
             </label>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            <label className="admin-field">
+              Giá trị đơn tối thiểu (VNĐ)
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={form.minOrderValue}
+                onChange={(event) => setField('minOrderValue', event.target.value)}
+                placeholder="0"
+              />
+            </label>
+
+            <label className="admin-field">
+              Giới hạn lượt dùng / khách hàng
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={form.usageLimitPerCustomer}
+                onChange={(event) => setField('usageLimitPerCustomer', event.target.value)}
+                placeholder="Không giới hạn"
+              />
+            </label>
+
+            <label className="admin-field">
+              Tổng lượt dùng tối đa
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={form.totalUsageLimit}
+                onChange={(event) => setField('totalUsageLimit', event.target.value)}
+                placeholder="Không giới hạn"
+              />
+            </label>
+          </div>
+
+          {isEdit && (
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -342,6 +390,21 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
               <span />
             </button>
           </div>
+          )}
+
+          {!isEdit && (
+          <div style={{
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            padding: '10px 12px',
+            background: '#f8fafc',
+            color: '#64748b',
+            fontSize: 12.5,
+            lineHeight: 1.45,
+          }}>
+            Trạng thái ACTIVE/INACTIVE sẽ được hệ thống tự động thiết lập dựa trên thời gian bắt đầu.
+          </div>
+          )}
 
           <div className="admin-modal__actions">
             <button type="button" className="admin-button admin-button--secondary" onClick={onClose} disabled={submitting}>
@@ -357,7 +420,7 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
   );
 }
 
-function RemovePromotionDialog({ promotion, onClose, onConfirm, removing, error }) {
+function RemovePromotionDialog({ promotion, onClose, onConfirm, onDeactivate, removing, deactivating, error, canDeactivate }) {
   return (
     <div
       className="admin-modal-backdrop"
@@ -375,7 +438,7 @@ function RemovePromotionDialog({ promotion, onClose, onConfirm, removing, error 
             <p>REMOVE PROMOTION</p>
             <h2>Xóa khuyến mãi</h2>
           </div>
-          <button type="button" className="admin-close" onClick={onClose} disabled={removing}>x</button>
+          <button type="button" className="admin-close" onClick={onClose} disabled={removing || deactivating}>x</button>
         </div>
 
         <div style={{ display: 'grid', gap: 12 }}>
@@ -388,112 +451,36 @@ function RemovePromotionDialog({ promotion, onClose, onConfirm, removing, error 
           </div>
 
           <div style={{ border: '1px solid #fecaca', background: '#fff1f2', color: '#991b1b', borderRadius: 10, padding: 12, fontSize: 12.5, lineHeight: 1.45 }}>
-            Hệ thống sẽ kiểm tra promotion này đã được dùng trong đơn hàng chưa. Nếu đã được dùng, thao tác xóa sẽ bị chặn để giữ lịch sử đơn hàng.
+            <b style={{ display: 'block', marginBottom: 4 }}>Are you sure you want to remove this promotion? This action cannot be undone</b>
+            Nếu promotion đã được dùng trong đơn hàng, thao tác xóa sẽ bị chặn để giữ lịch sử đơn hàng.
           </div>
 
           {error && (
-            <div style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 10, padding: 10, fontSize: 12.5, fontWeight: 750 }}>
+            <div style={{ border: '1px solid #fecdd3', background: '#fff1f2', color: '#be123c', borderRadius: 10, padding: 10, fontSize: 12.5, fontWeight: 750, lineHeight: 1.5 }}>
               {error}
+              {canDeactivate && (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="admin-button admin-button--secondary"
+                    onClick={onDeactivate}
+                    disabled={deactivating}
+                    style={{ fontWeight: 700 }}
+                  >
+                    {deactivating ? <Spinner label="Đang tắt..." /> : 'Tắt promotion (Deactivate)'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         <div className="admin-modal__actions">
-          <button type="button" className="admin-button admin-button--secondary" onClick={onClose} disabled={removing}>
+          <button type="button" className="admin-button admin-button--secondary" onClick={onClose} disabled={removing || deactivating}>
             Hủy
           </button>
-          <button type="button" className="admin-button admin-button--danger" onClick={onConfirm} disabled={removing}>
+          <button type="button" className="admin-button admin-button--danger" onClick={onConfirm} disabled={removing || deactivating}>
             {removing ? <Spinner label="Đang xóa..." /> : 'Xóa khuyến mãi'}
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function PromotionPerformanceDialog({ promotion, performance, loading, error, onClose, onRetry }) {
-  const metricCards = [
-    ['Lượt sử dụng', performance?.usageCount ?? 0],
-    ['Tổng giảm giá', formatMoney(performance?.totalDiscountAmount)],
-    ['Tổng giá trị đơn', formatMoney(performance?.totalOrderAmount)],
-    ['Giảm trung bình', formatMoney(performance?.averageDiscountAmount)],
-  ];
-
-  return (
-    <div
-      className="admin-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
-      style={{ zIndex: 430 }}
-    >
-      <section
-        className="admin-modal"
-        onMouseDown={(event) => event.stopPropagation()}
-        style={{ width: 'min(640px, calc(100vw - 36px))' }}
-      >
-        <div className="admin-modal__head">
-          <div>
-            <p>PROMOTION PERFORMANCE</p>
-            <h2>Hiệu quả khuyến mãi</h2>
-          </div>
-          <button type="button" className="admin-close" onClick={onClose}>x</button>
-        </div>
-
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div style={{
-            border: '1px solid #e5e7eb',
-            borderRadius: 12,
-            padding: '12px 14px',
-            background: '#f8fafc',
-            display: 'grid',
-            gap: 4,
-          }}>
-            <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 850, letterSpacing: '.08em', textTransform: 'uppercase' }}>
-              Promotion đã chọn
-            </span>
-            <b style={{ color: '#0d1117', fontSize: 16 }}>{promotion.code}</b>
-            <span style={{ color: '#64748b', fontSize: 12.5 }}>
-              {promotion.name} · {formatPromotionDiscount(promotion)} · {promotion.active ? 'ACTIVE' : 'Đã tắt'}
-            </span>
-          </div>
-
-          {loading ? (
-            <div style={{ padding: 18, display: 'grid', placeItems: 'center', color: '#64748b' }}>
-              <Spinner label="Đang tải hiệu quả khuyến mãi..." />
-            </div>
-          ) : error ? (
-            <div style={{ border: '1px solid #fecaca', background: '#fff1f2', color: '#991b1b', borderRadius: 10, padding: 12, fontSize: 12.5, lineHeight: 1.45 }}>
-              <b style={{ display: 'block', marginBottom: 4 }}>Không tải được dữ liệu hiệu quả</b>
-              <span>{error}</span>
-            </div>
-          ) : (
-            <>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                gap: 10,
-              }}>
-                {metricCards.map(([label, value]) => (
-                  <div key={label} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', background: '#fff' }}>
-                    <span style={{ color: '#94a3b8', fontSize: 9.5, fontWeight: 850, letterSpacing: '.07em', textTransform: 'uppercase' }}>{label}</span>
-                    <b style={{ display: 'block', marginTop: 5, color: '#0d1117', fontSize: 18 }}>{value}</b>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12, color: '#64748b', fontSize: 12.5, lineHeight: 1.55 }}>
-                Dữ liệu được tổng hợp từ các đơn hàng đã gắn promotion này và hóa đơn tương ứng: số lượt dùng, tổng tiền đã giảm và tổng giá trị đơn trước giảm.
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="admin-modal__actions">
-          <button type="button" className="admin-button admin-button--secondary" onClick={onClose}>
-            Đóng
-          </button>
-          <button type="button" className="admin-button" onClick={onRetry} disabled={loading}>
-            {loading ? <Spinner label="Đang tải..." /> : 'Tải lại'}
           </button>
         </div>
       </section>
@@ -514,10 +501,18 @@ export function PromotionsPage() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
   const [expandingPromotionId, setExpandingPromotionId] = useState(null);
   const [error, setError] = useState('');
   const [removeError, setRemoveError] = useState('');
+  const [removeErrorIsInUse, setRemoveErrorIsInUse] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [pageNotice, setPageNotice] = useState(null);
+
+  const showPageNotice = (message, type = 'success') => {
+    setPageNotice({ message, type });
+    setTimeout(() => setPageNotice(null), 4000);
+  };
 
   const filteredPromotions = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -578,28 +573,14 @@ export function PromotionsPage() {
   const openRemove = (promotion) => {
     setPromotionToRemove(promotion);
     setRemoveError('');
-  };
-
-  const openPerformance = async (promotion) => {
-    const normalized = normalizePromotion(promotion);
-    setPerformancePromotion(normalized);
-    setPerformance(null);
-    setPerformanceError('');
-    setPerformanceLoading(true);
-    try {
-      const data = await promotionApi.getPromotionPerformance(normalized.id);
-      setPerformance(data);
-    } catch (err) {
-      setPerformanceError(err.response?.data?.message || 'Không tải được dữ liệu hiệu quả khuyến mãi.');
-    } finally {
-      setPerformanceLoading(false);
-    }
+    setRemoveErrorIsInUse(false);
   };
 
   const closeRemove = () => {
-    if (removing) return;
+    if (removing || deactivating) return;
     setPromotionToRemove(null);
     setRemoveError('');
+    setRemoveErrorIsInUse(false);
   };
 
   const closeModal = () => {
@@ -608,12 +589,6 @@ export function PromotionsPage() {
     setSelectedPromotion(null);
     setError('');
     setNotice(null);
-  };
-
-  const closePerformance = () => {
-    setPerformancePromotion(null);
-    setPerformance(null);
-    setPerformanceError('');
   };
 
   const togglePerformance = async (promotion) => {
@@ -657,19 +632,24 @@ export function PromotionsPage() {
   };
 
   const validate = () => {
-    if (!form.code.trim()) return 'Vui lòng nhập mã khuyến mãi.';
-    if (!form.name.trim()) return 'Vui lòng nhập tên chương trình.';
+    if (!form.code.trim() || !form.name.trim() || !form.startAt || !form.endAt) {
+      return 'Please fill in all required fields';
+    }
     const discountType = normalizeDiscountType(form.discountType);
     const discount = Number(form.discountValue);
-    if (discountType === 'PERCENTAGE' && (Number.isNaN(discount) || discount < 0 || discount > 100)) {
-      return 'Phần trăm giảm giá phải nằm trong khoảng 0 đến 100.';
+    if (discountType !== 'FREE_SHIPPING') {
+      if (Number.isNaN(discount) || discount <= 0 || (discountType === 'PERCENTAGE' && discount > 100)) {
+        return 'Invalid discount value';
+      }
     }
-    if (discountType === 'FIXED_AMOUNT' && (Number.isNaN(discount) || discount <= 0)) {
-      return 'Số tiền giảm phải lớn hơn 0.';
-    }
-    if (!form.startAt || !form.endAt) return 'Vui lòng nhập thời gian bắt đầu và kết thúc.';
-    if (new Date(form.endAt) <= new Date(form.startAt)) {
-      return 'Thời gian kết thúc phải sau thời gian bắt đầu.';
+    const start = new Date(form.startAt);
+    const end = new Date(form.endAt);
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startsInPast = modalMode === 'create' && startDay < today;
+    if (end <= start || startsInPast) {
+      return 'Invalid promotion date range';
     }
     return '';
   };
@@ -683,6 +663,9 @@ export function PromotionsPage() {
     startAt: form.startAt,
     endAt: form.endAt,
     active: form.active,
+    minOrderValue: form.minOrderValue === '' ? 0 : Number(form.minOrderValue),
+    usageLimitPerCustomer: form.usageLimitPerCustomer === '' ? null : Number(form.usageLimitPerCustomer),
+    totalUsageLimit: form.totalUsageLimit === '' ? null : Number(form.totalUsageLimit),
     productIds: parseProductIds(form.productIdsText),
   });
 
@@ -723,14 +706,47 @@ export function PromotionsPage() {
     if (!promotionToRemove) return;
     setRemoving(true);
     setRemoveError('');
+    setRemoveErrorIsInUse(false);
     try {
       await promotionApi.removePromotion(promotionToRemove.id);
       await loadPromotions();
       setPromotionToRemove(null);
+      showPageNotice('Promotion removed successfully', 'success');
     } catch (err) {
       setRemoveError(err.response?.data?.message || 'Không xóa được khuyến mãi.');
+      setRemoveErrorIsInUse(err.response?.status === 409);
     } finally {
       setRemoving(false);
+    }
+  };
+
+  const handleDeactivateFromRemove = async () => {
+    if (!promotionToRemove) return;
+    setDeactivating(true);
+    setRemoveError('');
+    try {
+      const normalized = normalizePromotion(promotionToRemove);
+      await promotionApi.updatePromotion(normalized.id, {
+        code: normalized.code,
+        name: normalized.name,
+        discountType: normalized.discountType,
+        discountValue: discountValueOf(normalized),
+        discountPercent: discountValueOf(normalized),
+        startAt: normalized.startAt,
+        endAt: normalized.endAt,
+        active: false,
+        minOrderValue: normalized.minOrderValue ?? 0,
+        usageLimitPerCustomer: normalized.usageLimitPerCustomer ?? null,
+        totalUsageLimit: normalized.totalUsageLimit ?? null,
+        productIds: normalized.productIds || [],
+      });
+      await loadPromotions();
+      setPromotionToRemove(null);
+      showPageNotice('Promotion deactivated successfully', 'success');
+    } catch (err) {
+      setRemoveError(err.response?.data?.message || 'Không tắt được khuyến mãi.');
+    } finally {
+      setDeactivating(false);
     }
   };
 
@@ -765,6 +781,21 @@ export function PromotionsPage() {
           + Tạo mới
         </button>
       </div>
+
+      {pageNotice && (
+        <div style={{
+          marginBottom: 12,
+          background: pageNotice.type === 'success' ? '#dcfce7' : '#fff1f2',
+          border: `1px solid ${pageNotice.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
+          color: pageNotice.type === 'success' ? '#15803d' : '#be123c',
+          borderRadius: 10,
+          padding: '10px 14px',
+          fontSize: 13,
+          fontWeight: 700,
+        }}>
+          {pageNotice.message}
+        </div>
+      )}
 
       <div style={{
         display: 'grid',
@@ -923,6 +954,9 @@ export function PromotionsPage() {
                   <td><StatusPill active={promotion.active} /></td>
                   <td>
                     <div className="admin-row-actions" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                      <button type="button" className="admin-row-action" onClick={() => togglePerformance(promotion)}>
+                        Hiệu quả
+                      </button>
                       <button type="button" className="admin-row-action admin-row-action--primary" onClick={() => openEdit(promotion)}>
                         Sửa
                       </button>
@@ -949,14 +983,20 @@ export function PromotionsPage() {
                           </div>
                         )}
 
-                        {rowPerformance && !rowPerformance.error && (
+                        {rowPerformance && !rowPerformance.error && Number(rowPerformance.usageCount || 0) === 0 && (
+                          <div style={{ border: '1px solid #e5e7eb', background: '#fff', color: '#64748b', borderRadius: 10, padding: 14, fontSize: 12.5, lineHeight: 1.45, textAlign: 'center' }}>
+                            {rowPerformance.message || 'No performance data available for this promotion'}
+                          </div>
+                        )}
+
+                        {rowPerformance && !rowPerformance.error && Number(rowPerformance.usageCount || 0) > 0 && (
                           <>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
                               {[
-                                ['Lượt sử dụng', rowPerformance.usageCount ?? 0],
+                                ['Tổng lượt sử dụng', rowPerformance.usageCount ?? 0],
+                                ['Số đơn hàng dùng', rowPerformance.orderCount ?? rowPerformance.usageCount ?? 0],
                                 ['Tổng giảm giá', formatMoney(rowPerformance.totalDiscountAmount)],
-                                ['Tổng giá trị đơn', formatMoney(rowPerformance.totalOrderAmount)],
-                                ['Giảm trung bình', formatMoney(rowPerformance.averageDiscountAmount)],
+                                ['Doanh thu từ các đơn này', formatMoney(rowPerformance.totalOrderAmount)],
                               ].map(([label, value]) => (
                                 <div key={label} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
                                   <span style={{ color: '#94a3b8', fontSize: 9.5, fontWeight: 850, letterSpacing: '.07em', textTransform: 'uppercase' }}>{label}</span>
@@ -966,7 +1006,7 @@ export function PromotionsPage() {
                             </div>
 
                             <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', color: '#64748b', fontSize: 12.5, lineHeight: 1.55, background: '#fff' }}>
-                              Dữ liệu được tổng hợp từ các đơn hàng đã gắn promotion này và hóa đơn tương ứng.
+                              Dữ liệu được tổng hợp từ các đơn hàng đã gắn promotion này và hóa đơn tương ứng. Doanh thu tính theo số tiền khách thực trả (sau giảm giá).
                             </div>
                           </>
                         )}
@@ -1001,8 +1041,11 @@ export function PromotionsPage() {
           promotion={promotionToRemove}
           onClose={closeRemove}
           onConfirm={handleRemove}
+          onDeactivate={handleDeactivateFromRemove}
           removing={removing}
+          deactivating={deactivating}
           error={removeError}
+          canDeactivate={removeErrorIsInUse}
         />
       )}
 

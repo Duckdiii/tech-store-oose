@@ -83,9 +83,12 @@ public class PromotionServiceImpl implements PromotionService {
             throw new DuplicatePromotionCodeException();
         }
 
+        validateDateRange(request.startAt(), request.endAt());
+
         List<Product> products = resolveProducts(request.productIds());
         PromotionDiscountType discountType = parseDiscountType(request.discountType());
         Double discountValue = resolveDiscountValue(discountType, request.discountValue(), request.discountPercent());
+        LocalDateTime now = LocalDateTime.now();
         Promotion promotion = new Promotion(
                 code,
                 name,
@@ -93,11 +96,23 @@ public class PromotionServiceImpl implements PromotionService {
                 discountValue,
                 request.startAt(),
                 request.endAt(),
-                request.active() == null || request.active(),
+                !request.startAt().isAfter(now),
                 null);
+        promotion.setMinOrderValue(request.minOrderValue() == null ? BigDecimal.ZERO : request.minOrderValue());
+        promotion.setUsageLimitPerCustomer(request.usageLimitPerCustomer());
+        promotion.setTotalUsageLimit(request.totalUsageLimit());
         products.forEach(promotion::addProduct);
 
         return toResponse(promotionRepository.save(promotion));
+    }
+
+    private void validateDateRange(LocalDateTime startAt, LocalDateTime endAt) {
+        if (startAt == null || endAt == null) {
+            throw new IllegalArgumentException("Please fill in all required fields");
+        }
+        if (!endAt.isAfter(startAt) || startAt.toLocalDate().isBefore(java.time.LocalDate.now())) {
+            throw new IllegalArgumentException("Invalid promotion date range");
+        }
     }
 
     @Override
@@ -108,7 +123,8 @@ public class PromotionServiceImpl implements PromotionService {
 
         List<Product> requestedProducts = resolveProducts(request.productIds());
         long usageCount = getUsageCount(promotion.getId());
-        List<String> restrictedFields = restrictedFields(promotion, request, requestedProducts, usageCount);
+        boolean isActive = promotion.isActiveNow();
+        List<String> restrictedFields = restrictedFields(promotion, request, requestedProducts, usageCount, isActive);
 
         if (restrictedFields.isEmpty()) {
             updateEditableFields(promotion, request, requestedProducts, restrictedFields);
@@ -121,10 +137,13 @@ public class PromotionServiceImpl implements PromotionService {
 
         updateEditableFields(promotion, request, requestedProducts, restrictedFields);
         Promotion saved = promotionRepository.save(promotion);
+        String message = isActive
+                ? "Some fields cannot be edited while the promotion is active"
+                : usageCount > 0
+                        ? "Some fields cannot be edited because this promotion already has usage history"
+                        : "Some fields cannot be edited in the current time window";
         return new PromotionOperationResponseDTO(
-                    usageCount > 0
-                            ? "Some fields cannot be edited because this promotion already has usage history"
-                            : "Some fields cannot be edited in the current time window",
+                    message,
                     restrictedFields,
                     toResponse(saved));
     }
@@ -177,7 +196,14 @@ public class PromotionServiceImpl implements PromotionService {
         }
 
         LocalDateTime nextStartAt = restrictedFields.contains("startAt") ? promotion.getStartAt() : request.startAt();
+        if (nextStartAt == null || request.endAt() == null || !request.endAt().isAfter(nextStartAt)) {
+            throw new IllegalArgumentException("Invalid promotion date range");
+        }
         promotion.changeDates(nextStartAt, request.endAt());
+
+        promotion.setMinOrderValue(request.minOrderValue() == null ? BigDecimal.ZERO : request.minOrderValue());
+        promotion.setUsageLimitPerCustomer(request.usageLimitPerCustomer());
+        promotion.setTotalUsageLimit(request.totalUsageLimit());
 
         if (!restrictedFields.contains("productIds")) {
             replaceProducts(promotion, requestedProducts);
@@ -194,18 +220,20 @@ public class PromotionServiceImpl implements PromotionService {
             Promotion promotion,
             UpdatePromotionRequestDTO request,
             List<Product> requestedProducts,
-            long usageCount) {
+            long usageCount,
+            boolean isActive) {
         List<String> fields = new ArrayList<>();
         PromotionDiscountType requestedType = parseDiscountType(request.discountType());
         Double requestedValue = resolveDiscountValue(requestedType, request.discountValue(), request.discountPercent());
         boolean hasUsage = usageCount > 0;
-        if (hasUsage && !Objects.equals(promotion.getCode(), normalizeCode(request.code()))) {
+        boolean locksSensitiveFields = isActive || hasUsage;
+        if (locksSensitiveFields && !Objects.equals(promotion.getCode(), normalizeCode(request.code()))) {
             fields.add("code");
         }
-        if (hasUsage && !Objects.equals(promotion.effectiveDiscountType(), requestedType)) {
+        if (locksSensitiveFields && !Objects.equals(promotion.effectiveDiscountType(), requestedType)) {
             fields.add("discountType");
         }
-        if (hasUsage && !Objects.equals(promotion.discountValue(), requestedValue)) {
+        if (locksSensitiveFields && !Objects.equals(promotion.discountValue(), requestedValue)) {
             fields.add("discountValue");
         }
         if (LocalDateTime.now().isAfter(promotion.getStartAt()) && !Objects.equals(promotion.getStartAt(), request.startAt())) {
@@ -278,6 +306,9 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getStartAt(),
                 promotion.getEndAt(),
                 promotion.getActive(),
+                promotion.getMinOrderValue(),
+                promotion.getUsageLimitPerCustomer(),
+                promotion.getTotalUsageLimit(),
                 getUsageCount(promotion.getId()),
                 promotion.getProducts().stream().map(Product::getId).toList(),
                 promotion.getCreatedAt(),
@@ -292,6 +323,8 @@ public class PromotionServiceImpl implements PromotionService {
         BigDecimal averageDiscountAmount = usageCount == 0
                 ? BigDecimal.ZERO
                 : totalDiscountAmount.divide(BigDecimal.valueOf(usageCount), 2, RoundingMode.HALF_UP);
+        // Exception Flow 2a
+        String message = usageCount == 0 ? "No performance data available for this promotion" : null;
 
         return new PromotionPerformanceResponseDTO(
                 promotion.getId(),
@@ -304,9 +337,11 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getStartAt(),
                 promotion.getEndAt(),
                 usageCount,
+                usageCount,
                 totalDiscountAmount,
                 totalOrderAmount,
-                averageDiscountAmount);
+                averageDiscountAmount,
+                message);
     }
 
     private BigDecimal defaultAmount(BigDecimal value) {
@@ -380,16 +415,16 @@ public class PromotionServiceImpl implements PromotionService {
             return 0.0;
         }
         if (value == null) {
-            throw new IllegalArgumentException("Discount value is required");
+            throw new IllegalArgumentException("Please fill in all required fields");
         }
         if (PromotionDiscountType.PERCENTAGE.equals(discountType)) {
-            if (value < 0 || value > 100) {
-                throw new IllegalArgumentException("Percentage discount must be between 0 and 100");
+            if (value <= 0 || value > 100) {
+                throw new IllegalArgumentException("Invalid discount value");
             }
             return value;
         }
         if (value <= 0) {
-            throw new IllegalArgumentException("Fixed amount discount must be greater than 0");
+            throw new IllegalArgumentException("Invalid discount value");
         }
         return value;
     }

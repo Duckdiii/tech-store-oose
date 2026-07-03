@@ -1,5 +1,6 @@
 package com.oose.tech_store.dto.promotion;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -13,6 +14,9 @@ public record PromotionResponseDTO(
         LocalDateTime startAt,
         LocalDateTime endAt,
         Boolean active,
+        BigDecimal minOrderValue,
+        Integer usageLimitPerCustomer,
+        Integer totalUsageLimit,
         long usageCount,
         List<String> productIds,
         LocalDateTime createdAt,

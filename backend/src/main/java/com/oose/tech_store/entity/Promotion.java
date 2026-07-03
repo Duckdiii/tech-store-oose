@@ -46,6 +46,15 @@ public class Promotion extends BaseEntity {
         @Column(name = "active", nullable = false)
         private Boolean active = true;
 
+        @Column(name = "min_order_value")
+        private BigDecimal minOrderValue = BigDecimal.ZERO;
+
+        @Column(name = "usage_limit_per_customer")
+        private Integer usageLimitPerCustomer;
+
+        @Column(name = "total_usage_limit")
+        private Integer totalUsageLimit;
+
         public Promotion(String code, String name, Double discountPercent, LocalDateTime startAt, LocalDateTime endAt,
                         Boolean active, Product product) {
                 this(code, name, PromotionDiscountType.PERCENTAGE, discountPercent, startAt, endAt, active, product);

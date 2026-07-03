@@ -83,7 +83,19 @@ const translations = {
     'Unable to load login log information. Please try again later': 'Không thể tải thông tin nhật ký đăng nhập. Vui lòng thử lại sau.',
     'You do not have permission to view login logs': 'Bạn không có quyền xem nhật ký đăng nhập.',
     'No revenue data found for the selected period': 'Không tìm thấy dữ liệu doanh thu trong khoảng thời gian đã chọn.',
-    'Unable to load report data. Please try again later.': 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.'
+    'Unable to load report data. Please try again later.': 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.',
+    'Are you sure you want to remove this supplier? This action cannot be undone': 'Bạn có chắc muốn xóa nhà cung cấp này? Hành động này không thể hoàn tác.',
+    'Supplier removed successfully': 'Xóa nhà cung cấp thành công',
+    'Cannot remove supplier with active Purchase Orders. Please cancel or complete all related orders first': 'Không thể xóa nhà cung cấp có đơn nhập hàng đang hoạt động. Vui lòng hủy hoặc hoàn thành tất cả đơn hàng liên quan trước.',
+    'Unable to connect to the system. Please try again later': 'Không thể kết nối đến hệ thống. Vui lòng thử lại sau.',
+    'Please fill in all required fields': 'Vui lòng điền đầy đủ các trường bắt buộc.',
+    'Purchase Order created successfully': 'Tạo đơn nhập hàng thành công',
+    'Please add at least one product to the order': 'Vui lòng thêm ít nhất một sản phẩm vào đơn hàng.',
+    'Quantity and unit price must be greater than zero': 'Số lượng và đơn giá phải lớn hơn 0.',
+    'Expected delivery date must be in the future': 'Ngày dự kiến giao hàng phải ở trong tương lai.',
+    'Supply Order status updated successfully': 'Cập nhật trạng thái đơn nhập hàng thành công',
+    'Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED': 'Chuyển trạng thái không hợp lệ. Vui lòng theo đúng thứ tự: PENDING → CONFIRMED → SHIPPING → DELIVERED.',
+    'This Supply Order has already been completed or cancelled and cannot be updated': 'Đơn nhập hàng này đã hoàn tất hoặc đã hủy nên không thể cập nhật.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -165,7 +177,19 @@ const translations = {
     'Unable to load login log information. Please try again later': 'Unable to load login log information. Please try again later',
     'You do not have permission to view login logs': 'You do not have permission to view login logs',
     'No revenue data found for the selected period': 'No revenue data found for the selected period',
-    'Unable to load report data. Please try again later.': 'Unable to load report data. Please try again later.'
+    'Unable to load report data. Please try again later.': 'Unable to load report data. Please try again later.',
+    'Are you sure you want to remove this supplier? This action cannot be undone': 'Are you sure you want to remove this supplier? This action cannot be undone',
+    'Supplier removed successfully': 'Supplier removed successfully',
+    'Cannot remove supplier with active Purchase Orders. Please cancel or complete all related orders first': 'Cannot remove supplier with active Purchase Orders. Please cancel or complete all related orders first',
+    'Unable to connect to the system. Please try again later': 'Unable to connect to the system. Please try again later',
+    'Please fill in all required fields': 'Please fill in all required fields',
+    'Purchase Order created successfully': 'Purchase Order created successfully',
+    'Please add at least one product to the order': 'Please add at least one product to the order',
+    'Quantity and unit price must be greater than zero': 'Quantity and unit price must be greater than zero',
+    'Expected delivery date must be in the future': 'Expected delivery date must be in the future',
+    'Supply Order status updated successfully': 'Supply Order status updated successfully',
+    'Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED': 'Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED',
+    'This Supply Order has already been completed or cancelled and cannot be updated': 'This Supply Order has already been completed or cancelled and cannot be updated'
   }
 };
 
