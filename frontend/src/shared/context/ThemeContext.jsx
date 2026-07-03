@@ -76,7 +76,10 @@ const translations = {
     'Export information was not found': 'Không tìm thấy thông tin xuất kho.',
     'Unable to generate receipt. Please try again later': 'Không thể tạo phiếu xuất kho. Vui lòng thử lại sau.',
     'Unable to retrieve inventory status': 'Không thể lấy trạng thái tồn kho.',
-    'Unable to record inventory change status': 'Không thể ghi nhận trạng thái thay đổi tồn kho.'
+    'Unable to record inventory change status': 'Không thể ghi nhận trạng thái thay đổi tồn kho.',
+    'Unable to load warehouse log data. Please try again later': 'Không thể tải dữ liệu nhật ký kho. Vui lòng thử lại sau.',
+    'Invalid filter input. Please check the selected conditions': 'Điều kiện lọc không hợp lệ. Vui lòng kiểm tra lại.',
+    'No warehouse log records were found matching the selected criteria': 'Không tìm thấy nhật ký kho nào phù hợp với điều kiện đã chọn.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -151,7 +154,10 @@ const translations = {
     'Export information was not found': 'Export information was not found',
     'Unable to generate receipt. Please try again later': 'Unable to generate receipt. Please try again later',
     'Unable to retrieve inventory status': 'Unable to retrieve inventory status',
-    'Unable to record inventory change status': 'Unable to record inventory change status'
+    'Unable to record inventory change status': 'Unable to record inventory change status',
+    'Unable to load warehouse log data. Please try again later': 'Unable to load warehouse log data. Please try again later',
+    'Invalid filter input. Please check the selected conditions': 'Invalid filter input. Please check the selected conditions',
+    'No warehouse log records were found matching the selected criteria': 'No warehouse log records were found matching the selected criteria'
   }
 };
 

@@ -46,16 +46,26 @@ public class WarehouseLogService {
         String performedBy = cleanSearchText(request.performedBy());
         List<WarehouseLogSummaryDTO> logs = new ArrayList<>();
 
-        if (requestedType == WarehouseLogType.ALL || requestedType == WarehouseLogType.IMPORT) {
-            searchImportLogs(request, performedBy).stream()
-                    .map(this::toImportSummary)
-                    .forEach(logs::add);
+        try {
+            if (requestedType == WarehouseLogType.ALL || requestedType == WarehouseLogType.IMPORT) {
+                searchImportLogs(request, performedBy).stream()
+                        .map(this::toImportSummary)
+                        .forEach(logs::add);
+            }
+
+            if (requestedType == WarehouseLogType.ALL || requestedType == WarehouseLogType.EXPORT) {
+                searchExportLogs(request, performedBy).stream()
+                        .map(this::toExportSummary)
+                        .forEach(logs::add);
+            }
+        } catch (Exception exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to load warehouse log data. Please try again later", exception);
         }
 
-        if (requestedType == WarehouseLogType.ALL || requestedType == WarehouseLogType.EXPORT) {
-            searchExportLogs(request, performedBy).stream()
-                    .map(this::toExportSummary)
-                    .forEach(logs::add);
+        if (logs.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "No warehouse log records were found matching the selected criteria");
         }
 
         logs.sort(Comparator.comparing(WarehouseLogSummaryDTO::occurredAt).reversed());
@@ -212,7 +222,8 @@ public class WarehouseLogService {
     private void validateDateRange(LocalDateTime from, LocalDateTime to) {
         if (from != null && to != null && from.isAfter(to)) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "from must be before or equal to to");
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid filter input. Please check the selected conditions");
         }
     }
 

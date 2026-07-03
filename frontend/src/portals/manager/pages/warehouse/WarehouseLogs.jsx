@@ -6,6 +6,7 @@ import {
   getWarehouseLogs,
   saveDownload,
 } from '../../../../api/warehouseApi';
+import { useTheme } from '../../../../shared/context/ThemeContext';
 import { ApiMessage } from './components';
 import { WarehouseLogDetail } from './WarehouseLogDetail';
 import { WarehouseLogFilters } from './WarehouseLogFilters';
@@ -14,6 +15,7 @@ import { WarehouseLogTable } from './WarehouseLogTable';
 const initialFilters = { from: '', to: '', logType: '', status: '', performedBy: '' };
 
 export function WarehouseLogs() {
+  const { t } = useTheme();
   const [filters, setFilters] = useState(initialFilters);
   const [logs, setLogs] = useState([]);
   const [detail, setDetail] = useState(null);
@@ -34,7 +36,7 @@ export function WarehouseLogs() {
       setDetail(null);
     } catch (requestError) {
       setLogs([]);
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ export function WarehouseLogs() {
     try {
       setDetail(await getWarehouseLogDetail(log.logType, log.logId));
     } catch (requestError) {
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     }
   };
 
@@ -54,7 +56,7 @@ export function WarehouseLogs() {
     try {
       saveDownload(await downloadWarehouseLogs(filters, format));
     } catch (requestError) {
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     }
   };
 
