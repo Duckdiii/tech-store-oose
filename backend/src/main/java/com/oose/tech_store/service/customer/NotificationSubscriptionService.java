@@ -111,7 +111,7 @@ public class NotificationSubscriptionService {
                             }
                         }
                         throw new ResourceNotFoundException(
-                                "Product variant or product not found with ID: " + productVariantId);
+                                "This product is no longer available for subscription.");
                     }
                     return variants.get(0);
                 });

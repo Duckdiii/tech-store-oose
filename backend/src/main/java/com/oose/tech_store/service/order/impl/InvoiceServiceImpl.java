@@ -45,7 +45,9 @@ public class InvoiceServiceImpl implements InvoiceService {
                                 invoice.getOriginalAmount(),
                                 invoice.getDiscountAmount(),
                                 invoice.getVatAmount(),
-                                invoice.getFinalAmount());
+                                invoice.getFinalAmount(),
+                                invoice.getOrder().getCustomer().getFullName(),
+                                invoice.getOrder().getAddress().getFullAddress());
         }
 
         @Override

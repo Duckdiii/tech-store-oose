@@ -15,5 +15,7 @@ public record InvoiceResponse(
         BigDecimal originalAmount,
         BigDecimal discountAmount,
         BigDecimal vatAmount,
-        BigDecimal finalAmount
+        BigDecimal finalAmount,
+        String customerName,
+        String shippingAddress
 ) {}

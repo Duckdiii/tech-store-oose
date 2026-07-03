@@ -448,6 +448,25 @@ export function CheckoutPage() {
     }
   };
 
+  const handleDownloadPdf = async (orderId) => {
+    try {
+      const response = await httpClient.get(`/invoices/order/${orderId}/pdf`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading invoice PDF:', error);
+      showToast(t('Unable to generate invoice PDF. Please try again later.'), 'error');
+    }
+  };
+
   const printInvoice = async () => {
     if (!success) return;
     try {
@@ -589,7 +608,7 @@ export function CheckoutPage() {
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Xem hóa đơn
               </button>
-              <button onClick={() => window.open(`/api/invoices/order/${success.orderId}/pdf`, '_blank')}
+              <button onClick={() => handleDownloadPdf(success.orderId)}
                 style={{ flex: 1, height: 46, background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                 📥 Tải PDF
               </button>

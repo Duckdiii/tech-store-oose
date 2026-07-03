@@ -3,6 +3,7 @@ import { fmt } from '../../../utils/format';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 import { httpClient } from '../../../api/httpClient';
 
 function PackageIcon({ size = 32, color = '#6b7280' }) {
@@ -34,6 +35,7 @@ const STATUS_API_MAP = {
 export function OrdersPage() {
   const { isLoggedIn, user } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTheme();
   const [params] = useSearchParams();
   const [expanded, setExpanded] = useState(params.get('new') === '1' ? 'new' : null);
   const [filter, setFilter] = useState('all');
@@ -83,6 +85,99 @@ export function OrdersPage() {
       console.error('Error fetching order details:', error);
     } finally {
       setLoadingDetails(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const printInvoice = async (orderId) => {
+    try {
+      const response = await httpClient.get(`/invoices/order/${orderId}`);
+      const invoice = response.data;
+      
+      const win = window.open('', '_blank', 'width=820,height=680');
+      win.document.write(`<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<title>Hóa đơn ${invoice.invoiceId} — TechStore</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;padding:48px;color:#0d1117;font-size:14px}
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid #0d1117;margin-bottom:28px}
+  .brand{font-size:22px;font-weight:900;letter-spacing:-0.5px}
+  .brand small{display:block;font-size:10px;font-weight:400;color:#6b7280;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px}
+  .meta{text-align:right}.meta h2{font-size:16px;font-weight:900;margin-bottom:4px}
+  .meta p{font-size:12px;color:#6b7280;line-height:1.6}
+  .info{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
+  .ib h4{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:#9ca3af;margin-bottom:8px;font-weight:700}
+  .ib p{font-size:13px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-bottom:24px}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;border-bottom:1.5px solid #e9ecef;padding:8px 10px;text-align:left}
+  th:last-child,td:last-child{text-align:right}
+  td{padding:12px 10px;font-size:13px;border-bottom:1px solid #f4f5f7}
+  .tot{max-width:240px;margin-left:auto}
+  .tr{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:#6b7280}
+  .tf{display:flex;justify-content:space-between;font-size:16px;font-weight:900;border-top:2px solid #0d1117;padding-top:10px;margin-top:6px}
+  .foot{margin-top:40px;border-top:1px solid #e9ecef;padding-top:14px;text-align:center;font-size:11px;color:#9ca3af}
+  .btn-pdf {display: inline-block; margin-bottom: 20px; padding: 8px 14px; background: #0d1117; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px;}
+</style></head><body>
+<div style="text-align: right;">
+  <a href="/api/invoices/order/${invoice.orderId}/pdf" target="_blank" class="btn-pdf">📥 Tải PDF Hóa Đơn Gốc</a>
+</div>
+<div class="hd">
+  <div class="brand">TechStore<small>Điện thoại chính hãng</small></div>
+  <div class="meta"><h2>HÓA ĐƠN BÁN HÀNG</h2><p>Số hóa đơn: #${invoice.invoiceId}<br>Mã đơn: #${invoice.orderId}<br>Ngày lập: ${new Date(invoice.issuedAt).toLocaleDateString('vi-VN')}<br>Thanh toán: ${invoice.paymentMethod}</p></div>
+</div>
+<div class="info">
+  <div class="ib"><h4>Khách hàng</h4><p><strong>${invoice.customerName || ''}</strong></p></div>
+  <div class="ib"><h4>Địa chỉ giao hàng</h4><p>${invoice.shippingAddress || ''}</p></div>
+</div>
+<table><thead><tr><th>#</th><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+<tbody>${invoice.items.map((item, i) => `
+  <tr>
+    <td>${i + 1}</td>
+    <td>
+      <strong>${item.productName}</strong>
+      ${item.variantDisplay ? `<br><small style="color: #6b7280;">Màu sắc/Phiên bản: ${item.variantDisplay}</small>` : ''}
+      ${item.bundleServices && item.bundleServices.length > 0 ? `
+        <div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #ddd; font-size: 11.5px; color: #4b5563;">
+          Dịch vụ đi kèm: ${item.bundleServices.map(s => `${s.name} (+${s.price.toLocaleString('vi-VN')}₫)`).join(', ')}
+        </div>
+      ` : ''}
+    </td>
+    <td>${item.quantity}</td>
+    <td>${item.unitPrice.toLocaleString('vi-VN')}₫</td>
+    <td>${item.subtotal.toLocaleString('vi-VN')}₫</td>
+  </tr>`).join('')}</tbody></table>
+<div class="tot">
+  <div class="tr"><span>Tạm tính</span><span>${Number(invoice.originalAmount).toLocaleString('vi-VN')}₫</span></div>
+  <div class="tr"><span>Giảm giá</span><span>-${Number(invoice.discountAmount).toLocaleString('vi-VN')}₫</span></div>
+  <div class="tr"><span>Thuế VAT</span><span>+${Number(invoice.vatAmount).toLocaleString('vi-VN')}₫</span></div>
+  <div class="tf"><span>TỔNG CỘNG</span><span>${Number(invoice.finalAmount).toLocaleString('vi-VN')}₫</span></div>
+</div>
+<div class="foot">Cảm ơn quý khách đã tin tưởng mua hàng tại TechStore — Hotline: 1800 6789</div>
+</body></html>`);
+      win.document.close();
+      setTimeout(() => win.print(), 400);
+    } catch (error) {
+      console.error('Error fetching invoice details:', error);
+      showToast(t('Unable to load invoice details.'), 'error');
+    }
+  };
+
+  const handleDownloadPdf = async (orderId) => {
+    try {
+      const response = await httpClient.get(`/invoices/order/${orderId}/pdf`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading invoice PDF:', error);
+      showToast(t('Unable to generate invoice PDF. Please try again later.'), 'error');
     }
   };
 
@@ -210,13 +305,20 @@ export function OrdersPage() {
                             ))}
                           </div>
                           <div style={{ borderTop: '1px solid #e9ecef', marginTop: 16, paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                               {detail.orderStatus === 'AWAITING_CONFIRMATION' && (
                                 <button onClick={() => showToast('Yêu cầu hủy đơn hàng đã được gửi đến cửa hàng.', 'success')} style={{ padding: '8px 14px', background: '#fef2f2', color: '#e11d48', border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Hủy đơn</button>
                               )}
                               {detail.orderStatus === 'COMPLETED' && (
                                 <button onClick={() => showToast('Tính năng đánh giá đang được phát triển.', 'info')} style={{ padding: '8px 14px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Đánh giá</button>
                               )}
+                              <button onClick={() => printInvoice(detail.orderId)} style={{ padding: '8px 14px', background: '#fff', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                Xem hóa đơn
+                              </button>
+                              <button onClick={() => handleDownloadPdf(detail.orderId)} style={{ padding: '8px 14px', background: '#fff', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                📥 Tải PDF
+                              </button>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                               {Number(detail.discountAmount) > 0 && (

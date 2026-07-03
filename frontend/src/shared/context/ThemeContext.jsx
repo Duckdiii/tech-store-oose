@@ -52,7 +52,11 @@ const translations = {
     'This bundle service is currently unavailable': 'Dịch vụ đính kèm này hiện tại không khả dụng.',
     'Unable to add bundle service. Please try again later.': 'Không thể thêm dịch vụ đính kèm. Vui lòng thử lại sau.',
     'Payment was cancelled. Please try again.': 'Giao dịch thanh toán đã bị hủy. Vui lòng thử lại.',
-    'Payment service is currently unavailable. Please try again later.': 'Dịch vụ thanh toán hiện tại không khả dụng. Vui lòng thử lại sau.'
+    'Payment service is currently unavailable. Please try again later.': 'Dịch vụ thanh toán hiện tại không khả dụng. Vui lòng thử lại sau.',
+    'You have successfully subscribed to product updates.': 'Bạn đã đăng ký nhận thông báo cập nhật sản phẩm thành công.',
+    'You have successfully unsubscribed from product updates.': 'Bạn đã hủy đăng ký nhận thông báo cập nhật sản phẩm thành công.',
+    'This product is no longer available for subscription.': 'Sản phẩm này hiện không còn khả dụng để đăng ký thông báo.',
+    'Unable to update subscription. Please try again later.': 'Không thể cập nhật đăng ký thông báo. Vui lòng thử lại sau.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -103,7 +107,11 @@ const translations = {
     'This bundle service is currently unavailable': 'This bundle service is currently unavailable',
     'Unable to add bundle service. Please try again later.': 'Unable to add bundle service. Please try again later.',
     'Payment was cancelled. Please try again.': 'Payment was cancelled. Please try again.',
-    'Payment service is currently unavailable. Please try again later.': 'Payment service is currently unavailable. Please try again later.'
+    'Payment service is currently unavailable. Please try again later.': 'Payment service is currently unavailable. Please try again later.',
+    'You have successfully subscribed to product updates.': 'You have successfully subscribed to product updates.',
+    'You have successfully unsubscribed from product updates.': 'You have successfully unsubscribed from product updates.',
+    'This product is no longer available for subscription.': 'This product is no longer available for subscription.',
+    'Unable to update subscription. Please try again later.': 'Unable to update subscription. Please try again later.'
   }
 };
 

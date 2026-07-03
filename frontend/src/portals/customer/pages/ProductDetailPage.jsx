@@ -5,6 +5,7 @@ import { productApi } from '../../../api/productApi';
 import { notificationApi } from '../../../api/notificationApi';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 
 
@@ -66,6 +67,7 @@ export function ProductDetailPage() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { isLoggedIn } = useAuth();
+  const { t } = useTheme();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -211,14 +213,15 @@ export function ProductDetailPage() {
       if (subscribed) {
         await notificationApi.unsubscribeProduct(selectedVariant.id);
         setSubscribed(false);
-        setSubscriptionMessage('Đã hủy đăng ký thông báo cho sản phẩm này.');
+        setSubscriptionMessage(t('You have successfully unsubscribed from product updates.'));
       } else {
         await notificationApi.subscribeProduct(selectedVariant.id);
         setSubscribed(true);
-        setSubscriptionMessage('Đã đăng ký nhận thông báo khi sản phẩm có cập nhật tồn kho.');
+        setSubscriptionMessage(t('You have successfully subscribed to product updates.'));
       }
     } catch (err) {
-      setSubscriptionMessage(err.response?.data?.message || 'Không thể cập nhật đăng ký thông báo.');
+      const rawMsg = err.response?.data?.message || 'Unable to update subscription. Please try again later.';
+      setSubscriptionMessage(t(rawMsg));
     } finally {
       setSubscriptionBusy(false);
     }
