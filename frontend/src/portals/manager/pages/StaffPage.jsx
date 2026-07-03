@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
 import { initials, sortRows } from '../utils';
 import { loginLogApi } from '../../../api/loginLogApi';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 const LOGIN_LOG_STATUSES = ['Tất cả', 'SUCCESS', 'FAILED'];
 const LOGIN_LOG_ROLES    = ['Tất cả', 'STAFF', 'MANAGER'];
@@ -13,17 +14,26 @@ function formatLogTime(isoString) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function getLoginLogError(err) {
+  const status = err?.response?.status;
+  if (status === 403) return 'You do not have permission to view login logs';
+  return err?.response?.data?.message || 'Unable to load login log information. Please try again later';
+}
+
 function LoginLogTab() {
+  const { t } = useTheme();
   const [filterEmail,  setFilterEmail]  = useState('');
   const [filterRole,   setFilterRole]   = useState('Tất cả');
   const [filterStatus, setFilterStatus] = useState('Tất cả');
   const [filterDate,   setFilterDate]   = useState('');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
+      setError('');
       try {
         const params = {};
         if (filterEmail.trim()) params.email = filterEmail.trim();
@@ -36,7 +46,8 @@ function LoginLogTab() {
         const rows = await loginLogApi.search(params);
         setLogs(rows);
       } catch (err) {
-        console.error('Failed to fetch login logs:', err);
+        setLogs([]);
+        setError(t(getLoginLogError(err)));
       } finally {
         setLoading(false);
       }
@@ -60,7 +71,7 @@ function LoginLogTab() {
       a.href = url; a.download = 'nhat-ky-dang-nhap.csv'; a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Failed to export login logs:', err);
+      setError(t(getLoginLogError(err)));
     }
   };
 
@@ -75,6 +86,12 @@ function LoginLogTab() {
         </div>
         <button className="admin-button admin-button--secondary" onClick={exportCsv}>Xuất nhật ký</button>
       </div>
+
+      {error && (
+        <p style={{ color: 'var(--color-danger, #e53e3e)', background: 'var(--color-danger-bg, #fff5f5)', border: '1px solid var(--color-danger, #e53e3e)', borderRadius: 8, padding: '10px 16px', marginBottom: 12, fontSize: 14 }}>
+          {error}
+        </p>
+      )}
 
       <article className="admin-card">
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>

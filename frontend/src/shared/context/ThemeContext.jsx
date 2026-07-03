@@ -79,7 +79,9 @@ const translations = {
     'Unable to record inventory change status': 'Không thể ghi nhận trạng thái thay đổi tồn kho.',
     'Unable to load warehouse log data. Please try again later': 'Không thể tải dữ liệu nhật ký kho. Vui lòng thử lại sau.',
     'Invalid filter input. Please check the selected conditions': 'Điều kiện lọc không hợp lệ. Vui lòng kiểm tra lại.',
-    'No warehouse log records were found matching the selected criteria': 'Không tìm thấy nhật ký kho nào phù hợp với điều kiện đã chọn.'
+    'No warehouse log records were found matching the selected criteria': 'Không tìm thấy nhật ký kho nào phù hợp với điều kiện đã chọn.',
+    'Unable to load login log information. Please try again later': 'Không thể tải thông tin nhật ký đăng nhập. Vui lòng thử lại sau.',
+    'You do not have permission to view login logs': 'Bạn không có quyền xem nhật ký đăng nhập.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -157,7 +159,9 @@ const translations = {
     'Unable to record inventory change status': 'Unable to record inventory change status',
     'Unable to load warehouse log data. Please try again later': 'Unable to load warehouse log data. Please try again later',
     'Invalid filter input. Please check the selected conditions': 'Invalid filter input. Please check the selected conditions',
-    'No warehouse log records were found matching the selected criteria': 'No warehouse log records were found matching the selected criteria'
+    'No warehouse log records were found matching the selected criteria': 'No warehouse log records were found matching the selected criteria',
+    'Unable to load login log information. Please try again later': 'Unable to load login log information. Please try again later',
+    'You do not have permission to view login logs': 'You do not have permission to view login logs'
   }
 };
 
