@@ -57,12 +57,14 @@ public class AccountManagementService {
         try {
             Account target = findAccount(targetAccountId);
             if (target.isBlocked()) {
-                throw new ApiException(HttpStatus.CONFLICT, "Tài khoản này đã ở trạng thái Đã khóa");
+                // Exception Flow 8a
+                throw new ApiException(HttpStatus.CONFLICT, "This account already has Blocked status");
             }
             if (target.getId().equals(managerAccountId) || target.getUser() instanceof Manager
                     || target.isDeleted()) {
+                // Exception Flow 8b
                 throw new ApiException(HttpStatus.FORBIDDEN,
-                        "Không được phép khóa tài khoản này");
+                        "System rules do not allow blocking this account");
             }
             target.block();
             accountRepository.saveAndFlush(target);
@@ -73,8 +75,9 @@ public class AccountManagementService {
         } catch (ApiException exception) {
             throw exception;
         } catch (DataAccessException exception) {
+            // Exception Flow 8c
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Không thể khóa tài khoản. Vui lòng thử lại sau");
+                    "Unable to block account. Please try again later");
         }
     }
 
@@ -115,7 +118,8 @@ public class AccountManagementService {
         try {
             String email = request.email().trim().toLowerCase(Locale.ROOT);
             if (accountRepository.existsByEmailIgnoreCase(email)) {
-                throw new ApiException(HttpStatus.CONFLICT, "Email đã tồn tại");
+                // Exception Flow 4c (Add Staff) / 1b (Create Account)
+                throw new ApiException(HttpStatus.CONFLICT, "Email already exists");
             }
             if (staffRepository.existsByStaffCodeIgnoreCase(request.staffCode().trim())) {
                 throw new ApiException(HttpStatus.CONFLICT, "Mã nhân viên đã tồn tại");
@@ -132,8 +136,9 @@ public class AccountManagementService {
         } catch (ApiException exception) {
             throw exception;
         } catch (DataAccessException exception) {
+            // Exception Flow 6a
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Không thể thêm nhân viên. Vui lòng thử lại sau");
+                    "Unable to add Staff. Please try again later");
         }
     }
 
@@ -167,8 +172,9 @@ public class AccountManagementService {
             return accountRepository.saveAndFlush(new Account(email,
                     passwordEncoder.encode(initialPassword), staff, AccountStatus.ACTIVE));
         } catch (DataAccessException exception) {
+            // Exception Flow 1c (Create Account) / 5a (Add Staff)
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Không thể tạo tài khoản nhân viên. Vui lòng thử lại sau");
+                    "Unable to create Staff account. Please try again later");
         }
     }
 
