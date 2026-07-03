@@ -124,6 +124,36 @@ export function ExportFlow({ products = [], variants = [], onInventoryChanged })
     }
   };
 
+  const printReceipt = async () => {
+    if (!result?.receipt?.id) return;
+    setError('');
+    try {
+      const blob = await downloadReceipt(result.receipt.id);
+      const text = await blob.text();
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>In phiếu xuất kho</title>
+            <style>
+              body { font-family: monospace; padding: 20px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+              @media print {
+                body { padding: 0; }
+              }
+            </style>
+          </head>
+          <body>${text}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    } catch (requestError) {
+      setError(t(getApiError(requestError)));
+    }
+  };
+
   return (
     <section className="warehouse-flow">
       <div className="admin-page-intro">
@@ -218,9 +248,14 @@ export function ExportFlow({ products = [], variants = [], onInventoryChanged })
         <div className="warehouse-result">
           <ApiMessage success={`${result.message}. Mã phiếu xuất: ${result.exportLogId}.`} />
           {result.receipt && (
-            <button className="admin-button admin-button--secondary" onClick={getReceipt}>
-              Tải phiếu xuất
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <button type="button" className="admin-button admin-button--secondary" onClick={getReceipt}>
+                Tải phiếu xuất
+              </button>
+              <button type="button" className="admin-button admin-button--secondary" onClick={printReceipt}>
+                In phiếu xuất
+              </button>
+            </div>
           )}
           {result.inventoryStatuses?.length > 0 && (
             <div className="warehouse-status-list">
