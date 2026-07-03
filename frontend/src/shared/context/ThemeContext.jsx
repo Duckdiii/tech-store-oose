@@ -48,7 +48,11 @@ const translations = {
     'Some items in your cart are no longer available. Please remove or update them to continue.': 'Một số sản phẩm trong giỏ hàng không còn khả dụng. Vui lòng xóa hoặc cập nhật để tiếp tục.',
     'Unable to complete your order. Please try again later.': 'Không thể hoàn thành đơn hàng của bạn. Vui lòng thử lại sau.',
     'Unable to update inventory information. Please contact support or try again later.': 'Không thể cập nhật thông tin tồn kho. Vui lòng liên hệ bộ phận hỗ trợ hoặc thử lại sau.',
-    'Payment failed. Please try again or choose another payment method.': 'Thanh toán thất bại. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.'
+    'Payment failed. Please try again or choose another payment method.': 'Thanh toán thất bại. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.',
+    'This bundle service is currently unavailable': 'Dịch vụ đính kèm này hiện tại không khả dụng.',
+    'Unable to add bundle service. Please try again later.': 'Không thể thêm dịch vụ đính kèm. Vui lòng thử lại sau.',
+    'Payment was cancelled. Please try again.': 'Giao dịch thanh toán đã bị hủy. Vui lòng thử lại.',
+    'Payment service is currently unavailable. Please try again later.': 'Dịch vụ thanh toán hiện tại không khả dụng. Vui lòng thử lại sau.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -95,7 +99,11 @@ const translations = {
     'Some items in your cart are no longer available. Please remove or update them to continue.': 'Some items in your cart are no longer available. Please remove or update them to continue.',
     'Unable to complete your order. Please try again later.': 'Unable to complete your order. Please try again later.',
     'Unable to update inventory information. Please contact support or try again later.': 'Unable to update inventory information. Please contact support or try again later.',
-    'Payment failed. Please try again or choose another payment method.': 'Payment failed. Please try again or choose another payment method.'
+    'Payment failed. Please try again or choose another payment method.': 'Payment failed. Please try again or choose another payment method.',
+    'This bundle service is currently unavailable': 'This bundle service is currently unavailable',
+    'Unable to add bundle service. Please try again later.': 'Unable to add bundle service. Please try again later.',
+    'Payment was cancelled. Please try again.': 'Payment was cancelled. Please try again.',
+    'Payment service is currently unavailable. Please try again later.': 'Payment service is currently unavailable. Please try again later.'
   }
 };
 
