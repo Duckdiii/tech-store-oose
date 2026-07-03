@@ -148,8 +148,9 @@ public class AccountManagementService {
             Staff staff = findStaff(staffId);
             Account account = staff.getAccount();
             if (account == null) {
+                // Exception Flow 8a (Delete Account 1a: account does not exist)
                 throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Không thể xóa quyền truy cập tài khoản nhân viên. Vui lòng thử lại sau.");
+                        "Unable to remove Staff account access. Please try again later.");
             }
             if (account.isDeleted()) {
                 throw new ApiException(HttpStatus.CONFLICT, "Tài khoản nhân viên đã bị xóa trước đó");
@@ -162,8 +163,9 @@ public class AccountManagementService {
         } catch (ApiException exception) {
             throw exception;
         } catch (DataAccessException exception) {
+            // Exception Flow 9a
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Không thể xóa nhân viên. Vui lòng thử lại sau");
+                    "Unable to delete Staff. Please try again later");
         }
     }
 
@@ -180,8 +182,9 @@ public class AccountManagementService {
 
     private void deleteAccount(Account account) {
         if (!(account.getUser() instanceof Staff)) {
+            // Delete Account Exception Flow 1b, surfaced via Delete Staff Exception Flow 8a
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    "Không được phép xóa tài khoản này");
+                    "Unable to remove Staff account access. Please try again later.");
         }
         account.delete();
         accountRepository.saveAndFlush(account);

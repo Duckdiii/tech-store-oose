@@ -150,10 +150,21 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [sortKey,       setSortKey]       = useState('');
   const [sortDir,       setSortDir]       = useState('asc');
+  const [searchQuery,   setSearchQuery]   = useState('');
 
   const activeCount = staff.filter((m) => m.active).length;
 
-  const sortedStaff = useMemo(() => sortRows(staff, sortKey, sortDir), [staff, sortKey, sortDir]);
+  const query = searchQuery.trim().toLowerCase();
+  const filteredStaff = useMemo(() => {
+    if (!query) return staff;
+    return staff.filter((m) =>
+      (m.name || '').toLowerCase().includes(query) ||
+      (m.staffCode || '').toLowerCase().includes(query) ||
+      (m.email || '').toLowerCase().includes(query)
+    );
+  }, [staff, query]);
+
+  const sortedStaff = useMemo(() => sortRows(filteredStaff, sortKey, sortDir), [filteredStaff, sortKey, sortDir]);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
@@ -197,6 +208,15 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
           </div>
 
           <article className="admin-card">
+            <div style={{ marginBottom: 12 }}>
+              <input
+                className="admin-status-select"
+                style={{ minWidth: 260 }}
+                placeholder="Tìm theo tên, mã NV hoặc email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             <DataTable
               columns={[
                 { label: 'Nhân viên',    key: 'name'     },
@@ -210,7 +230,12 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
               ]}
               sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
             >
-              {sortedStaff.length === 0 ? (
+              {sortedStaff.length === 0 && query ? (
+                <EmptyState
+                  message="No Staff found"
+                  hint="Không có nhân viên nào khớp với từ khóa tìm kiếm."
+                />
+              ) : sortedStaff.length === 0 ? (
                 <EmptyState
                   message="Chưa có nhân viên nào"
                   hint="Thêm nhân viên đầu tiên để bắt đầu quản lý nhân sự."

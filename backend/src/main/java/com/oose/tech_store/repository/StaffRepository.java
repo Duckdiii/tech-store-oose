@@ -20,18 +20,18 @@ public interface StaffRepository extends JpaRepository<Staff, String> {
     @Query(value = """
             select s from Staff s join s.account a
             where a.status <> :deletedStatus
-              and (:criteria is null
-                or lower(s.fullName) like lower(concat('%', :criteria, '%'))
-                or lower(s.staffCode) like lower(concat('%', :criteria, '%'))
-                or lower(a.email) like lower(concat('%', :criteria, '%')))
+              and (cast(:criteria as string) is null
+                or lower(s.fullName) like lower(concat('%', cast(:criteria as string), '%'))
+                or lower(s.staffCode) like lower(concat('%', cast(:criteria as string), '%'))
+                or lower(a.email) like lower(concat('%', cast(:criteria as string), '%')))
             """,
             countQuery = """
             select count(s) from Staff s join s.account a
             where a.status <> :deletedStatus
-              and (:criteria is null
-                or lower(s.fullName) like lower(concat('%', :criteria, '%'))
-                or lower(s.staffCode) like lower(concat('%', :criteria, '%'))
-                or lower(a.email) like lower(concat('%', :criteria, '%')))
+              and (cast(:criteria as string) is null
+                or lower(s.fullName) like lower(concat('%', cast(:criteria as string), '%'))
+                or lower(s.staffCode) like lower(concat('%', cast(:criteria as string), '%'))
+                or lower(a.email) like lower(concat('%', cast(:criteria as string), '%')))
             """)
     Page<Staff> searchActive(@Param("criteria") String criteria,
             @Param("deletedStatus") AccountStatus deletedStatus, Pageable pageable);
