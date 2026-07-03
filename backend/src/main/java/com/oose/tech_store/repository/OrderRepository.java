@@ -41,7 +41,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 			select
 				count(o.id) as usageCount,
 				coalesce(sum(i.discount_amount), 0) as totalDiscountAmount,
-				coalesce(sum(i.original_amount), 0) as totalOrderAmount
+				coalesce(sum(i.final_amount), 0) as totalOrderAmount
 			from orders o
 			left join invoices i on i.order_id = o.id
 			where o.promotion_id = :promotionId

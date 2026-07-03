@@ -14,7 +14,9 @@ public record PromotionPerformanceResponseDTO(
         LocalDateTime startAt,
         LocalDateTime endAt,
         long usageCount,
+        long orderCount,
         BigDecimal totalDiscountAmount,
         BigDecimal totalOrderAmount,
-        BigDecimal averageDiscountAmount) {
+        BigDecimal averageDiscountAmount,
+        String message) {
 }
