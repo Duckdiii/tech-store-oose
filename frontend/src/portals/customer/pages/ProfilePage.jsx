@@ -140,7 +140,8 @@ export function ProfilePage() {
           setMembershipError('');
         } catch (err) {
           console.error("Failed to fetch tier", err);
-          setMembershipError(err.response?.data?.message || 'Unable to load membership information. Please try again later');
+          const rawMsg = err.response?.data?.message || 'Unable to load membership information. Please try again later';
+          setMembershipError(t(rawMsg));
         }
         
         // 4. Fetch orders
@@ -472,84 +473,96 @@ export function ProfilePage() {
     );
   };
 
-  const renderMembership = () => (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
-      <SectionTitle>Hạng thành viên</SectionTitle>
-
-      {membershipError ? (
-        <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', borderRadius: 10, padding: '14px 16px', fontSize: 13.5, fontWeight: 600 }}>
-          {membershipError}
+  const renderMembership = () => {
+    if (membershipError && (membershipError.toLowerCase().includes('restricted') || membershipError.toLowerCase().includes('hạn chế'))) {
+      return (
+        <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', borderRadius: 14, padding: '24px', textAlign: 'center', boxShadow: '0 6px 20px rgba(225, 29, 72, 0.05)' }}>
+          <div style={{ fontSize: 52, marginBottom: 14 }}>🔒</div>
+          <h3 style={{ fontSize: 18, fontWeight: 900, color: '#e11d48', marginBottom: 8 }}>{t('Account Restricted')}</h3>
+          <p style={{ fontSize: 14.5, color: '#be123c', fontWeight: 600, margin: 0, lineHeight: 1.5 }}>{membershipError}</p>
         </div>
-      ) : loading && !tierInfo ? (
-        <div style={{ color: '#6b7280', fontSize: 14 }}>Đang tải thông tin hạng thành viên...</div>
-      ) : (
-        <>
-          {tierInfo?.upgraded && tierInfo?.upgradeMessage && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 13.5, fontWeight: 700 }}>
-              {tierInfo.upgradeMessage}
-            </div>
-          )}
+      );
+    }
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 18 }}>
-            <div style={{ border: '1.5px solid #f1f3f5', borderRadius: 14, padding: 18, background: '#fffafa' }}>
-              <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Current Tier</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: RED, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 18 }}>
-                  {(currentTierName || 'M')[0]}
+    return (
+      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
+        <SectionTitle>Hạng thành viên</SectionTitle>
+
+        {membershipError ? (
+          <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', borderRadius: 10, padding: '14px 16px', fontSize: 13.5, fontWeight: 600 }}>
+            {membershipError}
+          </div>
+        ) : loading && !tierInfo ? (
+          <div style={{ color: '#6b7280', fontSize: 14 }}>Đang tải thông tin hạng thành viên...</div>
+        ) : (
+          <>
+            {tierInfo?.upgraded && tierInfo?.upgradeMessage && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 13.5, fontWeight: 700 }}>
+                {t(tierInfo.upgradeMessage)}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 18 }}>
+              <div style={{ border: '1.5px solid #f1f3f5', borderRadius: 14, padding: 18, background: '#fffafa' }}>
+                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Current Tier</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: RED, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 18 }}>
+                    {(currentTierName || 'M')[0]}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: '#0d1117' }}>{currentTierName}</div>
+                    <div style={{ fontSize: 13, color: '#6b7280' }}>{t(tierInfo?.currentTierDescription || 'Standard membership benefits')}</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: '#0d1117' }}>{currentTierName}</div>
-                  <div style={{ fontSize: 13, color: '#6b7280' }}>{tierInfo?.currentTierDescription || 'Standard membership benefits'}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ background: '#fff', border: '1px solid #f1f3f5', borderRadius: 10, padding: 12 }}>
+                    <div style={{ fontSize: 11.5, color: '#9ca3af', marginBottom: 4 }}>Tổng chi tiêu tích lũy</div>
+                    <b style={{ fontSize: 17, color: '#0d1117' }}>{fmt(totalSpend)}đ</b>
+                  </div>
+                  <div style={{ background: '#fff', border: '1px solid #f1f3f5', borderRadius: 10, padding: 12 }}>
+                    <div style={{ fontSize: 11.5, color: '#9ca3af', marginBottom: 4 }}>Ưu đãi giảm giá</div>
+                    <b style={{ fontSize: 17, color: '#0d1117' }}>{tierInfo?.discountPercentage || 0}%</b>
+                  </div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div style={{ background: '#fff', border: '1px solid #f1f3f5', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11.5, color: '#9ca3af', marginBottom: 4 }}>Tổng chi tiêu tích lũy</div>
-                  <b style={{ fontSize: 17, color: '#0d1117' }}>{fmt(totalSpend)}đ</b>
+
+              <div style={{ border: '1.5px solid #f1f3f5', borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Next Tier Progress</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: '#6b7280' }}>{currentTierName}</span>
+                  <span style={{ fontSize: 13, color: '#0d1117', fontWeight: 700 }}>{tierInfo?.nextTierName || 'Highest tier'}</span>
                 </div>
-                <div style={{ background: '#fff', border: '1px solid #f1f3f5', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11.5, color: '#9ca3af', marginBottom: 4 }}>Ưu đãi giảm giá</div>
-                  <b style={{ fontSize: 17, color: '#0d1117' }}>{tierInfo?.discountPercentage || 0}%</b>
+                <div style={{ height: 9, background: '#f0f0f0', borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
+                  <div style={{ width: `${tierProgress}%`, height: '100%', background: `linear-gradient(90deg, ${RED}, #ff6b6b)` }} />
                 </div>
+                {Number(tierInfo?.spendingToNextTier || 0) > 0 ? (
+                  <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+                    Cần chi tiêu thêm <b style={{ color: RED }}>{fmt(Number(tierInfo.spendingToNextTier))}đ</b> để đạt {tierInfo.nextTierName}.
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 13, color: '#15803d', margin: 0, fontWeight: 700 }}>Bạn đã đạt hạng cao nhất hiện có.</p>
+                )}
               </div>
             </div>
 
             <div style={{ border: '1.5px solid #f1f3f5', borderRadius: 14, padding: 18 }}>
-              <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Next Tier Progress</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-                <span style={{ fontSize: 13, color: '#6b7280' }}>{currentTierName}</span>
-                <span style={{ fontSize: 13, color: '#0d1117', fontWeight: 700 }}>{tierInfo?.nextTierName || 'Highest tier'}</span>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0d1117', marginBottom: 12 }}>Quyền lợi đang áp dụng</div>
+              <div style={{ display: 'grid', gap: 10 }}>
+                {(tierInfo?.activeBenefits || ['Standard membership benefits']).map((benefit, index) => (
+                  <div key={`${benefit}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 10 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#f0fdf4', color: '#15803d', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    <span style={{ fontSize: 13.5, color: '#374151', fontWeight: 600 }}>{t(benefit)}</span>
+                  </div>
+                ))}
               </div>
-              <div style={{ height: 9, background: '#f0f0f0', borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
-                <div style={{ width: `${tierProgress}%`, height: '100%', background: `linear-gradient(90deg, ${RED}, #ff6b6b)` }} />
-              </div>
-              {Number(tierInfo?.spendingToNextTier || 0) > 0 ? (
-                <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-                  Cần chi tiêu thêm <b style={{ color: RED }}>{fmt(Number(tierInfo.spendingToNextTier))}đ</b> để đạt {tierInfo.nextTierName}.
-                </p>
-              ) : (
-                <p style={{ fontSize: 13, color: '#15803d', margin: 0, fontWeight: 700 }}>Bạn đã đạt hạng cao nhất hiện có.</p>
-              )}
             </div>
-          </div>
-
-          <div style={{ border: '1.5px solid #f1f3f5', borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0d1117', marginBottom: 12 }}>Quyền lợi đang áp dụng</div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {(tierInfo?.activeBenefits || ['Standard membership benefits']).map((benefit, index) => (
-                <div key={`${benefit}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 10 }}>
-                  <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#f0fdf4', color: '#15803d', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  </span>
-                  <span style={{ fontSize: 13.5, color: '#374151', fontWeight: 600 }}>{benefit}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
+          </>
+        )}
+      </div>
+    );
+  };
 
   const renderVouchers = () => (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>

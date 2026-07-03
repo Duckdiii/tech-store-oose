@@ -56,7 +56,17 @@ const translations = {
     'You have successfully subscribed to product updates.': 'Bạn đã đăng ký nhận thông báo cập nhật sản phẩm thành công.',
     'You have successfully unsubscribed from product updates.': 'Bạn đã hủy đăng ký nhận thông báo cập nhật sản phẩm thành công.',
     'This product is no longer available for subscription.': 'Sản phẩm này hiện không còn khả dụng để đăng ký thông báo.',
-    'Unable to update subscription. Please try again later.': 'Không thể cập nhật đăng ký thông báo. Vui lòng thử lại sau.'
+    'Unable to update subscription. Please try again later.': 'Không thể cập nhật đăng ký thông báo. Vui lòng thử lại sau.',
+    'Your account has been restricted. You are unable to access membership benefits': 'Tài khoản của bạn đã bị hạn chế. Bạn không thể truy cập quyền lợi thành viên.',
+    'Unable to load membership information. Please try again later': 'Không thể tải thông tin hạng thành viên. Vui lòng thử lại sau.',
+    'Standard membership benefits': 'Quyền lợi thành viên tiêu chuẩn',
+    'Standard customer benefits': 'Quyền lợi thành viên tiêu chuẩn',
+    'Free shipping benefit': 'Ưu đãi miễn phí vận chuyển',
+    'Account Restricted': 'Tài khoản bị hạn chế',
+    'Congratulations! You are now BRONZE Tier!': 'Chúc mừng! Bạn đã được thăng hạng BRONZE!',
+    'Congratulations! You are now SILVER Tier!': 'Chúc mừng! Bạn đã được thăng hạng SILVER!',
+    'Congratulations! You are now GOLD Tier!': 'Chúc mừng! Bạn đã được thăng hạng GOLD!',
+    'Congratulations! You are now DIAMOND Tier!': 'Chúc mừng! Bạn đã được thăng hạng DIAMOND!'
   },
   en: {
     'Trang chủ': 'Home',
@@ -111,7 +121,17 @@ const translations = {
     'You have successfully subscribed to product updates.': 'You have successfully subscribed to product updates.',
     'You have successfully unsubscribed from product updates.': 'You have successfully unsubscribed from product updates.',
     'This product is no longer available for subscription.': 'This product is no longer available for subscription.',
-    'Unable to update subscription. Please try again later.': 'Unable to update subscription. Please try again later.'
+    'Unable to update subscription. Please try again later.': 'Unable to update subscription. Please try again later.',
+    'Your account has been restricted. You are unable to access membership benefits': 'Your account has been restricted. You are unable to access membership benefits',
+    'Unable to load membership information. Please try again later': 'Unable to load membership information. Please try again later',
+    'Standard membership benefits': 'Standard membership benefits',
+    'Standard customer benefits': 'Standard customer benefits',
+    'Free shipping benefit': 'Free shipping benefit',
+    'Account Restricted': 'Account Restricted',
+    'Congratulations! You are now BRONZE Tier!': 'Congratulations! You are now BRONZE Tier!',
+    'Congratulations! You are now SILVER Tier!': 'Congratulations! You are now SILVER Tier!',
+    'Congratulations! You are now GOLD Tier!': 'Congratulations! You are now GOLD Tier!',
+    'Congratulations! You are now DIAMOND Tier!': 'Congratulations! You are now DIAMOND Tier!'
   }
 };
 
