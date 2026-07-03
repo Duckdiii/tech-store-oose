@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Metric } from '../components/index';
 import { money } from '../utils';
 import { httpClient } from '../../../api/httpClient';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -78,13 +79,21 @@ const PERIOD_OPTIONS = [
 ];
 
 export function ReportsPage() {
+  const { t } = useTheme();
   const [period, setPeriod] = useState('monthly');
   const [customFrom, setCustomFrom] = useState(addDays(TODAY, -30));
   const [customTo,   setCustomTo]   = useState(TODAY);
 
+  // Alt Flow 3a / 3b / 3c filters
+  const [filterCategory,      setFilterCategory]      = useState('');
+  const [filterBrand,         setFilterBrand]         = useState('');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState('');
+
   const [report, setReport] = useState(null);
   const [prevReport, setPrevReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const [noData,  setNoData]  = useState(false);
 
   const { from, to } = useMemo(() => {
     if (period === 'daily')   return { from: TODAY, to: TODAY };
@@ -108,17 +117,34 @@ export function ReportsPage() {
   useEffect(() => {
     const fetchReport = async () => {
       setLoading(true);
+      setError('');
+      setNoData(false);
       try {
-        const response = await httpClient.get(`/reports/revenue?startDate=${startDate}&endDate=${endDate}`);
-        setReport(response.data);
-      } catch (error) {
-        console.error('Error fetching revenue report:', error);
+        const params = new URLSearchParams({
+          startDate,
+          endDate,
+          ...(filterCategory      && { categoryId:      filterCategory }),
+          ...(filterBrand         && { brandId:         filterBrand }),
+          ...(filterPaymentMethod && { paymentMethodId: filterPaymentMethod }),
+        });
+        const response = await httpClient.get(`/reports/revenue?${params}`);
+        const data = response.data;
+        // Exception 4a: backend returns empty report (totalOrders === 0)
+        if (!data || data.totalOrders === 0) {
+          setNoData(true);
+          setReport(data || null);
+        } else {
+          setReport(data);
+        }
+      } catch (err) {
+        setReport(null);
+        setError(t('Unable to load report data. Please try again later.'));
       } finally {
         setLoading(false);
       }
     };
     fetchReport();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, filterCategory, filterBrand, filterPaymentMethod]);
 
   // Fetch previous report for deltas
   useEffect(() => {
@@ -183,7 +209,14 @@ export function ReportsPage() {
   }, [report]);
 
   const exportPdfReport = () => {
-    window.open(`/api/reports/revenue/export?startDate=${startDate}&endDate=${endDate}`, '_blank');
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+      ...(filterCategory      && { categoryId:      filterCategory }),
+      ...(filterBrand         && { brandId:         filterBrand }),
+      ...(filterPaymentMethod && { paymentMethodId: filterPaymentMethod }),
+    });
+    window.open(`/api/reports/revenue/export?${params}`, '_blank');
   };
 
   const periodLabel = period === 'custom'
@@ -230,6 +263,53 @@ export function ReportsPage() {
           </div>
         )}
       </div>
+
+      {/* Alt Flow 3a / 3b / 3c: filters by category, brand, payment method */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+        <input
+          className="admin-status-select"
+          style={{ minWidth: 160 }}
+          placeholder="Danh mục (ID)..."
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        />
+        <input
+          className="admin-status-select"
+          style={{ minWidth: 160 }}
+          placeholder="Thương hiệu (ID)..."
+          value={filterBrand}
+          onChange={(e) => setFilterBrand(e.target.value)}
+        />
+        <select
+          className="admin-status-select"
+          value={filterPaymentMethod}
+          onChange={(e) => setFilterPaymentMethod(e.target.value)}
+        >
+          <option value="">Tất cả PTTT</option>
+          <option value="MOMO">MoMo</option>
+          <option value="VNPAY">VNPay</option>
+          <option value="COD">COD</option>
+        </select>
+        {(filterCategory || filterBrand || filterPaymentMethod) && (
+          <button className="admin-row-action" onClick={() => { setFilterCategory(''); setFilterBrand(''); setFilterPaymentMethod(''); }}>
+            Xóa bộ lọc
+          </button>
+        )}
+      </div>
+
+      {/* Exception Flow 4b: system error */}
+      {error && (
+        <p style={{ color: 'var(--color-danger, #e53e3e)', background: 'var(--color-danger-bg, #fff5f5)', border: '1px solid var(--color-danger, #e53e3e)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 14 }}>
+          {error}
+        </p>
+      )}
+
+      {/* Exception Flow 4a: no completed orders found */}
+      {!loading && !error && noData && (
+        <p style={{ color: '#92400e', background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 14 }}>
+          {t('No revenue data found for the selected period')}
+        </p>
+      )}
 
       {loading ? (
         <div style={{ background: '#fff', borderRadius: 16, padding: '64px 24px', textAlign: 'center', color: '#6b7280' }}>

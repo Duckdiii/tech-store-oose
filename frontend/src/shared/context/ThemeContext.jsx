@@ -81,7 +81,9 @@ const translations = {
     'Invalid filter input. Please check the selected conditions': 'Điều kiện lọc không hợp lệ. Vui lòng kiểm tra lại.',
     'No warehouse log records were found matching the selected criteria': 'Không tìm thấy nhật ký kho nào phù hợp với điều kiện đã chọn.',
     'Unable to load login log information. Please try again later': 'Không thể tải thông tin nhật ký đăng nhập. Vui lòng thử lại sau.',
-    'You do not have permission to view login logs': 'Bạn không có quyền xem nhật ký đăng nhập.'
+    'You do not have permission to view login logs': 'Bạn không có quyền xem nhật ký đăng nhập.',
+    'No revenue data found for the selected period': 'Không tìm thấy dữ liệu doanh thu trong khoảng thời gian đã chọn.',
+    'Unable to load report data. Please try again later.': 'Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -161,7 +163,9 @@ const translations = {
     'Invalid filter input. Please check the selected conditions': 'Invalid filter input. Please check the selected conditions',
     'No warehouse log records were found matching the selected criteria': 'No warehouse log records were found matching the selected criteria',
     'Unable to load login log information. Please try again later': 'Unable to load login log information. Please try again later',
-    'You do not have permission to view login logs': 'You do not have permission to view login logs'
+    'You do not have permission to view login logs': 'You do not have permission to view login logs',
+    'No revenue data found for the selected period': 'No revenue data found for the selected period',
+    'Unable to load report data. Please try again later.': 'Unable to load report data. Please try again later.'
   }
 };
 
