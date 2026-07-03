@@ -149,7 +149,7 @@ export function ProductForm({ product, onSave, onClose }) {
           <label className="admin-field">
             Danh mục
             <select value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, categoryId: null }))}>
-              {['Điện thoại', 'Laptop', 'Máy tính bảng', 'Phụ kiện'].map((category) => <option key={category}>{category}</option>)}
+              {['Điện thoại'].map((category) => <option key={category}>{category}</option>)}
             </select>
           </label>
           <label className="admin-field admin-field--wide">

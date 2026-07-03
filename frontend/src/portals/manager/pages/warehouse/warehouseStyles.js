@@ -24,6 +24,9 @@ export const warehouseStyles = `
   .warehouse-metric small { color: #94a3b8; font-size: 10px; }
   .warehouse-metric--success strong { color: #15803d; }
   .warehouse-metric--danger strong { color: #b45309; }
+  .warehouse-metric--clickable { cursor: pointer; transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+  .warehouse-metric--clickable:hover { border-color: #cbd5e1; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }
+  .warehouse-metric--active { border-color: #b45309; box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.15); }
   .warehouse-overview-controls { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
   .warehouse-overview-controls .admin-filterbar { margin: 0; padding: 0; border: 0; }
   .warehouse-serial-search { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 11px; font-weight: 700; }

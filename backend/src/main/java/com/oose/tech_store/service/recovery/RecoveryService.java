@@ -1,7 +1,9 @@
 package com.oose.tech_store.service.recovery;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.oose.tech_store.dto.recovery.CreateRecoveryPointRequest;
 import com.oose.tech_store.dto.recovery.RecoveryAuditLogResponse;
 import com.oose.tech_store.dto.recovery.RecoveryAuditStatus;
@@ -45,6 +47,7 @@ public class RecoveryService {
 
     private final ObjectMapper objectMapper;
     private final CatalogRecoveryDataService catalogRecoveryDataService;
+    private final PostgresRecoveryDataService postgresRecoveryDataService;
     private final MaintenanceService maintenanceService;
     private final RecoveryNotificationService notificationService;
 
@@ -74,44 +77,80 @@ public class RecoveryService {
     public RecoveryPointResponse createRecoveryPoint(CreateRecoveryPointRequest request, String actor) {
         ensureStorage();
         RecoveryScope scope = normalizeScope(request == null ? null : request.scope());
-        RecoveryCatalogSnapshot payload = catalogRecoveryDataService.snapshot(scope);
         String id = UUID.randomUUID().toString();
-        String checksum = checksum(payload);
-        RecoveryPointResponse metadata = new RecoveryPointResponse(
-                id,
-                normalizeLabel(request == null ? null : request.label()),
-                scope,
-                RecoveryPointStatus.READY,
-                LocalDateTime.now(),
-                actor,
-                checksum,
-                0,
-                APP_VERSION);
-
-        RecoveryBackupFile backupFile = new RecoveryBackupFile(metadata, payload);
         Path backupPath = backupPath(id);
-        try {
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(backupPath.toFile(), backupFile);
-            long sizeBytes = Files.size(backupPath);
-            RecoveryPointResponse sizedMetadata = new RecoveryPointResponse(
-                    metadata.id(),
-                    metadata.label(),
-                    metadata.scope(),
-                    metadata.status(),
-                    metadata.createdAt(),
-                    metadata.createdBy(),
-                    metadata.checksum(),
-                    sizeBytes,
-                    metadata.appVersion());
-            objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValue(backupPath.toFile(), new RecoveryBackupFile(sizedMetadata, payload));
-            return sizedMetadata;
-        } catch (IOException exception) {
-            throw new IllegalStateException("Could not create recovery point", exception);
+
+        if (scope == RecoveryScope.FULL) {
+            String sqlPayload = postgresRecoveryDataService.backup();
+            String checksum = checksum(sqlPayload);
+            RecoveryPointResponse metadata = new RecoveryPointResponse(
+                    id,
+                    normalizeLabel(request == null ? null : request.label()),
+                    scope,
+                    RecoveryPointStatus.READY,
+                    LocalDateTime.now(),
+                    actor,
+                    checksum,
+                    0,
+                    APP_VERSION);
+
+            RecoverySystemBackupFile backupFile = new RecoverySystemBackupFile(metadata, sqlPayload);
+            try {
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(backupPath.toFile(), backupFile);
+                long sizeBytes = Files.size(backupPath);
+                RecoveryPointResponse sizedMetadata = new RecoveryPointResponse(
+                        metadata.id(),
+                        metadata.label(),
+                        metadata.scope(),
+                        metadata.status(),
+                        metadata.createdAt(),
+                        metadata.createdBy(),
+                        metadata.checksum(),
+                        sizeBytes,
+                        metadata.appVersion());
+                objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValue(backupPath.toFile(), new RecoverySystemBackupFile(sizedMetadata, sqlPayload));
+                return sizedMetadata;
+            } catch (IOException exception) {
+                throw new IllegalStateException("Could not create recovery point", exception);
+            }
+        } else {
+            RecoveryCatalogSnapshot payload = catalogRecoveryDataService.snapshot(scope);
+            String checksum = checksum(payload);
+            RecoveryPointResponse metadata = new RecoveryPointResponse(
+                    id,
+                    normalizeLabel(request == null ? null : request.label()),
+                    scope,
+                    RecoveryPointStatus.READY,
+                    LocalDateTime.now(),
+                    actor,
+                    checksum,
+                    0,
+                    APP_VERSION);
+
+            RecoveryBackupFile backupFile = new RecoveryBackupFile(metadata, payload);
+            try {
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(backupPath.toFile(), backupFile);
+                long sizeBytes = Files.size(backupPath);
+                RecoveryPointResponse sizedMetadata = new RecoveryPointResponse(
+                        metadata.id(),
+                        metadata.label(),
+                        metadata.scope(),
+                        metadata.status(),
+                        metadata.createdAt(),
+                        metadata.createdBy(),
+                        metadata.checksum(),
+                        sizeBytes,
+                        metadata.appVersion());
+                objectMapper.writerWithDefaultPrettyPrinter()
+                        .writeValue(backupPath.toFile(), new RecoveryBackupFile(sizedMetadata, payload));
+                return sizedMetadata;
+            } catch (IOException exception) {
+                throw new IllegalStateException("Could not create recovery point", exception);
+            }
         }
     }
 
-    @Transactional
     public RestoreResponse restore(String recoveryPointId, RestoreRequest request, String actor) {
         RecoveryScope scope = normalizeRestoreScope(request);
         RestoreType restoreType = request == null || request.restoreType() == null
@@ -119,18 +158,31 @@ public class RecoveryService {
                 : request.restoreType();
 
         maintenanceService.enable();
-        RecoveryCatalogSnapshot temporarySnapshot = null;
+        String temporarySqlBackup = null;
+        RecoveryCatalogSnapshot temporaryCatalogSnapshot = null;
         try {
-            RecoveryBackupFile backupFile = loadAndVerifyBackup(recoveryPointId, actor, restoreType, scope);
-            if (!APP_VERSION.equals(backupFile.metadata().appVersion())) {
-                String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.INCIDENT, INCOMPATIBLE_MESSAGE);
-                throw new RecoveryRestoreException(HttpStatus.CONFLICT, INCOMPATIBLE_MESSAGE, null, true, auditId);
+            if (scope == RecoveryScope.FULL) {
+                RecoverySystemBackupFile backupFile = loadAndVerifySystemBackup(recoveryPointId, actor, restoreType);
+                if (!APP_VERSION.equals(backupFile.metadata().appVersion())) {
+                    String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.INCIDENT, INCOMPATIBLE_MESSAGE);
+                    throw new RecoveryRestoreException(HttpStatus.CONFLICT, INCOMPATIBLE_MESSAGE, null, true, auditId);
+                }
+
+                temporarySqlBackup = postgresRecoveryDataService.backup();
+                postgresRecoveryDataService.restore(backupFile.sqlPayload());
+            } else {
+                RecoveryBackupFile backupFile = loadAndVerifyBackup(recoveryPointId, actor, restoreType, scope);
+                if (!APP_VERSION.equals(backupFile.metadata().appVersion())) {
+                    String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.INCIDENT, INCOMPATIBLE_MESSAGE);
+                    throw new RecoveryRestoreException(HttpStatus.CONFLICT, INCOMPATIBLE_MESSAGE, null, true, auditId);
+                }
+
+                catalogRecoveryDataService.validateSnapshot(backupFile.payload(), scope);
+                temporaryCatalogSnapshot = catalogRecoveryDataService.snapshot(scope);
+                catalogRecoveryDataService.restore(backupFile.payload(), scope);
+                catalogRecoveryDataService.validateSnapshot(catalogRecoveryDataService.snapshot(scope), scope);
             }
 
-            catalogRecoveryDataService.validateSnapshot(backupFile.payload(), scope);
-            temporarySnapshot = catalogRecoveryDataService.snapshot(scope);
-            catalogRecoveryDataService.restore(backupFile.payload(), scope);
-            catalogRecoveryDataService.validateSnapshot(catalogRecoveryDataService.snapshot(scope), scope);
             maintenanceService.disable();
 
             String message = notificationService.restoreSuccessMessage();
@@ -146,11 +198,15 @@ public class RecoveryService {
             String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.INCIDENT, message);
             throw new RecoveryRestoreException(HttpStatus.CONFLICT, message, null, true, auditId);
         } catch (Exception exception) {
-            if (temporarySnapshot != null) {
+            if (scope == RecoveryScope.FULL && temporarySqlBackup != null) {
                 try {
-                    catalogRecoveryDataService.restore(temporarySnapshot, scope);
+                    postgresRecoveryDataService.restore(temporarySqlBackup);
                 } catch (Exception ignored) {
-                    // The caller still receives the restore failure. Maintenance mode remains on.
+                }
+            } else if (scope != RecoveryScope.FULL && temporaryCatalogSnapshot != null) {
+                try {
+                    catalogRecoveryDataService.restore(temporaryCatalogSnapshot, scope);
+                } catch (Exception ignored) {
                 }
             }
             String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.FAILED, RESTORE_FAILED_MESSAGE);
@@ -212,11 +268,46 @@ public class RecoveryService {
         }
     }
 
+    private RecoverySystemBackupFile loadAndVerifySystemBackup(
+            String recoveryPointId,
+            String actor,
+            RestoreType restoreType) {
+        ensureStorage();
+        Path path = backupPath(recoveryPointId);
+        if (!Files.exists(path)) {
+            maintenanceService.disable();
+            String auditId = audit(actor, recoveryPointId, restoreType, RecoveryScope.FULL,
+                    RecoveryAuditStatus.FAILED, BACKUP_INVALID_MESSAGE);
+            throw new RecoveryRestoreException(HttpStatus.BAD_REQUEST, BACKUP_INVALID_MESSAGE,
+                    recommendRecoveryPoint(recoveryPointId), false, auditId);
+        }
+        try {
+            RecoverySystemBackupFile backupFile = objectMapper.readValue(path.toFile(), RecoverySystemBackupFile.class);
+            String actualChecksum = checksum(backupFile.sqlPayload());
+            if (!actualChecksum.equals(backupFile.metadata().checksum())) {
+                String auditId = audit(actor, recoveryPointId, restoreType, backupFile.metadata().scope(),
+                        RecoveryAuditStatus.FAILED, BACKUP_INVALID_MESSAGE);
+                maintenanceService.disable();
+                throw new RecoveryRestoreException(HttpStatus.BAD_REQUEST, BACKUP_INVALID_MESSAGE,
+                        recommendRecoveryPoint(recoveryPointId), false, auditId);
+            }
+            return backupFile;
+        } catch (RecoveryRestoreException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            String auditId = audit(actor, recoveryPointId, restoreType, RecoveryScope.FULL,
+                    RecoveryAuditStatus.FAILED, BACKUP_INVALID_MESSAGE);
+            maintenanceService.disable();
+            throw new RecoveryRestoreException(HttpStatus.BAD_REQUEST, BACKUP_INVALID_MESSAGE,
+                    recommendRecoveryPoint(recoveryPointId), false, auditId);
+        }
+    }
+
     private void markRecoveryPointRestored(String recoveryPointId) {
         Path path = backupPath(recoveryPointId);
         try {
-            RecoveryBackupFile backupFile = objectMapper.readValue(path.toFile(), RecoveryBackupFile.class);
-            RecoveryPointResponse metadata = backupFile.metadata();
+            JsonNode root = objectMapper.readTree(path.toFile());
+            RecoveryPointResponse metadata = objectMapper.treeToValue(root.get("metadata"), RecoveryPointResponse.class);
             RecoveryPointResponse restoredMetadata = new RecoveryPointResponse(
                     metadata.id(),
                     metadata.label(),
@@ -227,8 +318,10 @@ public class RecoveryService {
                     metadata.checksum(),
                     Files.size(path),
                     metadata.appVersion());
-            objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValue(path.toFile(), new RecoveryBackupFile(restoredMetadata, backupFile.payload()));
+
+            ObjectNode objectNode = (ObjectNode) root;
+            objectNode.set("metadata", objectMapper.valueToTree(restoredMetadata));
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), objectNode);
         } catch (IOException exception) {
             throw new IllegalStateException("Could not update recovery point status", exception);
         }
@@ -236,9 +329,19 @@ public class RecoveryService {
 
     private RecoveryPointResponse readBackupMetadata(Path path) {
         try {
-            RecoveryBackupFile backupFile = objectMapper.readValue(path.toFile(), RecoveryBackupFile.class);
-            String actualChecksum = checksum(backupFile.payload());
-            RecoveryPointResponse metadata = backupFile.metadata();
+            JsonNode rootNode = objectMapper.readTree(path.toFile());
+            RecoveryPointResponse metadata = objectMapper.treeToValue(rootNode.get("metadata"), RecoveryPointResponse.class);
+            if (metadata == null) return null;
+
+            String actualChecksum;
+            if (metadata.scope() == RecoveryScope.FULL) {
+                String sqlPayload = rootNode.get("sqlPayload").asText();
+                actualChecksum = checksum(sqlPayload);
+            } else {
+                RecoveryCatalogSnapshot payload = objectMapper.treeToValue(rootNode.get("payload"), RecoveryCatalogSnapshot.class);
+                actualChecksum = checksum(payload);
+            }
+
             if (!actualChecksum.equals(metadata.checksum())) {
                 return new RecoveryPointResponse(
                         metadata.id(),
@@ -356,6 +459,16 @@ public class RecoveryService {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
             return HexFormat.of().formatHex(digest);
         } catch (IOException | NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("Could not calculate backup checksum", exception);
+        }
+    }
+
+    private String checksum(String payload) {
+        try {
+            byte[] bytes = payload.getBytes(StandardCharsets.UTF_8);
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("Could not calculate backup checksum", exception);
         }
     }

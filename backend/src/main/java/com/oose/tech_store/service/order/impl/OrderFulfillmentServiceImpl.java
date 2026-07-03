@@ -2,16 +2,19 @@ package com.oose.tech_store.service.order.impl;
 
 import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.entity.enums.NotificationChannel;
 import com.oose.tech_store.entity.enums.NotificationType;
 import com.oose.tech_store.entity.enums.MembershipTier;
 import com.oose.tech_store.entity.enums.PromotionDiscountType;
+import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.payment.PendingCheckout;
 import com.oose.tech_store.repository.*;
 import com.oose.tech_store.payment.price.*;
 import com.oose.tech_store.service.order.OrderFulfillmentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
         private final InvoiceRepository invoiceRepository;
         private final NotificationRepository notificationRepository;
         private final PromotionRepository promotionRepository;
+        private final ProductVariantRepository productVariantRepository;
         private final List<PriceProcessor> priceProcessors; // [MembershipDiscountProcessor (vị trí 0),
                                                             // ShippingFeeProcessor (vị trí 1)]
 
@@ -82,26 +86,57 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                         order.markPaid();
                 }
 
-                Order savedOrder = orderRepository.save(order); //
+                Order savedOrder;
+                Invoice savedInvoice;
 
-                PaymentLog paymentLog = new PaymentLog(savedOrder, priceContext.getFinalAmount(), paymentStatus); // ghi
-                                                                                                                  // log
-                                                                                                                  // thanh
-                                                                                                                  // toán
-                if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
-                        paymentLog.markSuccess();
+                // Exception Flow 7b: Save Order, PaymentLog, Invoice
+                try {
+                        savedOrder = orderRepository.save(order);
+
+                        PaymentLog paymentLog = new PaymentLog(savedOrder, priceContext.getFinalAmount(), paymentStatus);
+                        if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
+                                paymentLog.markSuccess();
+                        }
+                        paymentLogRepository.save(paymentLog);
+
+                        Invoice invoice = new Invoice(
+                                        savedOrder,
+                                        priceContext.getSubtotal(),
+                                        priceContext.getTaxAmount(),
+                                        priceContext.getMembershipDiscount().add(priceContext.getPromotionDiscount()),
+                                        priceContext.getFinalAmount());
+                        savedInvoice = invoiceRepository.save(invoice);
+                } catch (Exception e) {
+                        throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to complete your order. Please try again later.");
                 }
-                paymentLogRepository.save(paymentLog);
 
-                Invoice invoice = new Invoice(
-                                savedOrder,
-                                priceContext.getSubtotal(),
-                                priceContext.getTaxAmount(),
-                                priceContext.getMembershipDiscount().add(priceContext.getPromotionDiscount()),
-                                priceContext.getFinalAmount());
-                Invoice savedInvoice = invoiceRepository.save(invoice);
+                // Exception Flow 7c: Update Inventory status of variants to EXPORTED
+                try {
+                        for (CartItem item : selectedItems) {
+                                ProductVariant pv = item.getProductVariant();
+                                List<ProductVariant> availableList = productVariantRepository.findByProductIdAndSpecsAndStatus(
+                                                pv.getProduct().getId(),
+                                                pv.getRamGb(),
+                                                pv.getStorageGb(),
+                                                pv.getColor(),
+                                                ProductVariantStatus.AVAILABLE
+                                );
+                                if (availableList.size() < item.getQuantity()) {
+                                        throw new IllegalStateException("Insufficient stock in inventory");
+                                }
+                                for (int i = 0; i < item.getQuantity(); i++) {
+                                        ProductVariant v = availableList.get(i);
+                                        v.markAsExported();
+                                        productVariantRepository.save(v);
+                                }
+                        }
+                } catch (Exception e) {
+                        throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to update inventory information. Please contact support or try again later.");
+                }
 
-                selectedItems.forEach(cart::removeItem); // xóa items khỏi cart
+                // Clear checked-out items from cart
+                selectedItems.forEach(cart::removeItem);
+                cartRepository.save(cart);
 
                 // Create notifications for STAFF and MANAGER
                 List.of("STAFF", "MANAGER").forEach(role -> {

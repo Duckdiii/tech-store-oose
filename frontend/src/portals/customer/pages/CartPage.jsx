@@ -3,6 +3,8 @@ import { fmt } from '../../../utils/format';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useToast } from '../../../shared/context/ToastContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 import { httpClient } from '../../../api/httpClient';
 import { membershipApi } from '../../../api/membershipApi';
 
@@ -20,8 +22,21 @@ export function CartPage() {
   const { items, removeItem, updateQty, total, clearCart, addBundleServiceToItem, removeBundleServiceFromItem} = useCart();
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
+  const { showToast } = useToast();
+  const { t } = useTheme();
   const [bundleServices, setBundleServices] = useState([]);
   const [expandedItem, setExpandedItem] = useState({});
+
+  const handleQuantityChange = (itemId, val, availableStock) => {
+    if (val === '' || isNaN(val)) {
+      return;
+    }
+    if (val <= 0 || val > availableStock) {
+      showToast(t('Invalid quantity. Please enter a valid quantity.'), 'error');
+      return;
+    }
+    updateQty(itemId, val);
+  };
 
   const toggleExpand = (itemId) => {
     setExpandedItem(prev => ({ ...prev, [itemId]: !prev[itemId] }));
@@ -144,6 +159,8 @@ export function CartPage() {
     );
   }
 
+  const anyUnavailable = items.some(item => item.available === false || (item.availableStock != null && item.availableStock < item.qty));
+
   return (
     <div style={{ background: '#f4f5f7', minHeight: '80vh', padding: '32px 0 80px' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px' }}>
@@ -181,8 +198,10 @@ export function CartPage() {
               if (ram && !isNaN(ram) && !String(ram).toLowerCase().includes('gb')) ram = `${ram}GB`;
               if (storage && !isNaN(storage) && !String(storage).toLowerCase().includes('gb')) storage = `${storage}GB`;
 
+              const isAvailable = item.available !== false && (item.availableStock == null || item.availableStock >= item.qty);
+
               return (
-                <div key={item.id} style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div key={item.id} style={{ background: isAvailable ? '#fff' : '#fff5f5', borderRadius: 16, border: `1.5px solid ${isAvailable ? '#f1f3f5' : '#fca5a5'}`, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                    <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
                     <div style={{ width: 88, height: 88, background: '#fff', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '1px solid #f1f3f5' }}>
                       {item.thumbnailUrl ? (
@@ -224,11 +243,23 @@ export function CartPage() {
                       <div style={{ fontSize: 16, fontWeight: 900, color: '#e11d48' }}>{fmt(item.price)}₫</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e9ecef', borderRadius: 9, overflow: 'hidden' }}>
-                        <button onClick={() => updateQty(item.id, item.qty - 1)}
+                      <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #e9ecef', borderRadius: 9, overflow: 'hidden', background: '#fff' }}>
+                        <button onClick={() => handleQuantityChange(item.id, item.qty - 1, item.availableStock || 9999)}
                           style={{ width: 36, height: 36, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                        <span style={{ width: 36, textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#0d1117' }}>{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, item.qty + 1)}
+                        <input type="number" 
+                          value={item.qty}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                            handleQuantityChange(item.id, val, item.availableStock || 9999);
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value === '' || isNaN(parseInt(e.target.value)) || parseInt(e.target.value) <= 0) {
+                              showToast(t('Invalid quantity. Please enter a valid quantity.'), 'error');
+                              updateQty(item.id, 1);
+                            }
+                          }}
+                          style={{ width: 44, height: 36, textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#0d1117', border: 'none', outline: 'none', padding: 0 }} />
+                        <button onClick={() => handleQuantityChange(item.id, item.qty + 1, item.availableStock || 9999)}
                           style={{ width: 36, height: 36, background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                       </div>
                       <div style={{ fontSize: 16, fontWeight: 900, color: '#0d1117', minWidth: 120, textAlign: 'right' }}>
@@ -240,6 +271,12 @@ export function CartPage() {
                       </button>
                     </div>
                   </div>
+
+                  {!isAvailable && (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', background: '#ffe4e6', border: '1px solid #fecdd3', padding: '10px 14px', borderRadius: 8 }}>
+                      ⚠️ Sản phẩm này hiện đã hết hàng hoặc không đủ tồn kho (Còn lại: {item.availableStock || 0}). Vui lòng xóa hoặc giảm số lượng để tiếp tục thanh toán.
+                    </div>
+                  )}
 
                   {/* Collapsible Detailed Specifications */}
                   {(item.chipset || item.screenSize || item.batteryCapacity || item.rearCamera || item.frontCamera || item.operatingSystem || item.simType || item.nfcSupported != null) && (
@@ -388,10 +425,17 @@ export function CartPage() {
               <span style={{ fontSize: 16, fontWeight: 800, color: '#0d1117' }}>Tổng cộng</span>
               <span style={{ fontSize: 20, fontWeight: 900, color: '#0d1117' }}>{fmt(finalTotal)}₫</span>
             </div>
-            <button onClick={() => navigate(checkoutPath)}
-              style={{ width: '100%', padding: '14px', background: '#0d1117', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12 }}
-              onMouseEnter={e => e.currentTarget.style.background='#1e293b'}
-              onMouseLeave={e => e.currentTarget.style.background='#0d1117'}>
+            <button onClick={() => {
+              if (anyUnavailable) {
+                showToast(t('Some items in your cart are no longer available. Please remove or update them to continue.'), 'error');
+                return;
+              }
+              navigate(checkoutPath);
+            }}
+              disabled={anyUnavailable}
+              style={{ width: '100%', padding: '14px', background: anyUnavailable ? '#9ca3af' : '#0d1117', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 800, cursor: anyUnavailable ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginBottom: 12 }}
+              onMouseEnter={e => { if (!anyUnavailable) e.currentTarget.style.background='#1e293b'; }}
+              onMouseLeave={e => { if (!anyUnavailable) e.currentTarget.style.background='#0d1117'; }}>
               Tiến hành thanh toán →
             </button>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>

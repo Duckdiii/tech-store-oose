@@ -11,9 +11,15 @@ export function ApiMessage({ error, success, children }) {
   );
 }
 
-export function MetricBox({ label, value, hint, tone = 'default' }) {
+export function MetricBox({ label, value, hint, tone = 'default', onClick, active = false }) {
+  const clickable = typeof onClick === 'function';
   return (
-    <article className={`warehouse-metric warehouse-metric--${tone}`}>
+    <article
+      className={`warehouse-metric warehouse-metric--${tone}${clickable ? ' warehouse-metric--clickable' : ''}${active ? ' warehouse-metric--active' : ''}`}
+      onClick={onClick}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+    >
       <span>{label}</span>
       <strong>{value}</strong>
       <small>{hint}</small>

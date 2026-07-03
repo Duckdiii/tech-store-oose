@@ -5,10 +5,12 @@ import java.math.BigDecimal;
 public class ProductSearchRequestDTO {
 
     private String keyword;
-    private Long categoryId;
+    private String categoryId;
     private String brand;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
+    private Boolean inStock;
+    private Boolean onPromotion;
     private int page = 0;
     private int size = 10;
     private String sort = "name,asc";
@@ -21,11 +23,11 @@ public class ProductSearchRequestDTO {
         this.keyword = keyword;
     }
 
-    public Long getCategoryId() {
+    public String getCategoryId() {
         return categoryId;
     }
 
-    public void setCategoryId(Long categoryId) {
+    public void setCategoryId(String categoryId) {
         this.categoryId = categoryId;
     }
 
@@ -51,6 +53,22 @@ public class ProductSearchRequestDTO {
 
     public void setMaxPrice(BigDecimal maxPrice) {
         this.maxPrice = maxPrice;
+    }
+
+    public Boolean getInStock() {
+        return inStock;
+    }
+
+    public void setInStock(Boolean inStock) {
+        this.inStock = inStock;
+    }
+
+    public Boolean getOnPromotion() {
+        return onPromotion;
+    }
+
+    public void setOnPromotion(Boolean onPromotion) {
+        this.onPromotion = onPromotion;
     }
 
     public int getPage() {

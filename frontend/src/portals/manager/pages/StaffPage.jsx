@@ -1,69 +1,78 @@
-import { useState, useMemo } from 'react';
-import { Status, DataTable, EmptyState } from '../components/index';
+import { useState, useEffect, useMemo } from 'react';
+import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
 import { initials, sortRows } from '../utils';
+import { loginLogApi } from '../../../api/loginLogApi';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
-const LOGIN_LOG_STATUSES = ['Tất cả', 'Success', 'Failed'];
-const LOGIN_LOG_ROLES    = ['Tất cả', 'Staff', 'Manager'];
+const LOGIN_LOG_STATUSES = ['Tất cả', 'SUCCESS', 'FAILED'];
+const LOGIN_LOG_ROLES    = ['Tất cả', 'STAFF', 'MANAGER'];
 
-const MOCK_LOGIN_LOGS = [
-  { id: 'LL-001', time: '24/06/2026 09:12', email: 'duy.nguyen@techstore.vn',  role: 'Manager', status: 'Success' },
-  { id: 'LL-002', time: '24/06/2026 08:55', email: 'ha.tran@techstore.vn',     role: 'Staff',   status: 'Success' },
-  { id: 'LL-003', time: '23/06/2026 17:30', email: 'khoa.le@techstore.vn',     role: 'Staff',   status: 'Failed'  },
-  { id: 'LL-004', time: '23/06/2026 14:02', email: 'ha.tran@techstore.vn',     role: 'Staff',   status: 'Success' },
-  { id: 'LL-005', time: '23/06/2026 09:45', email: 'duy.nguyen@techstore.vn',  role: 'Manager', status: 'Success' },
-  { id: 'LL-006', time: '22/06/2026 18:11', email: 'khoa.le@techstore.vn',     role: 'Staff',   status: 'Failed'  },
-  { id: 'LL-007', time: '22/06/2026 08:03', email: 'ha.tran@techstore.vn',     role: 'Staff',   status: 'Success' },
-];
+function formatLogTime(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
-function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClose }) {
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', minWidth: 360, maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0d1117', margin: '0 0 10px' }}>{title}</h3>
-        <p style={{ fontSize: 13.5, color: '#6b7280', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="admin-button admin-button--secondary" onClick={onClose}>Hủy</button>
-          <button
-            className="admin-button"
-            style={danger ? { background: '#ef4444', color: '#fff' } : {}}
-            onClick={() => { onConfirm(); onClose(); }}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+function getLoginLogError(err) {
+  const status = err?.response?.status;
+  if (status === 403) return 'You do not have permission to view login logs';
+  return err?.response?.data?.message || 'Unable to load login log information. Please try again later';
 }
 
 function LoginLogTab() {
+  const { t } = useTheme();
   const [filterEmail,  setFilterEmail]  = useState('');
   const [filterRole,   setFilterRole]   = useState('Tất cả');
   const [filterStatus, setFilterStatus] = useState('Tất cả');
   const [filterDate,   setFilterDate]   = useState('');
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const rows = MOCK_LOGIN_LOGS.filter((log) => {
-    if (filterEmail  && !log.email.toLowerCase().includes(filterEmail.toLowerCase())) return false;
-    if (filterRole   !== 'Tất cả' && log.role   !== filterRole)   return false;
-    if (filterStatus !== 'Tất cả' && log.status !== filterStatus) return false;
-    if (filterDate   && !log.time.startsWith(filterDate.split('-').reverse().join('/'))) return false;
-    return true;
-  });
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const params = {};
+        if (filterEmail.trim()) params.email = filterEmail.trim();
+        if (filterRole !== 'Tất cả') params.roleName = filterRole;
+        if (filterStatus !== 'Tất cả') params.status = filterStatus;
+        if (filterDate) {
+          params.from = `${filterDate}T00:00:00`;
+          params.to = `${filterDate}T23:59:59`;
+        }
+        const rows = await loginLogApi.search(params);
+        setLogs(rows);
+      } catch (err) {
+        setLogs([]);
+        setError(t(getLoginLogError(err)));
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [filterEmail, filterRole, filterStatus, filterDate]);
 
-  const exportCsv = () => {
-    const header = 'Thời gian,Email,Vai trò,Trạng thái';
-    const body = rows.map((r) => `"${r.time}","${r.email}","${r.role}","${r.status}"`).join('\n');
-    const blob = new Blob([header + '\n' + body], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'nhat-ky-dang-nhap.csv'; a.click();
-    URL.revokeObjectURL(url);
+  const exportCsv = async () => {
+    try {
+      const params = {};
+      if (filterEmail.trim()) params.email = filterEmail.trim();
+      if (filterRole !== 'Tất cả') params.roleName = filterRole;
+      if (filterStatus !== 'Tất cả') params.status = filterStatus;
+      if (filterDate) {
+        params.from = `${filterDate}T00:00:00`;
+        params.to = `${filterDate}T23:59:59`;
+      }
+      const blob = await loginLogApi.exportCsv(params);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'nhat-ky-dang-nhap.csv'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(t(getLoginLogError(err)));
+    }
   };
 
   const hasFilter = filterEmail || filterRole !== 'Tất cả' || filterStatus !== 'Tất cả' || filterDate;
@@ -77,6 +86,12 @@ function LoginLogTab() {
         </div>
         <button className="admin-button admin-button--secondary" onClick={exportCsv}>Xuất nhật ký</button>
       </div>
+
+      {error && (
+        <p style={{ color: 'var(--color-danger, #e53e3e)', background: 'var(--color-danger-bg, #fff5f5)', border: '1px solid var(--color-danger, #e53e3e)', borderRadius: 8, padding: '10px 16px', marginBottom: 12, fontSize: 14 }}>
+          {error}
+        </p>
+      )}
 
       <article className="admin-card">
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
@@ -111,14 +126,16 @@ function LoginLogTab() {
         </div>
 
         <DataTable columns={['Thời gian', 'Email', 'Vai trò', 'Trạng thái']}>
-          {rows.length === 0 ? (
+          {loading ? (
+            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải dữ liệu...</td></tr>
+          ) : logs.length === 0 ? (
             <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Không có bản ghi phù hợp</td></tr>
-          ) : rows.map((log) => (
+          ) : logs.map((log) => (
             <tr key={log.id}>
-              <td style={{ color: '#64748b', fontSize: 12 }}>{log.time}</td>
+              <td style={{ color: '#64748b', fontSize: 12 }}>{formatLogTime(log.loginTime)}</td>
               <td>{log.email}</td>
-              <td><span className="admin-role">{log.role}</span></td>
-              <td><Status>{log.status === 'Success' ? 'Active' : 'Đã khóa'}</Status></td>
+              <td><span className="admin-role">{log.roleName}</span></td>
+              <td><Status>{log.loginStatus === 'SUCCESS' ? 'Active' : 'Đã khóa'}</Status></td>
             </tr>
           ))}
         </DataTable>
@@ -249,7 +266,7 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
           }
           confirmLabel={blockConfirm.active ? 'Khóa tài khoản' : 'Mở khóa'}
           danger={blockConfirm.active}
-          onConfirm={() => onToggle(blockConfirm.id)}
+          onConfirm={() => onToggle(blockConfirm)}
           onClose={() => setBlockConfirm(null)}
         />
       )}

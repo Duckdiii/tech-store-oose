@@ -5,6 +5,17 @@ import { httpClient } from '../../../api/httpClient';
 
 const ORDER_STATUSES = ['Chờ xác nhận', 'Đang xử lý', 'Đang giao', 'Hoàn thành', 'Đã hủy', 'Đã hoàn tiền'];
 
+// Các bước chuyển trạng thái hợp lệ, khớp đúng state machine phía backend (OrderStatus.java).
+// Trạng thái không có trong map (hoặc mảng rỗng) là trạng thái cuối, không thể đổi tiếp.
+const NEXT_STATUSES = {
+  'Chờ xác nhận': ['Đang xử lý', 'Đã hủy'],
+  'Đang xử lý': ['Đang giao', 'Đã hủy'],
+  'Đang giao': ['Hoàn thành'],
+  'Hoàn thành': ['Đã hoàn tiền'],
+  'Đã hủy': [],
+  'Đã hoàn tiền': [],
+};
+
 const PAYMENT_LOG_STATUSES = ['Tất cả', 'Success', 'Failed', 'Pending', 'Cancelled'];
 
 const STATUS_STYLE = {
@@ -233,22 +244,52 @@ function PaymentLogTab() {
 }
 
 export function OrdersPage({ orders, onStatus, onExport }) {
-  const [tab,        setTab]        = useState('orders');
-  const [sortKey,    setSortKey]    = useState('');
-  const [sortDir,    setSortDir]    = useState('asc');
-  const [selected,   setSelected]   = useState(new Set());
-  const [bulkStatus, setBulkStatus] = useState('Hoàn thành');
+  const [tab,          setTab]          = useState('orders');
+  const [sortKey,      setSortKey]      = useState('');
+  const [sortDir,      setSortDir]      = useState('asc');
+  const [selected,     setSelected]     = useState(new Set());
+  const [bulkStatus,   setBulkStatus]   = useState('');
+  const [bulkResult,   setBulkResult]   = useState(null);
+  const [bulkRunning,  setBulkRunning]  = useState(false);
+  const [filterStatus, setFilterStatus] = useState('Tất cả');
+  const [search,       setSearch]       = useState('');
 
   const selectAllRef = useRef(null);
 
-  const visibleOrders = useMemo(() => sortRows(orders, sortKey, sortDir), [orders, sortKey, sortDir]);
+  const filteredOrders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return orders.filter((o) => {
+      if (filterStatus !== 'Tất cả' && o.status !== filterStatus) return false;
+      if (q && !`${o.id} ${o.customer}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [orders, filterStatus, search]);
+
+  const isFiltering = filterStatus !== 'Tất cả' || search.trim() !== '';
+
+  const visibleOrders = useMemo(() => sortRows(filteredOrders, sortKey, sortDir), [filteredOrders, sortKey, sortDir]);
 
   const allSelected  = visibleOrders.length > 0 && visibleOrders.every((o) => selected.has(o.id));
   const someSelected = !allSelected && visibleOrders.some((o) => selected.has(o.id));
 
+  const selectedStatuses = useMemo(
+    () => new Set(visibleOrders.filter((o) => selected.has(o.id)).map((o) => o.status)),
+    [visibleOrders, selected]
+  );
+  const bulkNextOptions = useMemo(
+    () => selectedStatuses.size === 1 ? (NEXT_STATUSES[[...selectedStatuses][0]] || []) : [],
+    [selectedStatuses]
+  );
+
   useEffect(() => {
     if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected;
   }, [someSelected]);
+
+  useEffect(() => {
+    if (bulkNextOptions.length > 0 && !bulkNextOptions.includes(bulkStatus)) {
+      setBulkStatus(bulkNextOptions[0]);
+    }
+  }, [bulkNextOptions, bulkStatus]);
 
   const toggleAll = () => {
     if (allSelected) setSelected(new Set());
@@ -266,9 +307,15 @@ export function OrdersPage({ orders, onStatus, onExport }) {
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const applyBulkStatus = () => {
-    selected.forEach((id) => onStatus(id, bulkStatus));
+  const applyBulkStatus = async () => {
+    const ids = Array.from(selected);
+    setBulkRunning(true);
+    const results = await Promise.allSettled(ids.map((id) => onStatus(id, bulkStatus)));
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    setBulkRunning(false);
     setSelected(new Set());
+    setBulkResult({ total: ids.length, failed });
+    setTimeout(() => setBulkResult(null), 5000);
   };
 
   return (
@@ -301,7 +348,7 @@ export function OrdersPage({ orders, onStatus, onExport }) {
         <>
           <div className="admin-page-intro">
             <div>
-              <p>Đồng bộ theo dữ liệu mock</p>
+              <p>{isFiltering ? `${visibleOrders.length}/${orders.length} đơn hàng phù hợp` : `${orders.length} đơn hàng`}</p>
               <h2>Đơn hàng gần đây</h2>
             </div>
             <button className="admin-button admin-button--secondary" onClick={onExport}>
@@ -310,24 +357,75 @@ export function OrdersPage({ orders, onStatus, onExport }) {
           </div>
 
           <article className="admin-card">
+            <div className="admin-filterbar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
+                Trạng thái
+                <select
+                  className="admin-status-select"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="Tất cả">Tất cả</option>
+                  {ORDER_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </label>
+              <input
+                type="text"
+                className="admin-status-select"
+                placeholder="Tìm theo mã đơn hoặc khách hàng"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ minWidth: 220 }}
+              />
+              {isFiltering && (
+                <button
+                  className="admin-row-action"
+                  onClick={() => { setFilterStatus('Tất cả'); setSearch(''); }}
+                >
+                  Xóa bộ lọc
+                </button>
+              )}
+            </div>
+
+            {bulkResult && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: bulkResult.failed > 0 ? '#fef3c7' : '#dcfce7', color: bulkResult.failed > 0 ? '#92400e' : '#15803d', borderRadius: 10, marginBottom: 12, fontSize: 13 }}>
+                <span>
+                  {bulkResult.failed > 0
+                    ? `Đã cập nhật ${bulkResult.total - bulkResult.failed}/${bulkResult.total} đơn. ${bulkResult.failed} đơn thất bại.`
+                    : `Đã cập nhật ${bulkResult.total} đơn thành công.`}
+                </span>
+                <div style={{ flex: 1 }} />
+                <button style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 16, lineHeight: 1 }} onClick={() => setBulkResult(null)}>×</button>
+              </div>
+            )}
+
             {selected.size > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#0d1117', color: '#fff', borderRadius: 10, marginBottom: 12, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#0d1117', color: '#fff', borderRadius: 10, marginBottom: 12, fontSize: 13, flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 600 }}>{selected.size} đơn đã chọn</span>
                 <div style={{ flex: 1 }} />
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Chuyển sang:</span>
-                <select
-                  value={bulkStatus}
-                  onChange={(e) => setBulkStatus(e.target.value)}
-                  style={{ padding: '4px 8px', borderRadius: 6, border: 'none', fontSize: 12, background: 'rgba(255,255,255,0.12)', color: '#fff', cursor: 'pointer' }}
-                >
-                  {ORDER_STATUSES.map((s) => <option key={s} style={{ color: '#0d1117' }}>{s}</option>)}
-                </select>
-                <button
-                  style={{ padding: '5px 14px', borderRadius: 8, border: 'none', background: '#fff', color: '#0d1117', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                  onClick={applyBulkStatus}
-                >
-                  Áp dụng
-                </button>
+                {selectedStatuses.size > 1 ? (
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Chỉ áp dụng được khi các đơn đã chọn cùng trạng thái</span>
+                ) : bulkNextOptions.length === 0 ? (
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Các đơn đã chọn không thể chuyển trạng thái tiếp</span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Chuyển sang:</span>
+                    <select
+                      value={bulkStatus}
+                      onChange={(e) => setBulkStatus(e.target.value)}
+                      style={{ padding: '4px 8px', borderRadius: 6, border: 'none', fontSize: 12, background: 'rgba(255,255,255,0.12)', color: '#fff', cursor: 'pointer' }}
+                    >
+                      {bulkNextOptions.map((s) => <option key={s} style={{ color: '#0d1117' }}>{s}</option>)}
+                    </select>
+                    <button
+                      disabled={bulkRunning}
+                      style={{ padding: '5px 14px', borderRadius: 8, border: 'none', background: '#fff', color: '#0d1117', fontSize: 12, fontWeight: 600, cursor: bulkRunning ? 'default' : 'pointer', opacity: bulkRunning ? 0.6 : 1 }}
+                      onClick={applyBulkStatus}
+                    >
+                      {bulkRunning ? 'Đang áp dụng...' : 'Áp dụng'}
+                    </button>
+                  </>
+                )}
                 <button
                   style={{ padding: '5px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.25)', background: 'transparent', color: '#fff', fontSize: 12, cursor: 'pointer' }}
                   onClick={() => setSelected(new Set())}
@@ -351,30 +449,38 @@ export function OrdersPage({ orders, onStatus, onExport }) {
             >
               {visibleOrders.length === 0 ? (
                 <EmptyState
-                  message="Không có đơn hàng nào"
-                  hint="Đơn hàng sẽ xuất hiện ở đây khi khách hàng đặt mua."
+                  message={isFiltering ? 'Không có đơn hàng nào phù hợp bộ lọc' : 'Không có đơn hàng nào'}
+                  hint={isFiltering ? 'Thử đổi trạng thái lọc hoặc xóa từ khóa tìm kiếm.' : 'Đơn hàng sẽ xuất hiện ở đây khi khách hàng đặt mua.'}
                 />
-              ) : visibleOrders.map((order) => (
-                <tr key={order.id}>
-                  <td style={{ width: 40 }}>
-                    <input type="checkbox" checked={selected.has(order.id)} onChange={() => toggleOne(order.id)} style={{ cursor: 'pointer' }} />
-                  </td>
-                  <td><b>{order.id}</b></td>
-                  <td>{order.customer}</td>
-                  <td>{order.date}</td>
-                  <td>{order.payment}</td>
-                  <td><b>{money(order.total)}</b></td>
-                  <td>
-                    <select
-                      className="admin-status-select"
-                      value={order.status}
-                      onChange={(e) => onStatus(order.id, e.target.value)}
-                    >
-                      {ORDER_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              ))}
+              ) : visibleOrders.map((order) => {
+                const nextOptions = NEXT_STATUSES[order.status] || [];
+                return (
+                  <tr key={order.id}>
+                    <td style={{ width: 40 }}>
+                      <input type="checkbox" checked={selected.has(order.id)} onChange={() => toggleOne(order.id)} style={{ cursor: 'pointer' }} />
+                    </td>
+                    <td><b>{order.id}</b></td>
+                    <td>{order.customer}</td>
+                    <td>{order.date}</td>
+                    <td>{order.payment}</td>
+                    <td><b>{money(order.total)}</b></td>
+                    <td>
+                      {nextOptions.length > 0 ? (
+                        <select
+                          className="admin-status-select"
+                          value={order.status}
+                          onChange={(e) => { onStatus(order.id, e.target.value).catch(() => {}); }}
+                        >
+                          <option value={order.status}>{order.status}</option>
+                          {nextOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        <Status>{order.status}</Status>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </DataTable>
           </article>
         </>

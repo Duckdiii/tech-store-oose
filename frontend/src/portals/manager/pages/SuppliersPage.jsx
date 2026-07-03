@@ -1,40 +1,23 @@
 import { useState, useMemo } from 'react';
-import { DataTable, EmptyState } from '../components/index';
+import { ConfirmDialog, DataTable, EmptyState } from '../components/index';
 import { sortRows } from '../utils';
-
-function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClose }) {
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', minWidth: 360, maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0d1117', margin: '0 0 10px' }}>{title}</h3>
-        <p style={{ fontSize: 13.5, color: '#6b7280', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="admin-button admin-button--secondary" onClick={onClose}>Hủy</button>
-          <button
-            className="admin-button"
-            style={danger ? { background: '#ef4444', color: '#fff' } : {}}
-            onClick={() => { onConfirm(); onClose(); }}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState('asc');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [search, setSearch] = useState('');
 
-  const visible = useMemo(() => sortRows(suppliers, sortKey, sortDir), [suppliers, sortKey, sortDir]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return suppliers;
+    return suppliers.filter((s) =>
+      `${s.name} ${s.email || ''} ${s.phone || ''}`.toLowerCase().includes(q)
+    );
+  }, [suppliers, search]);
+
+  const visible = useMemo(() => sortRows(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
+  const isFiltering = search.trim() !== '';
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
@@ -43,7 +26,9 @@ export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
 
   const columns = [
     { label: 'Tên nhà cung cấp', key: 'name' },
-    'ID',
+    { label: 'Email', key: 'email' },
+    { label: 'Số điện thoại', key: 'phone' },
+    'Địa chỉ',
     '',
   ];
 
@@ -51,25 +36,40 @@ export function SuppliersPage({ suppliers, onAdd, onEdit, onDelete }) {
     <>
       <div className="admin-page-intro">
         <div>
-          <p>{suppliers.length} nhà cung cấp hiển thị</p>
+          <p>{isFiltering ? `${visible.length}/${suppliers.length} nhà cung cấp phù hợp` : `${suppliers.length} nhà cung cấp hiển thị`}</p>
           <h2>Nhà cung cấp</h2>
         </div>
         <button className="admin-button" onClick={onAdd}>+ Thêm nhà cung cấp</button>
       </div>
 
       <article className="admin-card">
+        <div className="admin-filterbar" style={{ marginBottom: 12 }}>
+          <input
+            type="text"
+            className="admin-status-select"
+            placeholder="Tìm theo tên, email hoặc số điện thoại"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ minWidth: 260 }}
+          />
+        </div>
+
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
           {visible.length === 0 ? (
             <EmptyState
-              message="Chưa có nhà cung cấp nào"
-              hint="Thêm nhà cung cấp đầu tiên để bắt đầu nhập hàng."
-              actionLabel="+ Thêm nhà cung cấp"
-              onAction={onAdd}
+              message={isFiltering ? 'Không có nhà cung cấp nào phù hợp' : 'Chưa có nhà cung cấp nào'}
+              hint={isFiltering ? 'Thử từ khóa khác.' : 'Thêm nhà cung cấp đầu tiên để bắt đầu nhập hàng.'}
+              actionLabel={isFiltering ? undefined : '+ Thêm nhà cung cấp'}
+              onAction={isFiltering ? undefined : onAdd}
             />
           ) : visible.map((supplier) => (
             <tr key={supplier.id}>
               <td><b>{supplier.name}</b></td>
-              <td><small style={{ color: '#94a3b8' }}>{supplier.id}</small></td>
+              <td>{supplier.email || '—'}</td>
+              <td>{supplier.phone || '—'}</td>
+              <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={supplier.address || ''}>
+                {supplier.address || '—'}
+              </td>
               <td>
                 <div className="admin-row-actions">
                   <button className="admin-row-action" onClick={() => onEdit(supplier)}>Sửa</button>

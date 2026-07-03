@@ -11,6 +11,7 @@ import com.oose.tech_store.dto.ProductSearchResponseDTO;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.ProductImage;
 import com.oose.tech_store.entity.ProductVariant;
+import com.oose.tech_store.entity.Promotion;
 
 public class ProductMapper {
 
@@ -50,6 +51,18 @@ public class ProductMapper {
             dto.setCategoryName(p.getCategory().getName());
         }
 
+        // Find active promotion
+        Double maxDiscountPercent = (p.getPromotions() == null) ? null : p.getPromotions().stream()
+                .filter(Promotion::isActiveNow)
+                .map(Promotion::getDiscountPercent)
+                .max(Double::compareTo)
+                .orElse(null);
+
+        if (maxDiscountPercent != null && maxDiscountPercent > 0) {
+            dto.setDiscountPercent(maxDiscountPercent);
+            dto.setDiscount("-" + Math.round(maxDiscountPercent) + "%");
+        }
+
         // Lowest price from available variants
         if (availableVariants != null && !availableVariants.isEmpty()) {
             BigDecimal lowest = availableVariants.stream()
@@ -57,9 +70,17 @@ public class ProductMapper {
                     .filter(price -> price != null)
                     .min(BigDecimal::compareTo)
                     .orElse(BigDecimal.ZERO);
-            dto.setLowestPrice(lowest);
+            
+            dto.setOriginalPrice(lowest);
+            if (maxDiscountPercent != null && maxDiscountPercent > 0) {
+                BigDecimal discountFactor = BigDecimal.ONE.subtract(BigDecimal.valueOf(maxDiscountPercent).divide(BigDecimal.valueOf(100)));
+                dto.setLowestPrice(lowest.multiply(discountFactor));
+            } else {
+                dto.setLowestPrice(lowest);
+            }
             dto.setAvailableVariantCount(availableVariants.size());
         } else {
+            dto.setOriginalPrice(BigDecimal.ZERO);
             dto.setLowestPrice(BigDecimal.ZERO);
             dto.setAvailableVariantCount(0);
         }

@@ -16,8 +16,10 @@ import com.oose.tech_store.service.customer.observer.InventoryStatusChangedEvent
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -33,12 +35,18 @@ public class InventoryNotificationService {
         List<InventoryStatusDTO> results = new ArrayList<>();
 
         for (AffectedProductDTO product : affectedProducts) {
-            long availableQuantity = productVariantRepository.countByProductIdAndSpecsAndStatus(
-                    product.productId(),
-                    product.ramGb(),
-                    product.storageGb(),
-                    product.color(),
-                    ProductVariantStatus.AVAILABLE);
+            long availableQuantity;
+            try {
+                availableQuantity = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                        product.productId(),
+                        product.ramGb(),
+                        product.storageGb(),
+                        product.color(),
+                        ProductVariantStatus.AVAILABLE);
+            } catch (Exception exception) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Unable to retrieve inventory status", exception);
+            }
             boolean outOfStock = availableQuantity == 0;
 
             InventoryStatusChangedEvent event = new InventoryStatusChangedEvent(
@@ -49,20 +57,26 @@ public class InventoryNotificationService {
                     product.color(),
                     availableQuantity,
                     outOfStock);
-            observers.forEach(observer -> observer.onInventoryChanged(event));
 
-            if (availableQuantity < 6) {
-                notifyLowStock(product, availableQuantity);
+            try {
+                observers.forEach(observer -> observer.onInventoryChanged(event));
+
+                if (availableQuantity < 6) {
+                    notifyLowStock(product, availableQuantity);
+                }
+
+                int notifiedCustomerCount = outOfStock ? notifySubscribedCustomers(product) : 0;
+
+                results.add(new InventoryStatusDTO(
+                        product.productId(),
+                        product.productName(),
+                        availableQuantity,
+                        outOfStock ? "OUT_OF_STOCK" : "AVAILABLE",
+                        notifiedCustomerCount));
+            } catch (Exception exception) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Unable to record inventory change status", exception);
             }
-
-            int notifiedCustomerCount = outOfStock ? notifySubscribedCustomers(product) : 0;
-
-            results.add(new InventoryStatusDTO(
-                    product.productId(),
-                    product.productName(),
-                    availableQuantity,
-                    outOfStock ? "OUT_OF_STOCK" : "AVAILABLE",
-                    notifiedCustomerCount));
         }
         return results;
     }

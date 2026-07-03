@@ -9,20 +9,38 @@ const filterOptions = [
   ['OUT', 'Hết hàng'],
 ];
 
-function WarehouseOverviewMetrics({ products, variants, getProductStock }) {
+function WarehouseOverviewMetrics({ products, variants, getProductStock, statusFilter, onFilterClick }) {
   const availableCount = variants.filter((variant) => variant.status === 'AVAILABLE').length;
-  const needRestockCount = products.filter((product) => getProductStock(product.id) < 6).length;
+  const outOfStockCount = products.filter((product) => getProductStock(product.id) === 0).length;
+  const lowStockCount = products.filter((product) => {
+    const stock = getProductStock(product.id);
+    return stock > 0 && stock < 6;
+  }).length;
 
   return (
     <div className="admin-metrics admin-metrics--three warehouse-overview-metrics">
-      <MetricBox label="Tổng tồn kho" value={variants.length} hint="Mỗi sản phẩm vật lý có một mã riêng" />
-      <MetricBox label="Có thể bán" value={availableCount} hint="Đang còn trong kho" tone="success" />
-      <MetricBox label="Cần nhập thêm" value={needRestockCount} hint="Sắp hết hoặc hết hàng" tone="warning" />
+      <MetricBox label="Tổng tồn kho" value={availableCount} hint="Số máy còn hàng, sẵn sàng bán" tone="success" />
+      <MetricBox
+        label="Cảnh báo"
+        value={outOfStockCount}
+        hint="Sản phẩm đã hết hàng"
+        tone="danger"
+        onClick={() => onFilterClick('OUT')}
+        active={statusFilter === 'OUT'}
+      />
+      <MetricBox
+        label="Cần nhập thêm"
+        value={lowStockCount}
+        hint="Sản phẩm sắp hết hàng"
+        tone="warning"
+        onClick={() => onFilterClick('LOW')}
+        active={statusFilter === 'LOW'}
+      />
     </div>
   );
 }
 
-export function WarehouseOverview({ navigate, products = [], variants = [] }) {
+export function WarehouseOverview({ navigate, products = [], variants = [], onOpenProduct }) {
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [serialQuery, setSerialQuery] = useState('');
@@ -57,6 +75,10 @@ export function WarehouseOverview({ navigate, products = [], variants = [] }) {
     setExpandedProduct((current) => current === productId ? null : productId);
   };
 
+  const toggleStatusFilter = (key) => {
+    setStatusFilter((current) => (current === key ? 'ALL' : key));
+  };
+
   return (
     <>
       <div className="admin-page-intro">
@@ -75,6 +97,8 @@ export function WarehouseOverview({ navigate, products = [], variants = [] }) {
             products={products}
             variants={variants}
             getProductStock={getProductStock}
+            statusFilter={statusFilter}
+            onFilterClick={toggleStatusFilter}
           />
 
           <article className="admin-card">
@@ -108,7 +132,7 @@ export function WarehouseOverview({ navigate, products = [], variants = [] }) {
               getProductStock={getProductStock}
               getInventoryStatus={getInventoryStatus}
               onToggleProduct={toggleProduct}
-              onViewProduct={() => navigate('/manager/products')}
+              onViewProduct={(product) => (onOpenProduct ? onOpenProduct(product) : navigate('/manager/products'))}
             />
           </article>
         </>

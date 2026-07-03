@@ -64,11 +64,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 		   "JOIN FETCH p.brand b " +
 		   "JOIN FETCH o.selectedPaymentMethod pm " +
 		   "WHERE o.orderStatus = com.oose.tech_store.entity.enums.OrderStatus.COMPLETED " +
-		   "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
-		   "AND (:endDate IS NULL OR o.orderDate <= :endDate) " +
-		   "AND (:categoryId IS NULL OR cat.id = :categoryId) " +
-		   "AND (:brandId IS NULL OR b.id = :brandId) " +
-		   "AND (:paymentMethodId IS NULL OR pm.id = :paymentMethodId) " +
+		   "AND (CAST(:startDate AS timestamp) IS NULL OR o.orderDate >= :startDate) " +
+		   "AND (CAST(:endDate AS timestamp) IS NULL OR o.orderDate <= :endDate) " +
+		   "AND (CAST(:categoryId AS string) IS NULL OR cat.id = :categoryId) " +
+		   "AND (CAST(:brandId AS string) IS NULL OR b.id = :brandId) " +
+		   "AND (CAST(:paymentMethodId AS string) IS NULL OR pm.id = :paymentMethodId) " +
 		   "ORDER BY o.orderDate ASC")
 	List<Order> findCompletedOrdersForReport(
 		@Param("startDate") LocalDateTime startDate,
@@ -77,4 +77,19 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 		@Param("brandId") String brandId,
 		@Param("paymentMethodId") String paymentMethodId
 	);
+
+	@Query("SELECT o.customer.id AS customerId, COUNT(DISTINCT o.id) AS totalOrders, " +
+		   "COALESCE(SUM(oi.quantity * oi.unitPriceAtOrder), 0) AS totalSpent " +
+		   "FROM Order o JOIN o.items oi " +
+		   "WHERE o.orderStatus = com.oose.tech_store.entity.enums.OrderStatus.COMPLETED " +
+		   "GROUP BY o.customer.id")
+	List<CustomerOrderStats> getCompletedOrderStatsByCustomer();
+
+	interface CustomerOrderStats {
+		String getCustomerId();
+
+		Long getTotalOrders();
+
+		BigDecimal getTotalSpent();
+	}
 }

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { fmt } from '../../../utils/format';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 import { httpClient } from '../../../api/httpClient';
 import { userApi } from '../../../api/userApi';
 import { membershipApi } from '../../../api/membershipApi';
@@ -84,6 +85,8 @@ export function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const { t } = useTheme();
   const [method, setMethod] = useState('');
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(null);
@@ -180,6 +183,13 @@ export function CheckoutPage() {
     setAppliedPromotionCode(normalizedPromo);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!verifyingPayment && !success && items.length === 0) {
+      showToast(t('Your cart is empty. Please add products before checkout.'), 'warning');
+      navigate('/products');
+    }
+  }, [items, verifyingPayment, success]);
+
   // Set default method when summary loads — skip methods the order amount already exceeds
   useEffect(() => {
     if (summary?.availablePaymentMethods?.length > 0) {
@@ -228,11 +238,12 @@ export function CheckoutPage() {
             name: user?.name || ''
           });
         } else {
-          showToast(response?.data?.message || 'Thanh toán trực tuyến thất bại hoặc đã bị hủy.', 'error');
+          const msg = response?.data?.message || 'Payment failed. Please try again or choose another payment method.';
+          showToast(t(msg), 'error');
         }
       } catch (error) {
         console.error('Error verifying payment:', error);
-        showToast('Có lỗi xảy ra khi xác nhận giao dịch thanh toán.', 'error');
+        showToast(t('Payment failed. Please try again or choose another payment method.'), 'error');
       } finally {
         setVerifyingPayment(false);
         setSearchParams({});
@@ -426,9 +437,33 @@ export function CheckoutPage() {
       }
     } catch (error) {
       console.error('Error placing order:', error);
-      showToast(error.response?.data?.message || 'Đặt hàng không thành công. Vui lòng thử lại.', 'error');
+      const rawMsg = error.response?.data?.message;
+      const translatedMsg = rawMsg ? t(rawMsg) : 'Đặt hàng không thành công. Vui lòng thử lại.';
+      showToast(translatedMsg, 'error');
+      if (rawMsg && rawMsg.includes('no longer available')) {
+        navigate('/cart');
+      }
     } finally {
       setPlacing(false);
+    }
+  };
+
+  const handleDownloadPdf = async (orderId) => {
+    try {
+      const response = await httpClient.get(`/invoices/order/${orderId}/pdf`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading invoice PDF:', error);
+      showToast(t('Unable to generate invoice PDF. Please try again later.'), 'error');
     }
   };
 
@@ -573,7 +608,7 @@ export function CheckoutPage() {
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Xem hóa đơn
               </button>
-              <button onClick={() => window.open(`/api/invoices/order/${success.orderId}/pdf`, '_blank')}
+              <button onClick={() => handleDownloadPdf(success.orderId)}
                 style={{ flex: 1, height: 46, background: '#fff', border: '1.5px solid #e9ecef', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                 📥 Tải PDF
               </button>

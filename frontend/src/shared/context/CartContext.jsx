@@ -1,11 +1,15 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { httpClient } from '../../api/httpClient';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
+import { useTheme } from './ThemeContext';
 
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const { t } = useTheme();
   const [items, setItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem('ts_cart') || '[]'); }
     catch { return []; }
@@ -126,6 +130,8 @@ export function CartProvider({ children }) {
       })
       .catch(error => {
         console.error('Error adding bundle service:', error);
+        const rawMsg = error.response?.data?.message || 'Unable to add bundle service. Please try again later.';
+        showToast(t(rawMsg), 'error');
       });
   };
 
@@ -136,6 +142,8 @@ export function CartProvider({ children }) {
       })
       .catch(error => {
         console.error('Error removing bundle service:', error);
+        const rawMsg = error.response?.data?.message || 'Unable to remove bundle service. Please try again later.';
+        showToast(t(rawMsg), 'error');
       });
   };
 

@@ -1,33 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Status, DataTable, EmptyState } from '../components/index';
+import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
 import { money, initials, sortRows } from '../utils';
-
-function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClose }) {
-  return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', minWidth: 360, maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0d1117', margin: '0 0 10px' }}>{title}</h3>
-        <p style={{ fontSize: 13.5, color: '#6b7280', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="admin-button admin-button--secondary" onClick={onClose}>Hủy</button>
-          <button
-            className="admin-button"
-            style={danger ? { background: '#ef4444', color: '#fff' } : {}}
-            onClick={() => { onConfirm(); onClose(); }}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function CustomersPage({ customers, onToggle }) {
   const [blockConfirm, setBlockConfirm] = useState(null);
@@ -102,7 +75,7 @@ export function CustomersPage({ customers, onToggle }) {
           }
           confirmLabel={blockConfirm.active ? 'Khóa tài khoản' : 'Mở khóa'}
           danger={blockConfirm.active}
-          onConfirm={() => onToggle(blockConfirm.id)}
+          onConfirm={() => onToggle(blockConfirm)}
           onClose={() => setBlockConfirm(null)}
         />
       )}

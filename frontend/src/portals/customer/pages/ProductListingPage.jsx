@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { fmt } from '../../../utils/format';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { productApi } from '../../../api/productApi';
+import { categoryApi } from '../../../api/categoryApi';
 import { notificationApi } from '../../../api/notificationApi';
 import { useAuth } from '../../../shared/context/AuthContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 const FILTER_BRANDS = ['Apple','Samsung','Xiaomi','OPPO','Vivo','Realme'];
 const FILTER_PRICES = [
   { label: 'Dưới 5 triệu',       min: 0,        max: 5000000 },
@@ -47,6 +49,8 @@ function HeartIcon({ broken = false }) {
 export function ProductListingPage() {
   const [params] = useSearchParams();
   const { isLoggedIn } = useAuth();
+  const { t } = useTheme();
+  
   const [brands, setBrands] = useState(() => params.get('brand') ? [params.get('brand')] : []);
   const [prices, setPrices] = useState([]);
   const [rams, setRams] = useState([]);
@@ -57,12 +61,38 @@ export function ProductListingPage() {
   const navigate = useNavigate();
   const PER_PAGE = 8;
 
+  // New Search Filters States
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [inStock, setInStock] = useState('all'); // 'all', 'true', 'false'
+  const [onPromotion, setOnPromotion] = useState(false);
+  const [customMinPrice, setCustomMinPrice] = useState('');
+  const [customMaxPrice, setCustomMaxPrice] = useState('');
+
+  // Error States for Exception Flows
+  const [error, setError] = useState('');
+
+  // Fetch categories on mount
+  useEffect(() => {
+    categoryApi.getCategories()
+      .then(data => setCategories(data))
+      .catch(err => console.error('Failed to load categories', err));
+  }, []);
+
+  // Sync category and brand from search URL params
   useEffect(() => {
     const brandParam = params.get('brand');
     if (brandParam) {
       setBrands([brandParam]);
     } else {
       setBrands([]);
+    }
+
+    const categoryParam = params.get('category') || params.get('categoryId');
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    } else {
+      setSelectedCategory(null);
     }
   }, [params]);
 
@@ -79,6 +109,7 @@ export function ProductListingPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
+      setError('');
       try {
         const q = params.get('q') || '';
         const brandQuery = brands.length > 0 ? brands[0] : '';
@@ -92,6 +123,9 @@ export function ProductListingPage() {
         const data = await productApi.searchProducts({
           keyword: q,
           brand: brandQuery,
+          categoryId: selectedCategory || undefined,
+          inStock: inStock === 'all' ? undefined : (inStock === 'true'),
+          onPromotion: onPromotion ? true : undefined,
           minPrice: minPrice !== '' && minPrice !== Infinity ? minPrice : undefined,
           maxPrice: maxPrice !== '' && maxPrice !== Infinity ? maxPrice : undefined,
           page: page - 1,
@@ -99,11 +133,19 @@ export function ProductListingPage() {
           sort: sortQuery || undefined
         });
         
-        setProducts(data.content);
-        setTotalElements(data.totalElements);
-        setTotalPages(data.totalPages);
+        setProducts(data.content || []);
+        setTotalElements(data.totalElements || 0);
+        setTotalPages(data.totalPages || 0);
       } catch (err) {
         console.error('Failed to fetch products', err);
+        if (err.response && err.response.status === 400) {
+          setError(t(err.response.data.message || 'Invalid filter input. Please check your search criteria'));
+        } else {
+          setError(t('Unable to load products. Please try again later'));
+        }
+        setProducts([]);
+        setTotalElements(0);
+        setTotalPages(0);
       } finally {
         setLoading(false);
       }
@@ -114,7 +156,7 @@ export function ProductListingPage() {
       fetchProducts();
     }, 300);
     return () => clearTimeout(timer);
-  }, [params, brands, prices, sort, page]);
+  }, [params, brands, prices, sort, page, selectedCategory, inStock, onPromotion]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -133,8 +175,34 @@ export function ProductListingPage() {
       .catch(() => setSubscribedProductIds(new Set()));
   }, [isLoggedIn]);
 
-  const clearAll = () => { setBrands([]); setPrices([]); setRams([]); setStorages([]); };
-  const hasFilter = brands.length || prices.length || rams.length || storages.length;
+  const clearAll = () => {
+    setBrands([]);
+    setPrices([]);
+    setRams([]);
+    setStorages([]);
+    setSelectedCategory(null);
+    setInStock('all');
+    setOnPromotion(false);
+    setCustomMinPrice('');
+    setCustomMaxPrice('');
+    setError('');
+  };
+  const hasFilter = brands.length || prices.length || rams.length || storages.length || selectedCategory || inStock !== 'all' || onPromotion;
+
+  const applyCustomPrice = (e) => {
+    e.preventDefault();
+    const min = customMinPrice !== '' ? Number(customMinPrice) : 0;
+    const max = customMaxPrice !== '' ? Number(customMaxPrice) : Infinity;
+    
+    if (min < 0 || max < 0 || min > max) {
+      setError(t('Invalid filter input. Please check your search criteria'));
+      setProducts([]);
+      return;
+    }
+
+    setError('');
+    setPrices([{ label: `Tự chọn`, min, max }]);
+  };
 
   const CheckItem = ({ label, checked, onToggle, count }) => (
     <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '6px 0' }}>
@@ -211,30 +279,88 @@ export function ProductListingPage() {
         <aside style={{ width: 244, flexShrink: 0, position: 'sticky', top: 80, maxHeight: 'calc(100vh - 96px)', overflowY: 'auto' }}>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', overflow: 'hidden' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f4f5f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#0d1117' }}>🔽 Bộ lọc {hasFilter ? <span style={{ background: '#0d1117', color: '#fff', fontSize: 10.5, fontWeight: 800, padding: '2px 7px', borderRadius: 20, marginLeft: 6 }}>{brands.length+prices.length+rams.length+storages.length}</span> : null}</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#0d1117' }}>🔽 Bộ lọc {hasFilter ? <span style={{ background: '#0d1117', color: '#fff', fontSize: 10.5, fontWeight: 800, padding: '2px 7px', borderRadius: 20, marginLeft: 6 }}>{brands.length+prices.length+rams.length+storages.length+(selectedCategory ? 1 : 0)+(inStock !== 'all' ? 1 : 0)+(onPromotion ? 1 : 0)}</span> : null}</span>
               {hasFilter && <button onClick={clearAll} style={{ fontSize: 12, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Xóa tất cả</button>}
             </div>
             <div style={{ padding: '0 18px 18px' }}>
+              
+              {/* Category Filter */}
+              <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
+                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Danh mục</h3>
+                <div onClick={() => setSelectedCategory(null)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '6px 0' }}>
+                  <div style={{ width: 17, height: 17, border: `1.5px solid ${!selectedCategory ? '#0d1117' : '#d1d5db'}`, borderRadius: '50%', background: !selectedCategory ? '#0d1117' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                    {!selectedCategory && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                  <span style={{ fontSize: 13.5, color: !selectedCategory ? '#0d1117' : '#374151', fontWeight: !selectedCategory ? 700 : 500 }}>Tất cả</span>
+                </div>
+                {categories.map(cat => (
+                  <div key={cat.id} onClick={() => setSelectedCategory(cat.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '6px 0' }}>
+                    <div style={{ width: 17, height: 17, border: `1.5px solid ${selectedCategory === cat.id ? '#0d1117' : '#d1d5db'}`, borderRadius: '50%', background: selectedCategory === cat.id ? '#0d1117' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                      {selectedCategory === cat.id && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                    </div>
+                    <span style={{ fontSize: 13.5, color: selectedCategory === cat.id ? '#0d1117' : '#374151', fontWeight: selectedCategory === cat.id ? 700 : 500 }}>{cat.name}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Brand Filter */}
               <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
                 <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Thương hiệu</h3>
                 {FILTER_BRANDS.map(b => <CheckItem key={b} label={b} checked={brands.includes(b)} onToggle={() => toggle(brands, setBrands, b)}/>)}
               </div>
+
+              {/* Price Filter */}
               <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
                 <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Khoảng giá</h3>
                 {FILTER_PRICES.map(p => <CheckItem key={p.label} label={p.label} checked={prices.includes(p)} onToggle={() => toggle(prices, setPrices, p)}/>)}
               </div>
+
+              {/* Custom Price Filter */}
               <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
-                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>RAM</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {FILTER_RAMS.map(r => <Chip key={r} label={r} selected={rams.includes(r)} onToggle={() => toggle(rams, setRams, r)}/>)}
-                </div>
+                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Giá tự chọn (VNĐ)</h3>
+                <form onSubmit={applyCustomPrice}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="number" placeholder="Từ" value={customMinPrice} onChange={e => setCustomMinPrice(e.target.value)}
+                      style={{ width: '100%', height: 32, border: '1.5px solid #e9ecef', borderRadius: 6, padding: '0 8px', fontSize: 12.5 }} />
+                    <span style={{ color: '#9ca3af' }}>-</span>
+                    <input type="number" placeholder="Đến" value={customMaxPrice} onChange={e => setCustomMaxPrice(e.target.value)}
+                      style={{ width: '100%', height: 32, border: '1.5px solid #e9ecef', borderRadius: 6, padding: '0 8px', fontSize: 12.5 }} />
+                  </div>
+                  <button type="submit"
+                    style={{ width: '100%', height: 32, background: '#0d1117', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', marginTop: 8 }}>
+                    Áp dụng giá
+                  </button>
+                </form>
               </div>
+
+              {/* Stock Availability Filter */}
+              <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
+                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Trạng thái kho</h3>
+                {[
+                  { value: 'all', label: 'Tất cả sản phẩm' },
+                  { value: 'true', label: 'Còn hàng' },
+                  { value: 'false', label: 'Hết hàng' }
+                ].map(opt => (
+                  <div key={opt.value} onClick={() => setInStock(opt.value)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '6px 0' }}>
+                    <div style={{ width: 17, height: 17, border: `1.5px solid ${inStock === opt.value ? '#0d1117' : '#d1d5db'}`, borderRadius: '50%', background: inStock === opt.value ? '#0d1117' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                      {inStock === opt.value && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                    </div>
+                    <span style={{ fontSize: 13.5, color: inStock === opt.value ? '#0d1117' : '#374151', fontWeight: inStock === opt.value ? 700 : 500 }}>{opt.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Promotion Filter */}
               <div style={{ paddingTop: 18 }}>
-                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Bộ nhớ trong</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {FILTER_STORAGES.map(s => <Chip key={s} label={s} selected={storages.includes(s)} onToggle={() => toggle(storages, setStorages, s)}/>)}
+                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Khuyến mãi</h3>
+                <div onClick={() => setOnPromotion(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '6px 0' }}>
+                  <div style={{ width: 17, height: 17, border: `1.5px solid ${onPromotion ? '#0d1117' : '#d1d5db'}`, borderRadius: 4, background: onPromotion ? '#0d1117' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                    {onPromotion && <svg width="10" height="10" fill="none" stroke="#fff" strokeWidth="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </div>
+                  <span style={{ fontSize: 13.5, color: onPromotion ? '#0d1117' : '#374151', fontWeight: onPromotion ? 700 : 500 }}>Đang giảm giá</span>
                 </div>
               </div>
+
             </div>
           </div>
         </aside>
@@ -259,11 +385,22 @@ export function ProductListingPage() {
             <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af' }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#374151' }}>Đang tải dữ liệu...</div>
             </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '80px 0', color: '#ef4444' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{error}</div>
+              <button onClick={clearAll} style={{ padding: '8px 16px', background: '#0d1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 12 }}>
+                Xóa bộ lọc
+              </button>
+            </div>
           ) : products.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#374151', marginBottom: 8 }}>Không tìm thấy sản phẩm</div>
-              <div style={{ fontSize: 14 }}>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#374151', marginBottom: 8 }}>{t('No products found matching your search criteria')}</div>
+              <div style={{ fontSize: 14, marginBottom: 12 }}>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</div>
+              <button onClick={clearAll} style={{ padding: '8px 16px', background: '#0d1117', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Xóa bộ lọc
+              </button>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
@@ -308,11 +445,13 @@ export function ProductListingPage() {
                       <rect x="24" y="11" width="24" height="5" rx="2.5" fill="#b8bdc8"/>
                       <circle cx="36" cy="105" r="5" fill="#b8bdc8"/>
                     </svg>
-                    {item.discount && <span style={{ position: 'absolute', top: 58, right: 11, background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 5 }}>{item.discount}</span>}
+                    {item.discount && <span style={{ position: 'absolute', top: 58, right: 11, background: '#e11d48', color: '#fff', fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 5, zIndex: 2 }}>{item.discount}</span>}
                     <span style={{ position: 'absolute', top: 11, left: 11, background: '#0d1117', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 5 }}>Mới</span>
                   </div>
                   <div style={{ padding: '16px 18px 20px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>{item.brandName || 'Thương hiệu'}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
+                      {item.brandName || 'Thương hiệu'} • {item.categoryName || 'Chưa phân loại'}
+                    </div>
                     <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 10, lineHeight: 1.35 }}>{item.name}</h3>
                     {(item.ram || item.storage) && (
                       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
@@ -324,9 +463,23 @@ export function ProductListingPage() {
                       <span style={{ fontSize: 12.5, color: '#f59e0b', letterSpacing: 1 }}>★★★★★</span>
                       <span style={{ fontSize: 12, color: '#9ca3af' }}>5.0 (200+)</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.lowestPrice)}₫</span>
-                      <span style={{ fontSize: 12, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(item.lowestPrice * 1.1)}₫</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontSize: 18, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.lowestPrice)}₫</span>
+                        {item.discount && item.originalPrice && (
+                          <span style={{ fontSize: 12, color: '#c4c9d4', textDecoration: 'line-through' }}>{fmt(item.originalPrice)}₫</span>
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        color: item.availableVariantCount > 0 ? '#10b981' : '#ef4444',
+                        background: item.availableVariantCount > 0 ? '#ecfdf5' : '#fef2f2',
+                        padding: '3px 8px',
+                        borderRadius: 4
+                      }}>
+                        {item.availableVariantCount > 0 ? 'Còn hàng' : 'Hết hàng'}
+                      </span>
                     </div>
                   </div>
                 </div>

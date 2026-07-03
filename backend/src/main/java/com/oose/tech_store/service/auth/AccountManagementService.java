@@ -57,10 +57,12 @@ public class AccountManagementService {
         try {
             Account target = findAccount(targetAccountId);
             if (target.isBlocked()) {
+                // Exception Flow 8a
                 throw new ApiException(HttpStatus.CONFLICT, "This account already has Blocked status");
             }
             if (target.getId().equals(managerAccountId) || target.getUser() instanceof Manager
                     || target.isDeleted()) {
+                // Exception Flow 8b
                 throw new ApiException(HttpStatus.FORBIDDEN,
                         "System rules do not allow blocking this account");
             }
@@ -73,8 +75,29 @@ public class AccountManagementService {
         } catch (ApiException exception) {
             throw exception;
         } catch (DataAccessException exception) {
+            // Exception Flow 8c
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to block account. Please try again later");
+        }
+    }
+
+    @Transactional
+    public BlockAccountResponse unblockAccount(String managerAccountId, String targetAccountId) {
+        try {
+            Account target = findAccount(targetAccountId);
+            if (!target.isBlocked()) {
+                throw new ApiException(HttpStatus.CONFLICT, "Tài khoản này chưa bị khóa");
+            }
+            target.unlock();
+            accountRepository.saveAndFlush(target);
+            LOGGER.info("Manager account {} unblocked account {}", managerAccountId, targetAccountId);
+            return new BlockAccountResponse(targetAccountId, target.getStatus(),
+                    "Account unblocked successfully");
+        } catch (ApiException exception) {
+            throw exception;
+        } catch (DataAccessException exception) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Không thể mở khóa tài khoản. Vui lòng thử lại sau");
         }
     }
 
@@ -95,10 +118,11 @@ public class AccountManagementService {
         try {
             String email = request.email().trim().toLowerCase(Locale.ROOT);
             if (accountRepository.existsByEmailIgnoreCase(email)) {
+                // Exception Flow 4c (Add Staff) / 1b (Create Account)
                 throw new ApiException(HttpStatus.CONFLICT, "Email already exists");
             }
             if (staffRepository.existsByStaffCodeIgnoreCase(request.staffCode().trim())) {
-                throw new ApiException(HttpStatus.CONFLICT, "Staff code already exists");
+                throw new ApiException(HttpStatus.CONFLICT, "Mã nhân viên đã tồn tại");
             }
 
             Staff staff = new Staff(request.fullName().trim(), request.phone().trim(),
@@ -112,6 +136,7 @@ public class AccountManagementService {
         } catch (ApiException exception) {
             throw exception;
         } catch (DataAccessException exception) {
+            // Exception Flow 6a
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to add Staff. Please try again later");
         }
@@ -124,10 +149,10 @@ public class AccountManagementService {
             Account account = staff.getAccount();
             if (account == null) {
                 throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Unable to remove Staff account access. Please try again later.");
+                        "Không thể xóa quyền truy cập tài khoản nhân viên. Vui lòng thử lại sau.");
             }
             if (account.isDeleted()) {
-                throw new ApiException(HttpStatus.CONFLICT, "Staff account is already deleted");
+                throw new ApiException(HttpStatus.CONFLICT, "Tài khoản nhân viên đã bị xóa trước đó");
             }
             deleteAccount(account);
             LOGGER.info("Manager account {} deleted staff {} account access {}", managerAccountId,
@@ -138,7 +163,7 @@ public class AccountManagementService {
             throw exception;
         } catch (DataAccessException exception) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unable to delete Staff. Please try again later");
+                    "Không thể xóa nhân viên. Vui lòng thử lại sau");
         }
     }
 
@@ -147,6 +172,7 @@ public class AccountManagementService {
             return accountRepository.saveAndFlush(new Account(email,
                     passwordEncoder.encode(initialPassword), staff, AccountStatus.ACTIVE));
         } catch (DataAccessException exception) {
+            // Exception Flow 1c (Create Account) / 5a (Add Staff)
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to create Staff account. Please try again later");
         }
@@ -155,7 +181,7 @@ public class AccountManagementService {
     private void deleteAccount(Account account) {
         if (!(account.getUser() instanceof Staff)) {
             throw new ApiException(HttpStatus.FORBIDDEN,
-                    "System rules do not allow deleting this account");
+                    "Không được phép xóa tài khoản này");
         }
         account.delete();
         accountRepository.saveAndFlush(account);
@@ -164,12 +190,12 @@ public class AccountManagementService {
 
     private Account findAccount(String accountId) {
         return accountRepository.findById(accountId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account does not exist"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Tài khoản không tồn tại"));
     }
 
     private Staff findStaff(String staffId) {
         return staffRepository.findWithAccountById(staffId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Staff not found"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Không tìm thấy nhân viên"));
     }
 
     private StaffResponse toStaffResponse(Staff staff) {

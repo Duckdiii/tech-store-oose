@@ -5,16 +5,19 @@ import com.oose.tech_store.entity.Brand;
 import com.oose.tech_store.entity.Category;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.ProductVariant;
+import com.oose.tech_store.entity.Promotion;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * JPA Specification for dynamic Product search filtering.
- * Supports keyword, category, brand, and price range filters.
+ * Supports keyword, category, brand, price range, stock availability, and promotion status filters.
  */
 public class ProductSpecification {
 
@@ -36,11 +39,10 @@ public class ProductSpecification {
             }
 
             // Category filter
-            Long categoryId = request.getCategoryId();
-            if (categoryId != null) {
-                // CategoryId in DTO is Long, but entity uses String id
+            String categoryId = request.getCategoryId();
+            if (categoryId != null && !categoryId.isBlank()) {
                 Join<Product, Category> categoryJoin = root.join("category", JoinType.INNER);
-                predicates.add(cb.equal(categoryJoin.get("id"), String.valueOf(categoryId)));
+                predicates.add(cb.equal(categoryJoin.get("id"), categoryId));
             }
 
             // Brand filter
@@ -75,6 +77,52 @@ public class ProductSpecification {
 
                 variantSubquery.where(variantPredicates.toArray(new Predicate[0]));
                 predicates.add(cb.exists(variantSubquery));
+            }
+
+            // Stock availability filter
+            Boolean inStock = request.getInStock();
+            if (inStock != null) {
+                assert query != null;
+                Subquery<String> variantSubquery = query.subquery(String.class);
+                Root<ProductVariant> variantRoot = variantSubquery.from(ProductVariant.class);
+                variantSubquery.select(variantRoot.get("product").get("id"));
+
+                List<Predicate> variantPredicates = new ArrayList<>();
+                variantPredicates.add(cb.equal(variantRoot.get("product").get("id"), root.get("id")));
+                variantPredicates.add(cb.equal(variantRoot.get("status"), ProductVariantStatus.AVAILABLE));
+
+                variantSubquery.where(variantPredicates.toArray(new Predicate[0]));
+
+                if (inStock) {
+                    predicates.add(cb.exists(variantSubquery));
+                } else {
+                    predicates.add(cb.not(cb.exists(variantSubquery)));
+                }
+            }
+
+            // Promotion status filter
+            Boolean onPromotion = request.getOnPromotion();
+            if (onPromotion != null) {
+                assert query != null;
+                Subquery<String> promoSubquery = query.subquery(String.class);
+                Root<Promotion> promoRoot = promoSubquery.from(Promotion.class);
+                promoSubquery.select(promoRoot.get("id"));
+
+                List<Predicate> promoPredicates = new ArrayList<>();
+                Expression<List<Product>> productsExpression = promoRoot.get("products");
+                promoPredicates.add(cb.isMember(root, productsExpression));
+                promoPredicates.add(cb.equal(promoRoot.get("active"), true));
+                LocalDateTime now = LocalDateTime.now();
+                promoPredicates.add(cb.lessThanOrEqualTo(promoRoot.get("startAt"), now));
+                promoPredicates.add(cb.greaterThanOrEqualTo(promoRoot.get("endAt"), now));
+
+                promoSubquery.where(promoPredicates.toArray(new Predicate[0]));
+
+                if (onPromotion) {
+                    predicates.add(cb.exists(promoSubquery));
+                } else {
+                    predicates.add(cb.not(cb.exists(promoSubquery)));
+                }
             }
 
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));

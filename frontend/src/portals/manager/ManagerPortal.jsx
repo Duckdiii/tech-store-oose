@@ -21,9 +21,19 @@ import { getWarehouseInventory } from '../../api/warehouseApi';
 import { productApi } from '../../api/productApi';
 import { PromotionsPage } from './pages/PromotionsPage';
 import { manageOrderApi } from '../../api/manageOrderApi';
+import { customerApi } from '../../api/customerApi';
+import { staffApi } from '../../api/staffApi';
 
 const WAREHOUSE_SUB_LABEL = { import: 'Nhập kho', export: 'Xuất kho', logs: 'Nhật ký kho' };
-const MANAGER_INITIAL_DATA = { ...INITIAL_DATA, products: [], variants: [] };
+const MANAGER_INITIAL_DATA = { ...INITIAL_DATA, products: [], variants: [], customers: [], staff: [] };
+
+const MEMBERSHIP_TIER_LABEL = {
+  STANDARD: 'Member',
+  BRONZE: 'Bronze',
+  SILVER: 'Silver',
+  GOLD: 'Gold',
+  DIAMOND: 'Diamond',
+};
 
 const apiMessage = (error) =>
   error?.response?.data?.message || error?.message || 'Không thể kết nối API';
@@ -100,7 +110,7 @@ export function ManagerPortal() {
   const [data, setData] = useState(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('techstore_admin_state') || '{}');
-      const { products, variants, supplyOrders, ...safeStored } = stored;
+      const { products, variants, supplyOrders, customers, staff, ...safeStored } = stored;
       return { ...MANAGER_INITIAL_DATA, ...safeStored };
     } catch {
       return MANAGER_INITIAL_DATA;
@@ -114,7 +124,6 @@ export function ManagerPortal() {
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [toast, setToast] = useState('');
-  const [undoData, setUndoData] = useState(null);
   const toastTimerRef = useRef(null);
 
   const fetchOrdersFromApi = async () => {
@@ -140,6 +149,58 @@ export function ManagerPortal() {
   useEffect(() => {
     if (['dashboard', 'orders'].includes(activeSection)) {
       fetchOrdersFromApi();
+    }
+  }, [activeSection]);
+
+  const fetchCustomersFromApi = async () => {
+    try {
+      const customers = await customerApi.getAll();
+      const mappedCustomers = (customers || []).map(c => ({
+        id: c.customerId,
+        accountId: c.accountId,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        orders: Number(c.totalOrders || 0),
+        spent: Number(c.totalSpent || 0),
+        tier: MEMBERSHIP_TIER_LABEL[c.tier] || c.tier,
+        active: c.active,
+      }));
+      setData(prev => ({ ...prev, customers: mappedCustomers }));
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (['dashboard', 'customers'].includes(activeSection)) {
+      fetchCustomersFromApi();
+    }
+  }, [activeSection]);
+
+  const fetchStaffFromApi = async () => {
+    try {
+      const staffList = await staffApi.getAll();
+      const mappedStaff = (staffList || []).map(s => ({
+        id: s.id,
+        accountId: s.accountId,
+        name: s.fullName,
+        email: s.email,
+        phone: s.phone,
+        staffCode: s.staffCode,
+        hireDate: s.hireDate,
+        role: 'Staff',
+        active: s.accountStatus === 'ACTIVE',
+      }));
+      setData(prev => ({ ...prev, staff: mappedStaff }));
+    } catch (err) {
+      console.error('Failed to fetch staff:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'staff') {
+      fetchStaffFromApi();
     }
   }, [activeSection]);
 
@@ -197,30 +258,13 @@ export function ManagerPortal() {
   const showToast = (message, ttl = 2600) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(message);
-    toastTimerRef.current = setTimeout(() => { setToast(''); setUndoData(null); }, ttl);
+    toastTimerRef.current = setTimeout(() => setToast(''), ttl);
   };
 
   const commit = (next, message) => {
-    setUndoData(null);
     setData(next);
     localStorage.setItem('techstore_admin_state', JSON.stringify(next));
     showToast(message);
-  };
-
-  const commitWithUndo = (next, message) => {
-    const prev = data;
-    setData(next);
-    localStorage.setItem('techstore_admin_state', JSON.stringify(next));
-    setUndoData(prev);
-    showToast(message, 5000);
-  };
-
-  const handleUndo = () => {
-    if (!undoData) return;
-    setData(undoData);
-    localStorage.setItem('techstore_admin_state', JSON.stringify(undoData));
-    setUndoData(null);
-    showToast('Đã hoàn tác');
   };
 
   const [title] = PAGE_META[activeSection];
@@ -268,7 +312,8 @@ export function ManagerPortal() {
     [productRows, query]
   );
 
-  const selectedDetailProduct = data.products.find((p) => p.id === productDetailId);
+  const selectedDetailProduct = productRows.find((p) => p.id === productDetailId);
+  const selectedDetailVariants = data.variants.filter((v) => v.productId === productDetailId);
 
   const openProductDetail = async (product) => {
     setProductDetailId(product.id);
@@ -320,7 +365,9 @@ export function ManagerPortal() {
   const deleteProduct = async (productId) => {
     try {
       await productApi.deleteManagerProduct(productId);
-      commitWithUndo(
+      // Xóa sản phẩm là thao tác không thể hoàn tác thật sự (đã xóa trên server),
+      // nên dùng commit() thường thay vì commitWithUndo() để không hiện nút "Hoàn tác" gây hiểu nhầm.
+      commit(
         { ...data, products: data.products.filter((p) => p.id !== productId), variants: data.variants.filter((v) => v.productId !== productId) },
         'Đã xóa sản phẩm'
       );
@@ -338,36 +385,73 @@ export function ManagerPortal() {
       fetchOrdersFromApi();
     } catch (error) {
       setToast(apiMessage(error));
+      throw error;
     }
   };
 
-  const toggleCustomer = (id) => commit(
-    { ...data, customers: data.customers.map((c) => c.id === id ? { ...c, active: !c.active } : c) },
-    'Đã cập nhật trạng thái khách hàng'
-  );
+  const toggleCustomer = async (customer) => {
+    try {
+      if (customer.active) {
+        await customerApi.block(customer.accountId);
+        showToast(`Đã khóa tài khoản của ${customer.name}`);
+      } else {
+        await customerApi.unblock(customer.accountId);
+        showToast(`Đã mở khóa tài khoản của ${customer.name}`);
+      }
+      fetchCustomersFromApi();
+    } catch (error) {
+      setToast(apiMessage(error));
+    }
+  };
 
-  const toggleStaff = (id) => commit(
-    { ...data, staff: data.staff.map((m) => m.id === id ? { ...m, active: !m.active } : m) },
-    'Đã cập nhật trạng thái nhân viên'
-  );
+  const toggleStaff = async (member) => {
+    try {
+      if (member.active) {
+        await staffApi.block(member.accountId);
+        showToast(`Đã khóa tài khoản của ${member.name}`);
+      } else {
+        await staffApi.unblock(member.accountId);
+        showToast(`Đã mở khóa tài khoản của ${member.name}`);
+      }
+      fetchStaffFromApi();
+    } catch (error) {
+      setToast(apiMessage(error));
+    }
+  };
 
   const setSetting = (key) => commit(
     { ...data, settings: { ...data.settings, [key]: !data.settings[key] } },
     'Đã lưu cài đặt'
   );
 
-  const addStaff = (member) => {
-    commit(
-      { ...data, staff: [{ ...member, id: `NV-${String(data.staff.length + 1).padStart(3, '0')}`, active: true }, ...data.staff] },
-      'Đã thêm nhân viên mới'
-    );
-    setStaffFormOpen(false);
+  const addStaff = async (member) => {
+    try {
+      await staffApi.add({
+        fullName: member.name,
+        email: member.email,
+        phone: member.phone,
+        staffCode: member.staffCode,
+        hireDate: member.hireDate,
+        initialPassword: member.initialPassword,
+      });
+      showToast('Đã thêm nhân viên mới');
+      setStaffFormOpen(false);
+      fetchStaffFromApi();
+    } catch (error) {
+      setToast(apiMessage(error));
+      throw error;
+    }
   };
 
-  const deleteStaff = (id) => commitWithUndo(
-    { ...data, staff: data.staff.filter((m) => m.id !== id) },
-    'Đã xóa nhân viên'
-  );
+  const deleteStaff = async (id) => {
+    try {
+      await staffApi.delete(id);
+      showToast('Đã xóa nhân viên');
+      fetchStaffFromApi();
+    } catch (error) {
+      setToast(apiMessage(error));
+    }
+  };
 
   const saveSupplier = async (supplierData) => {
     try {
@@ -425,7 +509,7 @@ export function ManagerPortal() {
           />
         )}
         {activeSection === 'warehouse' && (
-          <WarehousePage view={warehouseView} navigate={navigate} suppliers={data.suppliers} />
+          <WarehousePage view={warehouseView} navigate={navigate} suppliers={data.suppliers} onOpenProduct={openProductDetail} />
         )}
         {activeSection === 'customers' && (
           <CustomersPage customers={data.customers} onToggle={toggleCustomer} />
@@ -462,7 +546,10 @@ export function ManagerPortal() {
       {selectedDetailProduct && (
         <ProductDetailModal
           product={selectedDetailProduct}
+          variants={selectedDetailVariants}
           onClose={() => setProductDetailId(null)}
+          onEdit={() => { setProductDetailId(null); setProductForm(selectedDetailProduct); }}
+          onDelete={() => deleteProduct(selectedDetailProduct.id)}
         />
       )}
       {staffFormOpen && <StaffForm onSave={addStaff} onClose={() => setStaffFormOpen(false)} />}
@@ -470,14 +557,6 @@ export function ManagerPortal() {
       {toast && (
         <div className="admin-toast" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>✓ {toast}</span>
-          {undoData && (
-            <button
-              onClick={handleUndo}
-              style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', color: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Hoàn tác
-            </button>
-          )}
         </div>
       )}
     </>

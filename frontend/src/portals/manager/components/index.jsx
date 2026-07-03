@@ -1,5 +1,32 @@
 import { useRef, useState } from 'react';
 
+export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClose }) {
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: '#fff', borderRadius: 16, padding: '28px 32px', minWidth: 360, maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0d1117', margin: '0 0 10px' }}>{title}</h3>
+        <p style={{ fontSize: 13.5, color: '#6b7280', margin: '0 0 24px', lineHeight: 1.6 }}>{message}</p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button className="admin-button admin-button--secondary" onClick={onClose}>Hủy</button>
+          <button
+            className="admin-button"
+            style={danger ? { background: '#ef4444', color: '#fff' } : {}}
+            onClick={() => { onConfirm(); onClose(); }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Status({ children }) {
   const key = String(children).toLowerCase();
   const tone = key.includes('hoàn') || key.includes('đang bán') || key.includes('đang giao') || key.includes('active')
@@ -10,7 +37,7 @@ export function Status({ children }) {
   return <span className={`admin-status admin-status--${tone}`}>{children}</span>;
 }
 
-export function Metric({ label, value, hint, tone = 'dark', delta }) {
+export function Metric({ label, value, hint, tone = 'dark', delta, deltaTooltip }) {
   const hasDelta = delta !== null && delta !== undefined;
   return (
     <article className="admin-metric">
@@ -19,7 +46,10 @@ export function Metric({ label, value, hint, tone = 'dark', delta }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <strong>{value}</strong>
         {hasDelta && (
-          <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1, color: delta >= 0 ? '#16a34a' : '#dc2626' }}>
+          <span
+            title={deltaTooltip}
+            style={{ fontSize: 12, fontWeight: 700, lineHeight: 1, color: delta >= 0 ? '#16a34a' : '#dc2626', cursor: deltaTooltip ? 'help' : 'default' }}
+          >
             {delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}%
           </span>
         )}
@@ -104,7 +134,7 @@ function DiscardOverlay({ onStay, onDiscard }) {
 }
 
 export function StaffForm({ onSave, onClose }) {
-  const INIT = { name: '', email: '', phone: '', staffCode: '', hireDate: '', initialPassword: '', role: 'Staff' };
+  const INIT = { name: '', email: '', phone: '', staffCode: '', hireDate: '', initialPassword: '' };
   const initRef = useRef(INIT);
   const [form, setForm] = useState(INIT);
   const [touched, setTouched] = useState(new Set());
@@ -124,13 +154,17 @@ export function StaffForm({ onSave, onClose }) {
       : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
         ? 'Email không hợp lệ'
         : '',
-    phone: !form.phone.trim() ? 'Vui lòng nhập số điện thoại' : '',
+    phone: !form.phone.trim()
+      ? 'Vui lòng nhập số điện thoại'
+      : !/^(0|\+84)[0-9]{9,10}$/.test(form.phone.trim())
+        ? 'Số điện thoại không hợp lệ (vd: 0901234567)'
+        : '',
     staffCode: !form.staffCode.trim() ? 'Vui lòng nhập mã nhân viên' : '',
     hireDate: !form.hireDate ? 'Vui lòng chọn ngày vào làm' : '',
     initialPassword: !form.initialPassword.trim()
       ? 'Vui lòng nhập mật khẩu'
-      : form.initialPassword.length < 6
-        ? 'Mật khẩu tối thiểu 6 ký tự'
+      : form.initialPassword.length < 8
+        ? 'Mật khẩu tối thiểu 8 ký tự'
         : '',
   };
 
@@ -148,8 +182,11 @@ export function StaffForm({ onSave, onClose }) {
     setSubmitted(true);
     if (hasErrors) return;
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    onSave(form);
+    try {
+      await onSave(form);
+    } catch {
+      setLoading(false);
+    }
   };
 
   return (
@@ -186,16 +223,9 @@ export function StaffForm({ onSave, onClose }) {
             <input type="date" value={form.hireDate} onChange={(event) => update('hireDate', event.target.value)} onBlur={() => touch('hireDate')} style={errInput(showErr('hireDate'))} />
             {showErr('hireDate') && <span style={ERR_STYLE}>{errors.hireDate}</span>}
           </label>
-          <label className="admin-field">
-            Vai trò
-            <select value={form.role} onChange={(event) => update('role', event.target.value)}>
-              <option>Staff</option>
-              <option>Manager</option>
-            </select>
-          </label>
           <label className="admin-field admin-field--wide">
             Mật khẩu khởi tạo *
-            <input type="password" value={form.initialPassword} onChange={(event) => update('initialPassword', event.target.value)} onBlur={() => touch('initialPassword')} style={errInput(showErr('initialPassword'))} placeholder="Tối thiểu 6 ký tự" />
+            <input type="password" value={form.initialPassword} onChange={(event) => update('initialPassword', event.target.value)} onBlur={() => touch('initialPassword')} style={errInput(showErr('initialPassword'))} placeholder="Tối thiểu 8 ký tự" />
             {showErr('initialPassword') && <span style={ERR_STYLE}>{errors.initialPassword}</span>}
           </label>
         </div>

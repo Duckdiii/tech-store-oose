@@ -62,7 +62,8 @@ public class LoginLogService {
 
     private void validateRange(LocalDateTime from, LocalDateTime to) {
         if (from != null && to != null && from.isAfter(to)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid login time range");
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Invalid filter input. Please check the selected conditions");
         }
     }
 

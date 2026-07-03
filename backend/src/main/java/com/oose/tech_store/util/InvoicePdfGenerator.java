@@ -88,6 +88,23 @@ public class InvoicePdfGenerator {
         addMetaCell(meta, "Payment Method", invoice.paymentMethod(), labelFont, valueFont);
         addMetaCell(meta, "Order Status", invoice.orderStatus(), labelFont, valueFont);
 
+        // Row 2: Customer and shipping details
+        PdfPCell customerCell = new PdfPCell();
+        customerCell.setBorder(Rectangle.NO_BORDER);
+        customerCell.setColspan(2);
+        customerCell.setPaddingTop(8);
+        customerCell.addElement(new Phrase("Customer", labelFont));
+        customerCell.addElement(new Phrase(invoice.customerName() != null ? invoice.customerName() : "-", valueFont));
+        meta.addCell(customerCell);
+
+        PdfPCell addressCell = new PdfPCell();
+        addressCell.setBorder(Rectangle.NO_BORDER);
+        addressCell.setColspan(2);
+        addressCell.setPaddingTop(8);
+        addressCell.addElement(new Phrase("Shipping Address", labelFont));
+        addressCell.addElement(new Phrase(invoice.shippingAddress() != null ? invoice.shippingAddress() : "-", valueFont));
+        meta.addCell(addressCell);
+
         doc.add(meta);
     }
 

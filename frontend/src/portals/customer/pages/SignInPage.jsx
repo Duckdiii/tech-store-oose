@@ -14,7 +14,7 @@ export function SignInPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.email || !form.password) { setError('Vui lòng điền đầy đủ thông tin.'); return; }
+    if (!form.email || !form.password) { setError('Email and password are required'); return; }
     setLoading(true);
     try {
       const loggedInUser = await login(form.email, form.password);
@@ -26,8 +26,17 @@ export function SignInPage() {
           || (!requestedPath.startsWith('/manager') && role === 'CUSTOMER'));
 
       navigate(canReturnToRequestedPath ? requestedPath : getHomePathForRole(role), { replace: true });
-    } catch {
-      setError('Email hoặc mật khẩu không đúng.');
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 403) {
+        setError('Your account is blocked or no longer active');
+      } else if (status === 401) {
+        setError('Incorrect email or password. Please try again');
+      } else if (status === 400) {
+        setError(err.response?.data?.message || 'Email and password are required');
+      } else {
+        setError('Unable to connect to the system. Please try again later');
+      }
     } finally {
       setLoading(false);
     }

@@ -7,7 +7,7 @@ import { WarehouseLogs } from './warehouse/WarehouseLogs';
 import { WarehouseOverview } from './warehouse/WarehouseOverview';
 import { warehouseStyles } from './warehouse/warehouseStyles';
 
-export function WarehousePage({ view, navigate, suppliers = [] }) {
+export function WarehousePage({ view, navigate, suppliers = [], onOpenProduct }) {
   const tabs = [['overview', 'Tổng quan'], ['import', 'Nhập kho'], ['export', 'Xuất kho'], ['logs', 'Nhật ký kho']];
   const [inventory, setInventory] = useState({ products: [], variants: [] });
   const [inventoryError, setInventoryError] = useState('');
@@ -38,6 +38,6 @@ export function WarehousePage({ view, navigate, suppliers = [] }) {
     {view === 'import' && <ImportFlow products={inventory.products} variants={inventory.variants} suppliers={suppliers} onInventoryChanged={loadInventory} />}
     {view === 'export' && <ExportFlow products={inventory.products} variants={inventory.variants} onInventoryChanged={loadInventory} />}
     {view === 'logs' && <WarehouseLogs />}
-    {view === 'overview' && <WarehouseOverview navigate={navigate} products={inventory.products} variants={inventory.variants} />}
+    {view === 'overview' && <WarehouseOverview navigate={navigate} products={inventory.products} variants={inventory.variants} onOpenProduct={onOpenProduct} />}
   </>;
 }

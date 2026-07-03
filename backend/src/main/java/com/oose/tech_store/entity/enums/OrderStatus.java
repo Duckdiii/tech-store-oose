@@ -47,26 +47,26 @@ public enum OrderStatus implements OrderState {
 
     @Override
     public void confirm(Order order) {
-        throw new IllegalStateException("Order can only be confirmed when in AWAITING_CONFIRMATION status");
+        throw new IllegalStateException("Đơn hàng chỉ có thể xác nhận khi đang ở trạng thái Chờ xác nhận");
     }
 
     @Override
     public void ship(Order order) {
-        throw new IllegalStateException("Order can only be marked as shipping when in PROCESSING status");
+        throw new IllegalStateException("Đơn hàng chỉ có thể chuyển sang Đang giao khi đang ở trạng thái Đang xử lý");
     }
 
     @Override
     public void complete(Order order) {
-        throw new IllegalStateException("Order can only be completed when in SHIPPING status");
+        throw new IllegalStateException("Đơn hàng chỉ có thể hoàn thành khi đang ở trạng thái Đang giao");
     }
 
     @Override
     public void cancel(Order order) {
-        throw new IllegalStateException("Order cannot be cancelled in current status");
+        throw new IllegalStateException("Không thể hủy đơn hàng ở trạng thái hiện tại");
     }
 
     @Override
     public void refund(Order order) {
-        throw new IllegalStateException("Order can only be refunded when COMPLETED");
+        throw new IllegalStateException("Chỉ có thể hoàn tiền khi đơn hàng đã hoàn thành");
     }
 }

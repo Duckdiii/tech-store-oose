@@ -21,6 +21,11 @@ public class ProductSearchResponseDTO {
 
     // Price info (lowest available variant price)
     private BigDecimal lowestPrice;
+    private BigDecimal originalPrice;
+
+    // Promotion info
+    private String discount;
+    private Double discountPercent;
 
     // Thumbnail (first image)
     private String thumbnailUrl;
@@ -43,6 +48,12 @@ public class ProductSearchResponseDTO {
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
     public BigDecimal getLowestPrice() { return lowestPrice; }
     public void setLowestPrice(BigDecimal lowestPrice) { this.lowestPrice = lowestPrice; }
+    public BigDecimal getOriginalPrice() { return originalPrice; }
+    public void setOriginalPrice(BigDecimal originalPrice) { this.originalPrice = originalPrice; }
+    public String getDiscount() { return discount; }
+    public void setDiscount(String discount) { this.discount = discount; }
+    public Double getDiscountPercent() { return discountPercent; }
+    public void setDiscountPercent(Double discountPercent) { this.discountPercent = discountPercent; }
     public String getThumbnailUrl() { return thumbnailUrl; }
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
     public long getAvailableVariantCount() { return availableVariantCount; }
