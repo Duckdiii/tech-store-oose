@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { confirmImport, getApiError, validateImport } from '../../../../api/warehouseApi';
+import { useTheme } from '../../../../shared/context/ThemeContext';
 import { ApiMessage, Field } from './components';
 import { blankItem } from './utils';
 
@@ -8,6 +9,7 @@ const toNumberOrNull = (value) => value === '' ? null : Number(value);
 const itemProductId = (item) => (item.productId || '').trim();
 
 export function ImportFlow({ products = [], variants = [], suppliers = [], onInventoryChanged }) {
+  const { t } = useTheme();
   const location = useLocation();
   const initialProductId = new URLSearchParams(location.search).get('productId') || '';
   const [supplierId, setSupplierId] = useState('');
@@ -142,7 +144,7 @@ export function ImportFlow({ products = [], variants = [], suppliers = [], onInv
     } catch (requestError) {
       setPreview(null);
       setValidatedPayload(null);
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     } finally {
       setLoading(false);
     }
@@ -157,7 +159,7 @@ export function ImportFlow({ products = [], variants = [], suppliers = [], onInv
       setValidatedPayload(null);
       await onInventoryChanged?.();
     } catch (requestError) {
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     } finally {
       setLoading(false);
     }

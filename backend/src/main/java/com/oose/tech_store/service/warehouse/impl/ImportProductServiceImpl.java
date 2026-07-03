@@ -93,16 +93,23 @@ public class ImportProductServiceImpl implements ImportProductService {
             variants.add(variant);
         }
 
-        List<ProductVariant> savedVariants = productVariantRepository.saveAll(variants);
+        List<ProductVariant> savedVariants;
+        ImportLog savedImportLog;
+        try {
+            savedVariants = productVariantRepository.saveAll(variants);
 
-        ImportLog importLog = new ImportLog(performedBy, ImportAndExportStatus.PENDING);
-        importLog.setNote(normalizeNullable(request.note()));
-        for (int index = 0; index < savedVariants.size(); index++) {
-            ProductVariantImportItemDTO item = request.items().get(index);
-            new ImportLogItem(importLog, savedVariants.get(index), 1, item.importPrice());
+            ImportLog importLog = new ImportLog(performedBy, ImportAndExportStatus.PENDING);
+            importLog.setNote(normalizeNullable(request.note()));
+            for (int index = 0; index < savedVariants.size(); index++) {
+                ProductVariantImportItemDTO item = request.items().get(index);
+                new ImportLogItem(importLog, savedVariants.get(index), 1, item.importPrice());
+            }
+            importLog.approve();
+            savedImportLog = importLogRepository.save(importLog);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to import products. Please try again later", e);
         }
-        importLog.approve();
-        ImportLog savedImportLog = importLogRepository.save(importLog);
 
         return new ImportProductResponseDTO(
                 savedImportLog.getId(),
@@ -182,7 +189,7 @@ public class ImportProductServiceImpl implements ImportProductService {
             }
             if (productVariantRepository.existsByIdIgnoreCase(serialId)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Product serial already exists: " + serialId);
+                        "Product information already exists");
             }
         }
     }

@@ -66,7 +66,9 @@ const translations = {
     'Congratulations! You are now BRONZE Tier!': 'Chúc mừng! Bạn đã được thăng hạng BRONZE!',
     'Congratulations! You are now SILVER Tier!': 'Chúc mừng! Bạn đã được thăng hạng SILVER!',
     'Congratulations! You are now GOLD Tier!': 'Chúc mừng! Bạn đã được thăng hạng GOLD!',
-    'Congratulations! You are now DIAMOND Tier!': 'Chúc mừng! Bạn đã được thăng hạng DIAMOND!'
+    'Congratulations! You are now DIAMOND Tier!': 'Chúc mừng! Bạn đã được thăng hạng DIAMOND!',
+    'Product information already exists': 'Thông tin sản phẩm đã tồn tại',
+    'Unable to import products. Please try again later': 'Không thể nhập hàng vào kho. Vui lòng thử lại sau.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -131,7 +133,9 @@ const translations = {
     'Congratulations! You are now BRONZE Tier!': 'Congratulations! You are now BRONZE Tier!',
     'Congratulations! You are now SILVER Tier!': 'Congratulations! You are now SILVER Tier!',
     'Congratulations! You are now GOLD Tier!': 'Congratulations! You are now GOLD Tier!',
-    'Congratulations! You are now DIAMOND Tier!': 'Congratulations! You are now DIAMOND Tier!'
+    'Congratulations! You are now DIAMOND Tier!': 'Congratulations! You are now DIAMOND Tier!',
+    'Product information already exists': 'Product information already exists',
+    'Unable to import products. Please try again later': 'Unable to import products. Please try again later'
   }
 };
 
