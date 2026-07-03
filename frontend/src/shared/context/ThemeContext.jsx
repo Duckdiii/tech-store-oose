@@ -72,7 +72,9 @@ const translations = {
     'Unable to export products. Please try again later': 'Không thể xuất sản phẩm khỏi kho. Vui lòng thử lại sau.',
     'Insufficient product quantity in inventory': 'Số lượng sản phẩm trong kho không đủ.',
     'Products were exported, but the receipt could not be generated.': 'Sản phẩm đã được xuất kho, nhưng không thể tạo phiếu xuất.',
-    'Inventory was updated, but notification status could not be displayed.': 'Kho hàng đã cập nhật, nhưng không thể hiển thị trạng thái thông báo.'
+    'Inventory was updated, but notification status could not be displayed.': 'Kho hàng đã cập nhật, nhưng không thể hiển thị trạng thái thông báo.',
+    'Export information was not found': 'Không tìm thấy thông tin xuất kho.',
+    'Unable to generate receipt. Please try again later': 'Không thể tạo phiếu xuất kho. Vui lòng thử lại sau.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -143,7 +145,9 @@ const translations = {
     'Unable to export products. Please try again later': 'Unable to export products. Please try again later',
     'Insufficient product quantity in inventory': 'Insufficient product quantity in inventory',
     'Products were exported, but the receipt could not be generated.': 'Products were exported, but the receipt could not be generated.',
-    'Inventory was updated, but notification status could not be displayed.': 'Inventory was updated, but notification status could not be displayed.'
+    'Inventory was updated, but notification status could not be displayed.': 'Inventory was updated, but notification status could not be displayed.',
+    'Export information was not found': 'Export information was not found',
+    'Unable to generate receipt. Please try again later': 'Unable to generate receipt. Please try again later'
   }
 };
 

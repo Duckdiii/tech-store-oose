@@ -25,16 +25,23 @@ public class ReceiptService {
 
     @Transactional
     public ReceiptDTO generateReceipt(String exportLogId) {
-        Receipt receipt = receiptRepository.findByExportLogId(exportLogId)
-                .orElseGet(() -> {
-                    ExportLog exportLog = findExportLog(exportLogId);
-                    return receiptRepository.save(new Receipt(exportLog, null));
-                });
+        try {
+            Receipt receipt = receiptRepository.findByExportLogId(exportLogId)
+                    .orElseGet(() -> {
+                        ExportLog exportLog = findExportLog(exportLogId);
+                        return receiptRepository.save(new Receipt(exportLog, null));
+                    });
 
-        if (receipt.getFileUrl() == null) {
-            receipt.setFileUrl("/api/warehouse/receipts/" + receipt.getId() + "/download");
+            if (receipt.getFileUrl() == null) {
+                receipt.setFileUrl("/api/warehouse/receipts/" + receipt.getId() + "/download");
+            }
+            return toReceiptDTO(receipt);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to generate receipt. Please try again later", e);
         }
-        return toReceiptDTO(receipt);
     }
 
     @Transactional(readOnly = true)
