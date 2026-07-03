@@ -47,7 +47,13 @@ public class ExportProductServiceImpl implements ExportProductService {
     public ExportProductResponseDTO confirmExport(ExportProductRequestDTO request, String performedBy) {
         // Validate first, then validate again inside the save transaction to avoid stale stock.
         findAvailableVariants(request.serialIds());
-        ExportPersistenceResult result = exportPersistenceService.saveExport(request, performedBy);
+        ExportPersistenceResult result;
+        try {
+            result = exportPersistenceService.saveExport(request, performedBy);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to export products. Please try again later", e);
+        }
 
         ReceiptDTO receipt = null;
         List<String> warnings = new ArrayList<>();

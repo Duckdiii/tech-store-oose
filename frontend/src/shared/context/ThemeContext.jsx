@@ -68,7 +68,11 @@ const translations = {
     'Congratulations! You are now GOLD Tier!': 'Chúc mừng! Bạn đã được thăng hạng GOLD!',
     'Congratulations! You are now DIAMOND Tier!': 'Chúc mừng! Bạn đã được thăng hạng DIAMOND!',
     'Product information already exists': 'Thông tin sản phẩm đã tồn tại',
-    'Unable to import products. Please try again later': 'Không thể nhập hàng vào kho. Vui lòng thử lại sau.'
+    'Unable to import products. Please try again later': 'Không thể nhập hàng vào kho. Vui lòng thử lại sau.',
+    'Unable to export products. Please try again later': 'Không thể xuất sản phẩm khỏi kho. Vui lòng thử lại sau.',
+    'Insufficient product quantity in inventory': 'Số lượng sản phẩm trong kho không đủ.',
+    'Products were exported, but the receipt could not be generated.': 'Sản phẩm đã được xuất kho, nhưng không thể tạo phiếu xuất.',
+    'Inventory was updated, but notification status could not be displayed.': 'Kho hàng đã cập nhật, nhưng không thể hiển thị trạng thái thông báo.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -135,7 +139,11 @@ const translations = {
     'Congratulations! You are now GOLD Tier!': 'Congratulations! You are now GOLD Tier!',
     'Congratulations! You are now DIAMOND Tier!': 'Congratulations! You are now DIAMOND Tier!',
     'Product information already exists': 'Product information already exists',
-    'Unable to import products. Please try again later': 'Unable to import products. Please try again later'
+    'Unable to import products. Please try again later': 'Unable to import products. Please try again later',
+    'Unable to export products. Please try again later': 'Unable to export products. Please try again later',
+    'Insufficient product quantity in inventory': 'Insufficient product quantity in inventory',
+    'Products were exported, but the receipt could not be generated.': 'Products were exported, but the receipt could not be generated.',
+    'Inventory was updated, but notification status could not be displayed.': 'Inventory was updated, but notification status could not be displayed.'
   }
 };
 

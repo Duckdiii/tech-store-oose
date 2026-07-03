@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { confirmExport, downloadReceipt, getApiError, saveDownload, validateExport } from '../../../../api/warehouseApi';
+import { useTheme } from '../../../../shared/context/ThemeContext';
 import { ApiMessage, Field } from './components';
 import { ExportFilters } from './ExportFilters';
 import { ExportProductList } from './ExportProductList';
@@ -8,6 +9,7 @@ import { SelectedExportModal } from './SelectedExportModal';
 const sameSerial = (left, right) => left.toLowerCase() === right.toLowerCase();
 
 export function ExportFlow({ products = [], variants = [], onInventoryChanged }) {
+  const { t } = useTheme();
   const [selectedSerials, setSelectedSerials] = useState([]);
   const [reason, setReason] = useState('');
   const [expandedProduct, setExpandedProduct] = useState(null);
@@ -90,7 +92,7 @@ export function ExportFlow({ products = [], variants = [], onInventoryChanged })
     } catch (requestError) {
       setPreview(null);
       setValidatedPayload(null);
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ export function ExportFlow({ products = [], variants = [], onInventoryChanged })
       setExpandedProduct(null);
       await onInventoryChanged?.();
     } catch (requestError) {
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     } finally {
       setLoading(false);
     }
@@ -118,7 +120,7 @@ export function ExportFlow({ products = [], variants = [], onInventoryChanged })
     try {
       saveDownload(await downloadReceipt(result.receipt.id));
     } catch (requestError) {
-      setError(getApiError(requestError));
+      setError(t(getApiError(requestError)));
     }
   };
 
@@ -230,7 +232,7 @@ export function ExportFlow({ products = [], variants = [], onInventoryChanged })
               ))}
             </div>
           )}
-          {result.warnings?.map((warning) => <ApiMessage key={warning} error={warning} />)}
+          {result.warnings?.map((warning) => <ApiMessage key={warning} error={t(warning)} />)}
         </div>
       )}
 
