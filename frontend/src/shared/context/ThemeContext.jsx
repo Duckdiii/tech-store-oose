@@ -41,7 +41,14 @@ const translations = {
     'Giỏ hàng': 'Giỏ hàng',
     'No products found matching your search criteria': 'Không tìm thấy sản phẩm nào phù hợp với tiêu chí tìm kiếm của bạn',
     'Invalid filter input. Please check your search criteria': 'Bộ lọc đầu vào không hợp lệ. Vui lòng kiểm tra lại tiêu chí tìm kiếm',
-    'Unable to load products. Please try again later': 'Không thể tải danh sách sản phẩm. Vui lòng thử lại sau'
+    'Unable to load products. Please try again later': 'Không thể tải danh sách sản phẩm. Vui lòng thử lại sau',
+    'This product is currently out of stock.': 'Sản phẩm này hiện đã hết hàng.',
+    'Invalid quantity. Please enter a valid quantity.': 'Số lượng không hợp lệ. Vui lòng nhập số lượng hợp lệ.',
+    'Your cart is empty. Please add products before checkout.': 'Giỏ hàng của bạn đang trống. Vui lòng thêm sản phẩm trước khi thanh toán.',
+    'Some items in your cart are no longer available. Please remove or update them to continue.': 'Một số sản phẩm trong giỏ hàng không còn khả dụng. Vui lòng xóa hoặc cập nhật để tiếp tục.',
+    'Unable to complete your order. Please try again later.': 'Không thể hoàn thành đơn hàng của bạn. Vui lòng thử lại sau.',
+    'Unable to update inventory information. Please contact support or try again later.': 'Không thể cập nhật thông tin tồn kho. Vui lòng liên hệ bộ phận hỗ trợ hoặc thử lại sau.',
+    'Payment failed. Please try again or choose another payment method.': 'Thanh toán thất bại. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -81,7 +88,14 @@ const translations = {
     'Giỏ hàng': 'Cart',
     'No products found matching your search criteria': 'No products found matching your search criteria',
     'Invalid filter input. Please check your search criteria': 'Invalid filter input. Please check your search criteria',
-    'Unable to load products. Please try again later': 'Unable to load products. Please try again later'
+    'Unable to load products. Please try again later': 'Unable to load products. Please try again later',
+    'This product is currently out of stock.': 'This product is currently out of stock.',
+    'Invalid quantity. Please enter a valid quantity.': 'Invalid quantity. Please enter a valid quantity.',
+    'Your cart is empty. Please add products before checkout.': 'Your cart is empty. Please add products before checkout.',
+    'Some items in your cart are no longer available. Please remove or update them to continue.': 'Some items in your cart are no longer available. Please remove or update them to continue.',
+    'Unable to complete your order. Please try again later.': 'Unable to complete your order. Please try again later.',
+    'Unable to update inventory information. Please contact support or try again later.': 'Unable to update inventory information. Please contact support or try again later.',
+    'Payment failed. Please try again or choose another payment method.': 'Payment failed. Please try again or choose another payment method.'
   }
 };
 

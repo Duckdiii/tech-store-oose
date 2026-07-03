@@ -9,6 +9,7 @@ import com.oose.tech_store.entity.Cart;
 import com.oose.tech_store.entity.CartItem;
 import com.oose.tech_store.entity.Customer;
 import com.oose.tech_store.entity.ProductVariant;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.exception.BundleServiceUnavailableException;
 import com.oose.tech_store.exception.BundleServiceUpdateException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
@@ -160,6 +161,12 @@ public class CartBundleServiceImpl implements CartBundleService {
                 ? product.getImages().get(0).getImageUrl() 
                 : "";
 
+        long stock = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                product.getId(), pv.getRamGb(), pv.getStorageGb(), pv.getColor(), ProductVariantStatus.AVAILABLE
+        );
+
+        boolean available = stock >= item.getQuantity();
+
         return new CartItemResponse(
                 item.getId(),
                 pv.getId(),
@@ -182,7 +189,9 @@ public class CartBundleServiceImpl implements CartBundleService {
                 product.getNfcSupported(),
                 pv.getRamGb(),
                 pv.getStorageGb(),
-                pv.getColor()
+                pv.getColor(),
+                available,
+                (int) stock
         );
     }
 

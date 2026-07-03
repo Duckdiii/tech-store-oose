@@ -51,9 +51,9 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
         }
 
         if (vnpayGateway.isCancelled(params)) {
-            return new PaymentResultResponse(false, null, null, "Payment was cancelled. Please try again.");
+            return new PaymentResultResponse(false, null, null, "Payment failed. Please try again or choose another payment method.");
         }
 
-        return new PaymentResultResponse(false, null, null, "Payment failed. Please try again.");
+        return new PaymentResultResponse(false, null, null, "Payment failed. Please try again or choose another payment method.");
     }
 }

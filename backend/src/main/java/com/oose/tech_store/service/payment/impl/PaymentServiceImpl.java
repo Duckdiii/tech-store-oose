@@ -4,13 +4,17 @@ import com.oose.tech_store.config.MomoProperties;
 import com.oose.tech_store.dto.payment.*;
 import com.oose.tech_store.entity.*;
 import com.oose.tech_store.entity.enums.PaymentLogStatus;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
+import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.payment.PendingCheckout;
 import com.oose.tech_store.payment.gateway.PaymentStrategy;
 import com.oose.tech_store.repository.CartRepository;
 import com.oose.tech_store.repository.PaymentMethodRepository;
+import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.service.payment.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +29,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final CartRepository cartRepository;
     private final PaymentMethodRepository paymentMethodRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final List<PaymentStrategy> paymentStrategies;
     private final MomoProperties momoProperties;
 
@@ -61,6 +66,21 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (selectedItems.isEmpty()) {
             throw new IllegalArgumentException("Selected cart items not found in cart");
+        }
+
+        // Validate stock availability for selected cart items
+        for (CartItem item : selectedItems) {
+            ProductVariant pv = item.getProductVariant();
+            long stock = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                    pv.getProduct().getId(),
+                    pv.getRamGb(),
+                    pv.getStorageGb(),
+                    pv.getColor(),
+                    ProductVariantStatus.AVAILABLE
+            );
+            if (stock < item.getQuantity()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Some items in your cart are no longer available. Please remove or update them to continue.");
+            }
         }
 
         BigDecimal amount = selectedItems.stream()
@@ -141,6 +161,12 @@ public class PaymentServiceImpl implements PaymentService {
                 ? product.getImages().get(0).getImageUrl() 
                 : "";
 
+        long stock = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                product.getId(), pv.getRamGb(), pv.getStorageGb(), pv.getColor(), ProductVariantStatus.AVAILABLE
+        );
+
+        boolean available = stock >= item.getQuantity();
+
         return new CartItemDto(
                 item.getId(),
                 product.getName(),
@@ -150,7 +176,9 @@ public class PaymentServiceImpl implements PaymentService {
                 bundleServices,
                 item.calculateSubtotal(),
                 brandName,
-                thumbnailUrl
+                thumbnailUrl,
+                available,
+                (int) stock
         );
     }
 

@@ -58,9 +58,9 @@ public class MomoPaymentStrategy implements PaymentStrategy {
         }
 
         if (resultCode == 1006) {
-            return new PaymentResultResponse(false, null, null, "Payment was cancelled. Please try again.");
+            return new PaymentResultResponse(false, null, null, "Payment failed. Please try again or choose another payment method.");
         }
 
-        return new PaymentResultResponse(false, null, null, "Payment failed. Please try again.");
+        return new PaymentResultResponse(false, null, null, "Payment failed. Please try again or choose another payment method.");
     }
 }

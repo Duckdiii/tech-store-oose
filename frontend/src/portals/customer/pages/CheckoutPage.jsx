@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { fmt } from '../../../utils/format';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/context/CartContext';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { useToast } from '../../../shared/context/ToastContext';
+import { useTheme } from '../../../shared/context/ThemeContext';
 import { httpClient } from '../../../api/httpClient';
 import { userApi } from '../../../api/userApi';
 import { membershipApi } from '../../../api/membershipApi';
@@ -84,6 +85,8 @@ export function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const { t } = useTheme();
   const [method, setMethod] = useState('');
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(null);
@@ -180,6 +183,13 @@ export function CheckoutPage() {
     setAppliedPromotionCode(normalizedPromo);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!verifyingPayment && !success && items.length === 0) {
+      showToast(t('Your cart is empty. Please add products before checkout.'), 'warning');
+      navigate('/products');
+    }
+  }, [items, verifyingPayment, success]);
+
   // Set default method when summary loads — skip methods the order amount already exceeds
   useEffect(() => {
     if (summary?.availablePaymentMethods?.length > 0) {
@@ -228,11 +238,12 @@ export function CheckoutPage() {
             name: user?.name || ''
           });
         } else {
-          showToast(response?.data?.message || 'Thanh toán trực tuyến thất bại hoặc đã bị hủy.', 'error');
+          const msg = response?.data?.message || 'Payment failed. Please try again or choose another payment method.';
+          showToast(t(msg), 'error');
         }
       } catch (error) {
         console.error('Error verifying payment:', error);
-        showToast('Có lỗi xảy ra khi xác nhận giao dịch thanh toán.', 'error');
+        showToast(t('Payment failed. Please try again or choose another payment method.'), 'error');
       } finally {
         setVerifyingPayment(false);
         setSearchParams({});
@@ -426,7 +437,12 @@ export function CheckoutPage() {
       }
     } catch (error) {
       console.error('Error placing order:', error);
-      showToast(error.response?.data?.message || 'Đặt hàng không thành công. Vui lòng thử lại.', 'error');
+      const rawMsg = error.response?.data?.message;
+      const translatedMsg = rawMsg ? t(rawMsg) : 'Đặt hàng không thành công. Vui lòng thử lại.';
+      showToast(translatedMsg, 'error');
+      if (rawMsg && rawMsg.includes('no longer available')) {
+        navigate('/cart');
+      }
     } finally {
       setPlacing(false);
     }

@@ -7,6 +7,8 @@ import com.oose.tech_store.entity.Cart;
 import com.oose.tech_store.entity.CartItem;
 import com.oose.tech_store.entity.Customer;
 import com.oose.tech_store.entity.ProductVariant;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
+import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.repository.CartRepository;
 import com.oose.tech_store.repository.CustomerRepository;
@@ -14,6 +16,7 @@ import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.service.cart.CartItemService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +47,11 @@ public class CartItemServiceImpl implements CartItemService {
         Cart cart = loadOrCreateCart(customerId);
         ProductVariant variant = productVariantRepository.findById(productVariantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
+        
+        if (!variant.isAvailable()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "This product is currently out of stock.");
+        }
+
         cart.addItem(variant, quantity);
         return toCartResponse(cartRepository.save(cart));
     }
@@ -119,6 +127,12 @@ public class CartItemServiceImpl implements CartItemService {
                 ? product.getImages().get(0).getImageUrl()
                 : "";
 
+        long stock = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                product.getId(), pv.getRamGb(), pv.getStorageGb(), pv.getColor(), ProductVariantStatus.AVAILABLE
+        );
+
+        boolean available = stock >= item.getQuantity();
+
         return new CartItemResponse(
                 item.getId(),
                 pv.getId(),
@@ -141,7 +155,9 @@ public class CartItemServiceImpl implements CartItemService {
                 product.getNfcSupported(),
                 pv.getRamGb(),
                 pv.getStorageGb(),
-                pv.getColor()
+                pv.getColor(),
+                available,
+                (int) stock
         );
     }
 }

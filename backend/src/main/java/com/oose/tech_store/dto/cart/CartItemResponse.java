@@ -25,5 +25,7 @@ public record CartItemResponse(
         Boolean nfcSupported,
         Integer ramGb,
         Integer storageGb,
-        String color
+        String color,
+        Boolean available,
+        Integer availableStock
 ) {}
