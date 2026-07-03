@@ -5,7 +5,6 @@ import com.oose.tech_store.dto.supplyorder.SupplyOrderResponseDTO;
 import com.oose.tech_store.dto.supplyorder.UpdateSupplyOrderNotesRequestDTO;
 import com.oose.tech_store.entity.enums.POStatus;
 import com.oose.tech_store.service.supplier.SupplyOrderService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +26,7 @@ public class SupplyOrderController {
 
     @PostMapping
     public ResponseEntity<SupplyOrderResponseDTO> createSupplyOrder(
-            @Valid @RequestBody CreateSupplyOrderRequestDTO request) {
+            @RequestBody CreateSupplyOrderRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(supplyOrderService.createSupplyOrder(request));
     }

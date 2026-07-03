@@ -25,7 +25,7 @@ export function SupplierForm({ supplier, onSave, onClose }) {
   const touch = (key) => setTouched((prev) => new Set(prev).add(key));
 
   const errors = {
-    name: !form.name.trim() ? 'Vui lòng nhập tên nhà cung cấp' : '',
+    name: !form.name.trim() ? 'Please fill in all required fields' : '',
     email: form.email.trim() && !EMAIL_RE.test(form.email.trim()) ? 'Email không hợp lệ' : '',
     phone: form.phone.trim() && !PHONE_RE.test(form.phone.trim()) ? 'Số điện thoại không hợp lệ' : '',
   };

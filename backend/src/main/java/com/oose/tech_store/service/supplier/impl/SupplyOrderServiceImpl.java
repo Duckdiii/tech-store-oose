@@ -19,13 +19,17 @@ import com.oose.tech_store.repository.SupplierRepository;
 import com.oose.tech_store.service.supplier.SupplyOrderService;
 import com.oose.tech_store.service.warehouse.WarehouseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,59 +45,68 @@ public class SupplyOrderServiceImpl implements SupplyOrderService {
     public List<SupplyOrderResponseDTO> getAllSupplyOrders() {
         return supplyOrderRepository.findAll().stream()
                 .map(po -> mapToResponseDTO(po, null))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     @Transactional
     public SupplyOrderResponseDTO createSupplyOrder(CreateSupplyOrderRequestDTO request) {
-        Supplier supplier = supplierRepository.findById(request.supplierId())
-                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
+        try {
+            validateRequiredFields(request);
+            Supplier supplier = loadSupplier(request.supplierId());
 
-        SupplyOrder supplyOrder = new SupplyOrder(supplier, request.orderDate());
-        supplyOrder.setNotes(request.notes());
-
-        Set<String> seen = new HashSet<>();
-        for (SupplyOrderItemRequestDTO itemDto : request.items()) {
-            if (!seen.add(itemDto.productVariantId())) {
-                throw new InvalidOrderItemsException(
-                        "Duplicate product variant in order: " + itemDto.productVariantId());
+            if (request.items() == null || request.items().isEmpty()) {
+                throw new IllegalArgumentException("Please add at least one product to the order");
             }
-            ProductVariant variant = productVariantRepository.findById(itemDto.productVariantId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product variant not found: " + itemDto.productVariantId()));
 
-            supplyOrder.addItem(new SupplyOrderItem(variant, itemDto.quantity(), itemDto.unitPrice()));
+            validateDeliveryDate(request.orderDate());
+
+            SupplyOrder supplyOrder = buildSupplyOrder(request, supplier);
+            return mapToResponseDTO(supplyOrderRepository.save(supplyOrder), "Purchase Order created successfully");
+        } catch (IllegalArgumentException | ResourceNotFoundException | InvalidOrderItemsException exception) {
+            throw exception;
+        } catch (DataAccessException _) {
+            throw new com.oose.tech_store.exception.ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to connect to the system. Please try again later");
         }
-
-        supplyOrder = supplyOrderRepository.save(supplyOrder);
-        return mapToResponseDTO(supplyOrder, "Supply Order created successfully");
     }
 
     @Override
     @Transactional
     public SupplyOrderResponseDTO updateStatus(String id, POStatus newStatus, String performedBy) {
-        SupplyOrder supplyOrder = supplyOrderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Supply Order not found"));
+        try {
+            SupplyOrder supplyOrder = supplyOrderRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Supply Order not found"));
 
-        POStatus currentStatus = supplyOrder.getStatus();
+            POStatus currentStatus = supplyOrder.getStatus();
 
-        if (currentStatus == POStatus.DELIVERED || currentStatus == POStatus.CANCELLED) {
-            throw new InvalidStateException("SO is already in a final state");
+            if (currentStatus == POStatus.DELIVERED || currentStatus == POStatus.CANCELLED) {
+                // Exception Flow 4b
+                throw new InvalidStateException(
+                        "This Supply Order has already been completed or cancelled and cannot be updated");
+            }
+
+            if (!isValidTransition(currentStatus, newStatus)) {
+                // Exception Flow 4a
+                throw new InvalidTransitionException(
+                        "Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED");
+            }
+
+            if (newStatus == POStatus.DELIVERED) {
+                warehouseService.importProducts(supplyOrder, performedBy);
+            }
+
+            supplyOrder.setStatus(newStatus);
+            supplyOrder = supplyOrderRepository.save(supplyOrder);
+
+            return mapToResponseDTO(supplyOrder, "Supply Order status updated successfully");
+        } catch (ResourceNotFoundException | InvalidStateException | InvalidTransitionException exception) {
+            throw exception;
+        } catch (DataAccessException exception) {
+            // Exception Flow 4c
+            throw new com.oose.tech_store.exception.ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to connect to the system. Please try again later");
         }
-
-        if (!isValidTransition(currentStatus, newStatus)) {
-            throw new InvalidTransitionException(
-                    "Invalid transition (allowed: PENDING->CONFIRMED->SHIPPING->DELIVERED or PENDING/CONFIRMED->CANCELLED)");
-        }
-
-        if (newStatus == POStatus.DELIVERED) {
-            warehouseService.importProducts(supplyOrder, performedBy);
-        }
-
-        supplyOrder.setStatus(newStatus);
-        supplyOrder = supplyOrderRepository.save(supplyOrder);
-
-        return mapToResponseDTO(supplyOrder, "SO status updated successfully");
     }
 
     @Override
@@ -106,6 +119,54 @@ public class SupplyOrderServiceImpl implements SupplyOrderService {
         supplyOrder = supplyOrderRepository.save(supplyOrder);
 
         return mapToResponseDTO(supplyOrder, "Notes updated successfully");
+    }
+
+    private void validateRequiredFields(CreateSupplyOrderRequestDTO request) {
+        if (request == null || request.supplierId() == null || request.supplierId().isBlank()
+                || request.orderDate() == null) {
+            throw new IllegalArgumentException("Please fill in all required fields");
+        }
+    }
+
+    private Supplier loadSupplier(String supplierId) {
+        return supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
+    }
+
+    private void validateDeliveryDate(LocalDate orderDate) {
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        if (!orderDate.isAfter(today)) {
+            throw new IllegalArgumentException("Expected delivery date must be in the future");
+        }
+    }
+
+    private SupplyOrder buildSupplyOrder(CreateSupplyOrderRequestDTO request, Supplier supplier) {
+        SupplyOrder supplyOrder = new SupplyOrder(supplier, request.orderDate());
+        supplyOrder.setNotes(request.notes());
+
+        Set<String> seen = new HashSet<>();
+        for (SupplyOrderItemRequestDTO itemDto : request.items()) {
+            supplyOrder.addItem(buildItem(itemDto, seen));
+        }
+        return supplyOrder;
+    }
+
+    private SupplyOrderItem buildItem(SupplyOrderItemRequestDTO itemDto, Set<String> seen) {
+        if (itemDto.productVariantId() == null || itemDto.productVariantId().isBlank()
+                || itemDto.quantity() == null || itemDto.unitPrice() == null) {
+            throw new IllegalArgumentException("Please fill in all required fields");
+        }
+        if (itemDto.quantity() <= 0 || itemDto.unitPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Quantity and unit price must be greater than zero");
+        }
+        if (!seen.add(itemDto.productVariantId())) {
+            throw new InvalidOrderItemsException("Duplicate product variant in order: " + itemDto.productVariantId());
+        }
+
+        ProductVariant variant = productVariantRepository.findById(itemDto.productVariantId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Product variant not found: " + itemDto.productVariantId()));
+        return new SupplyOrderItem(variant, itemDto.quantity(), itemDto.unitPrice());
     }
 
     private boolean isValidTransition(POStatus currentStatus, POStatus newStatus) {
@@ -134,7 +195,7 @@ public class SupplyOrderServiceImpl implements SupplyOrderService {
                         item.getProduct().getDisplayName(),
                         item.getQuantity(),
                         item.getUnitPrice()))
-                .collect(Collectors.toList());
+                .toList();
 
         return new SupplyOrderResponseDTO(
                 po.getId(),
