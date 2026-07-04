@@ -126,6 +126,7 @@ export function ManagerPortal() {
   const [productsRefreshToken, setProductsRefreshToken] = useState(0);
   const [suppliersRefreshToken, setSuppliersRefreshToken] = useState(0);
   const [supplyOrdersRefreshToken, setSupplyOrdersRefreshToken] = useState(0);
+  const [customersRefreshToken, setCustomersRefreshToken] = useState(0);
   const [productForm, setProductForm] = useState(null);
   const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
@@ -407,6 +408,7 @@ export function ManagerPortal() {
         showToast(`Đã mở khóa tài khoản của ${customer.name}`);
       }
       fetchCustomersFromApi();
+      setCustomersRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -541,7 +543,7 @@ export function ManagerPortal() {
           <WarehousePage view={warehouseView} navigate={navigate} suppliers={data.suppliers} onOpenProduct={openProductDetail} />
         )}
         {activeSection === 'customers' && (
-          <CustomersPage customers={data.customers} onToggle={toggleCustomer} />
+          <CustomersPage refreshToken={customersRefreshToken} onToggle={toggleCustomer} />
         )}
         {activeSection === 'staff' && (
           <StaffPage staff={data.staff} onToggle={toggleStaff} onAdd={() => setStaffFormOpen(true)} onDelete={deleteStaff} />
