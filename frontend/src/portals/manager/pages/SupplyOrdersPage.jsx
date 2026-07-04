@@ -1,6 +1,9 @@
-import { useMemo, useState } from 'react';
-import { DataTable, EmptyState } from '../components/index';
-import { sortRows, money } from '../utils';
+import { useEffect, useState } from 'react';
+import { DataTable, EmptyState, Spinner } from '../components/index';
+import { money } from '../utils';
+import { supplyOrderApi } from '../../../api/supplyOrderApi';
+
+const PAGE_SIZE = 10;
 
 export const SO_STATUS_LABEL = {
   PENDING: 'Chờ xác nhận',
@@ -29,24 +32,50 @@ export function SOStatusBadge({ status }) {
 export const supplyOrderTotal = (order) =>
   (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
 
-export function SupplyOrdersPage({ supplyOrders, onAdd, onView }) {
-  const [sortKey, setSortKey] = useState('');
-  const [sortDir, setSortDir] = useState('asc');
+export function SupplyOrdersPage({ refreshToken, onAdd, onView }) {
+  const [sortKey, setSortKey] = useState('orderDate');
+  const [sortDir, setSortDir] = useState('desc');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
 
-  const rows = useMemo(() => supplyOrders.map((order) => ({
-    ...order,
-    totalValue: supplyOrderTotal(order),
-  })), [supplyOrders]);
+  const [visible, setVisible] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((order) => `${order.supplierName || ''} ${order.id}`.toLowerCase().includes(q));
-  }, [rows, search]);
-
-  const visible = useMemo(() => sortRows(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
   const isFiltering = search.trim() !== '';
+
+  // Đổi từ khóa tìm kiếm thì quay về trang đầu.
+  useEffect(() => { setPage(0); }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await supplyOrderApi.search({
+          keyword: search.trim() || undefined,
+          page,
+          size: PAGE_SIZE,
+          sort: `${sortKey},${sortDir}`,
+        });
+        const rows = (data.content || []).map((order) => ({
+          ...order,
+          totalValue: supplyOrderTotal(order),
+        }));
+        setVisible(rows);
+        setTotalElements(data.totalElements || 0);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Failed to fetch supply orders', err);
+        setVisible([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, page, sortKey, sortDir, refreshToken]);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
@@ -56,7 +85,7 @@ export function SupplyOrdersPage({ supplyOrders, onAdd, onView }) {
   const columns = [
     { label: 'Nhà cung cấp', key: 'supplierName' },
     { label: 'Ngày dự kiến giao', key: 'orderDate' },
-    { label: 'Tổng giá trị', key: 'totalValue' },
+    'Tổng giá trị',
     { label: 'Trạng thái', key: 'status' },
     '',
   ];
@@ -65,7 +94,7 @@ export function SupplyOrdersPage({ supplyOrders, onAdd, onView }) {
     <>
       <div className="admin-page-intro">
         <div>
-          <p>{isFiltering ? `${visible.length}/${supplyOrders.length} đơn phù hợp` : `${supplyOrders.length} đơn nhập hàng`}</p>
+          <p>{totalElements} đơn nhập hàng{isFiltering ? ' phù hợp' : ''}</p>
           <h2>Đơn nhập hàng</h2>
         </div>
         <button className="admin-button" onClick={onAdd}>+ Tạo đơn nhập hàng</button>
@@ -84,7 +113,13 @@ export function SupplyOrdersPage({ supplyOrders, onAdd, onView }) {
         </div>
 
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-          {visible.length === 0 ? (
+          {loading ? (
+            <tr>
+              <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                <Spinner label="Đang tải đơn nhập hàng..." />
+              </td>
+            </tr>
+          ) : visible.length === 0 ? (
             <EmptyState
               message={isFiltering ? 'Không có đơn nhập hàng nào phù hợp' : 'Chưa có đơn nhập hàng nào'}
               hint={isFiltering ? 'Thử từ khóa khác.' : 'Tạo đơn nhập hàng đầu tiên để bắt đầu nhập kho.'}
@@ -105,6 +140,26 @@ export function SupplyOrdersPage({ supplyOrders, onAdd, onView }) {
             </tr>
           ))}
         </DataTable>
+
+        {!loading && totalPages > 1 && (
+          <div className="admin-pagination">
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              ‹ Trước
+            </button>
+            <span>Trang {page + 1} / {totalPages}</span>
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              Sau ›
+            </button>
+          </div>
+        )}
       </article>
     </>
   );

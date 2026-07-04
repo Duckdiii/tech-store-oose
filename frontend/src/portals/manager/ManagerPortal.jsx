@@ -125,6 +125,7 @@ export function ManagerPortal() {
   const [query, setQuery] = useState('');
   const [productsRefreshToken, setProductsRefreshToken] = useState(0);
   const [suppliersRefreshToken, setSuppliersRefreshToken] = useState(0);
+  const [supplyOrdersRefreshToken, setSupplyOrdersRefreshToken] = useState(0);
   const [productForm, setProductForm] = useState(null);
   const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
@@ -225,21 +226,6 @@ export function ManagerPortal() {
     };
     fetchData();
   }, []);
-
-  const fetchSupplyOrdersFromApi = async () => {
-    try {
-      const orders = await supplyOrderApi.getAll();
-      setData(prev => ({ ...prev, supplyOrders: orders || [] }));
-    } catch (err) {
-      console.error('Failed to fetch supply orders:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (activeSection === 'supply-orders') {
-      fetchSupplyOrdersFromApi();
-    }
-  }, [activeSection]);
 
   useEffect(() => {
     if (!['dashboard', 'products', 'warehouse', 'supply-orders'].includes(activeSection)) return;
@@ -510,8 +496,8 @@ export function ManagerPortal() {
     try {
       await supplyOrderApi.create(payload);
       setToast(t('Purchase Order created successfully'));
-      await fetchSupplyOrdersFromApi();
       setSupplyOrderFormOpen(false);
+      setSupplyOrdersRefreshToken((token) => token + 1);
     } catch (err) {
       setToast(t(apiMessage(err)));
     }
@@ -520,8 +506,8 @@ export function ManagerPortal() {
   const updateSupplyOrderStatus = async (id, status) => {
     const updated = await supplyOrderApi.updateStatus(id, status);
     setToast(t('Supply Order status updated successfully'));
-    await fetchSupplyOrdersFromApi();
     setViewingSupplyOrder(updated);
+    setSupplyOrdersRefreshToken((token) => token + 1);
     return updated;
   };
 
@@ -577,7 +563,7 @@ export function ManagerPortal() {
         )}
         {activeSection === 'supply-orders' && (
           <SupplyOrdersPage
-            supplyOrders={data.supplyOrders}
+            refreshToken={supplyOrdersRefreshToken}
             onAdd={() => setSupplyOrderFormOpen(true)}
             onView={(order) => setViewingSupplyOrder(order)}
           />

@@ -2,10 +2,12 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.supplyorder.CreateSupplyOrderRequestDTO;
 import com.oose.tech_store.dto.supplyorder.SupplyOrderResponseDTO;
+import com.oose.tech_store.dto.supplyorder.SupplyOrderSearchRequestDTO;
 import com.oose.tech_store.dto.supplyorder.UpdateSupplyOrderNotesRequestDTO;
 import com.oose.tech_store.entity.enums.POStatus;
 import com.oose.tech_store.service.supplier.SupplyOrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +24,16 @@ public class SupplyOrderController {
     @GetMapping
     public ResponseEntity<java.util.List<SupplyOrderResponseDTO>> getAllSupplyOrders() {
         return ResponseEntity.ok(supplyOrderService.getAllSupplyOrders());
+    }
+
+    /**
+     * Paginated, filterable listing for the Manager "Đơn nhập hàng" table.
+     *
+     * GET /api/manage/supply-orders/search?keyword=...&page=0&size=10&sort=orderDate,desc
+     */
+    @GetMapping("/search")
+    public Page<SupplyOrderResponseDTO> searchSupplyOrders(@ModelAttribute SupplyOrderSearchRequestDTO request) {
+        return supplyOrderService.searchSupplyOrders(request);
     }
 
     @PostMapping
