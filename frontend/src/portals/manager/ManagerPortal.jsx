@@ -124,6 +124,7 @@ export function ManagerPortal() {
   });
   const [query, setQuery] = useState('');
   const [productsRefreshToken, setProductsRefreshToken] = useState(0);
+  const [suppliersRefreshToken, setSuppliersRefreshToken] = useState(0);
   const [productForm, setProductForm] = useState(null);
   const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
@@ -487,6 +488,7 @@ export function ManagerPortal() {
       setData(prev => ({ ...prev, suppliers: sups }));
       setSupplierFormOpen(false);
       setEditingSupplier(null);
+      setSuppliersRefreshToken((token) => token + 1);
     } catch (err) {
       setToast('Lỗi: ' + (err.response?.data?.message || err.message));
     }
@@ -498,6 +500,7 @@ export function ManagerPortal() {
       const sups = await supplierApi.getAll();
       setData(prev => ({ ...prev, suppliers: sups }));
       setToast(t('Supplier removed successfully'));
+      setSuppliersRefreshToken((token) => token + 1);
     } catch (err) {
       setToast(t(apiMessage(err)));
     }
@@ -566,7 +569,7 @@ export function ManagerPortal() {
         )}
         {activeSection === 'suppliers' && (
           <SuppliersPage
-            suppliers={data.suppliers}
+            refreshToken={suppliersRefreshToken}
             onAdd={() => { setEditingSupplier(null); setSupplierFormOpen(true); }}
             onEdit={(sup) => { setEditingSupplier(sup); setSupplierFormOpen(true); }}
             onDelete={deleteSupplier}
