@@ -14,6 +14,13 @@ export const manageOrderApi = {
     return response.data;
   },
 
+  searchOrders: async (params = {}) => {
+    const response = await httpClient.get('/manage/orders/search', {
+      params: cleanParams(params),
+    });
+    return response.data;
+  },
+
   getOrderDetail: async (orderId) => {
     const response = await httpClient.get(`/manage/orders/${orderId}`);
     return response.data;

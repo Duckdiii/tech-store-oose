@@ -1,6 +1,6 @@
 package com.oose.tech_store.dto.manage;
 
-public class ManageProductSearchRequestDTO {
+public class ManageProductSearchRequestDTO { // pagination and sorting for product search
 
     private String keyword;
     private String status;

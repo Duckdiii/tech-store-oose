@@ -540,7 +540,6 @@ export function ManagerPortal() {
         )}
         {activeSection === 'orders' && (
           <OrdersPage
-            orders={data.orders}
             onStatus={changeOrderStatus}
             onExport={() => downloadCsv(
               'don-hang-techstore.csv',

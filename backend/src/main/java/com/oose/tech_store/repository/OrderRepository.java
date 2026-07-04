@@ -3,6 +3,7 @@ package com.oose.tech_store.repository;
 import com.oose.tech_store.entity.Order;
 import com.oose.tech_store.entity.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 
-public interface OrderRepository extends JpaRepository<Order, String> {
+public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecificationExecutor<Order> {
 
 	List<Order> findByCustomerId(String customerId);
 

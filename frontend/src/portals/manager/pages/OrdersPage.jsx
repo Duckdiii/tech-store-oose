@@ -1,9 +1,42 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Status, DataTable, EmptyState } from '../components/index';
-import { money, sortRows, downloadCsv } from '../utils';
+import { Status, DataTable, EmptyState, Spinner } from '../components/index';
+import { money, downloadCsv } from '../utils';
 import { httpClient } from '../../../api/httpClient';
+import { manageOrderApi } from '../../../api/manageOrderApi';
 
 const ORDER_STATUSES = ['Chờ xác nhận', 'Đang xử lý', 'Đang giao', 'Hoàn thành', 'Đã hủy', 'Đã hoàn tiền'];
+
+const PAGE_SIZE = 10;
+
+const STATUS_TO_BACKEND = {
+  'Chờ xác nhận': 'AWAITING_CONFIRMATION',
+  'Đang xử lý': 'PROCESSING',
+  'Đang giao': 'SHIPPING',
+  'Hoàn thành': 'COMPLETED',
+  'Đã hủy': 'CANCELLED',
+  'Đã hoàn tiền': 'REFUNDED',
+};
+
+const STATUS_TO_FRONTEND = {
+  AWAITING_CONFIRMATION: 'Chờ xác nhận',
+  PROCESSING: 'Đang xử lý',
+  SHIPPING: 'Đang giao',
+  COMPLETED: 'Hoàn thành',
+  CANCELLED: 'Đã hủy',
+  REFUNDED: 'Đã hoàn tiền',
+};
+
+const formatDateString = (isoString) => {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  } catch {
+    return isoString;
+  }
+};
 
 // Các bước chuyển trạng thái hợp lệ, khớp đúng state machine phía backend (OrderStatus.java).
 // Trạng thái không có trong map (hoặc mảng rỗng) là trạng thái cuối, không thể đổi tiếp.
@@ -243,31 +276,66 @@ function PaymentLogTab() {
   );
 }
 
-export function OrdersPage({ orders, onStatus, onExport }) {
+export function OrdersPage({ onStatus, onExport }) {
   const [tab,          setTab]          = useState('orders');
-  const [sortKey,      setSortKey]      = useState('');
-  const [sortDir,      setSortDir]      = useState('asc');
+  const [sortKey,      setSortKey]      = useState('date');
+  const [sortDir,      setSortDir]      = useState('desc');
   const [selected,     setSelected]     = useState(new Set());
   const [bulkStatus,   setBulkStatus]   = useState('');
   const [bulkResult,   setBulkResult]   = useState(null);
   const [bulkRunning,  setBulkRunning]  = useState(false);
   const [filterStatus, setFilterStatus] = useState('Tất cả');
   const [search,       setSearch]       = useState('');
+  const [page,         setPage]         = useState(0);
+  const [refreshTick,  setRefreshTick]  = useState(0);
+
+  const [visibleOrders, setVisibleOrders] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages,    setTotalPages]    = useState(0);
+  const [loading,       setLoading]       = useState(false);
 
   const selectAllRef = useRef(null);
 
-  const filteredOrders = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return orders.filter((o) => {
-      if (filterStatus !== 'Tất cả' && o.status !== filterStatus) return false;
-      if (q && !`${o.id} ${o.customer}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [orders, filterStatus, search]);
-
   const isFiltering = filterStatus !== 'Tất cả' || search.trim() !== '';
 
-  const visibleOrders = useMemo(() => sortRows(filteredOrders, sortKey, sortDir), [filteredOrders, sortKey, sortDir]);
+  // Đổi bộ lọc/tìm kiếm thì quay về trang đầu; đổi trang thì bỏ chọn để tránh
+  // áp dụng đổi trạng thái hàng loạt lên đơn hàng không còn hiển thị.
+  useEffect(() => { setPage(0); }, [filterStatus, search]);
+  useEffect(() => { setSelected(new Set()); }, [filterStatus, search, page]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await manageOrderApi.searchOrders({
+          keyword: search.trim() || undefined,
+          status: filterStatus === 'Tất cả' ? undefined : STATUS_TO_BACKEND[filterStatus],
+          page,
+          size: PAGE_SIZE,
+          sort: `${sortKey},${sortDir}`,
+        });
+        const mapped = (data.content || []).map((o) => ({
+          id: o.orderId,
+          customer: o.customerName,
+          total: Number(o.totalAmount || 0),
+          payment: o.paymentMethod || 'COD',
+          status: STATUS_TO_FRONTEND[o.orderStatus] || o.orderStatus,
+          date: formatDateString(o.orderDate),
+        }));
+        setVisibleOrders(mapped);
+        setTotalElements(data.totalElements || 0);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Failed to fetch manager orders', err);
+        setVisibleOrders([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filterStatus, search, page, sortKey, sortDir, refreshTick]);
 
   const allSelected  = visibleOrders.length > 0 && visibleOrders.every((o) => selected.has(o.id));
   const someSelected = !allSelected && visibleOrders.some((o) => selected.has(o.id));
@@ -307,6 +375,9 @@ export function OrdersPage({ orders, onStatus, onExport }) {
     else { setSortKey(key); setSortDir('asc'); }
   };
 
+  const changeStatus = (id, status) =>
+    onStatus(id, status).then(() => setRefreshTick((t) => t + 1));
+
   const applyBulkStatus = async () => {
     const ids = Array.from(selected);
     setBulkRunning(true);
@@ -315,6 +386,7 @@ export function OrdersPage({ orders, onStatus, onExport }) {
     setBulkRunning(false);
     setSelected(new Set());
     setBulkResult({ total: ids.length, failed });
+    setRefreshTick((t) => t + 1);
     setTimeout(() => setBulkResult(null), 5000);
   };
 
@@ -348,7 +420,7 @@ export function OrdersPage({ orders, onStatus, onExport }) {
         <>
           <div className="admin-page-intro">
             <div>
-              <p>{isFiltering ? `${visibleOrders.length}/${orders.length} đơn hàng phù hợp` : `${orders.length} đơn hàng`}</p>
+              <p>{totalElements} đơn hàng{isFiltering ? ' phù hợp bộ lọc' : ''}</p>
               <h2>Đơn hàng gần đây</h2>
             </div>
             <button className="admin-button admin-button--secondary" onClick={onExport}>
@@ -442,12 +514,18 @@ export function OrdersPage({ orders, onStatus, onExport }) {
                 'Khách hàng',
                 { label: 'Ngày tạo', key: 'date'  },
                 'Thanh toán',
-                { label: 'Tổng tiền', key: 'total' },
+                'Tổng tiền',
                 'Trạng thái',
               ]}
               sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
             >
-              {visibleOrders.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                    <Spinner label="Đang tải đơn hàng..." />
+                  </td>
+                </tr>
+              ) : visibleOrders.length === 0 ? (
                 <EmptyState
                   message={isFiltering ? 'Không có đơn hàng nào phù hợp bộ lọc' : 'Không có đơn hàng nào'}
                   hint={isFiltering ? 'Thử đổi trạng thái lọc hoặc xóa từ khóa tìm kiếm.' : 'Đơn hàng sẽ xuất hiện ở đây khi khách hàng đặt mua.'}
@@ -469,7 +547,7 @@ export function OrdersPage({ orders, onStatus, onExport }) {
                         <select
                           className="admin-status-select"
                           value={order.status}
-                          onChange={(e) => { onStatus(order.id, e.target.value).catch(() => {}); }}
+                          onChange={(e) => { changeStatus(order.id, e.target.value).catch(() => {}); }}
                         >
                           <option value={order.status}>{order.status}</option>
                           {nextOptions.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -482,6 +560,26 @@ export function OrdersPage({ orders, onStatus, onExport }) {
                 );
               })}
             </DataTable>
+
+            {!loading && totalPages > 1 && (
+              <div className="admin-pagination">
+                <button
+                  className="admin-button admin-button--secondary"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  ‹ Trước
+                </button>
+                <span>Trang {page + 1} / {totalPages}</span>
+                <button
+                  className="admin-button admin-button--secondary"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                >
+                  Sau ›
+                </button>
+              </div>
+            )}
           </article>
         </>
       )}
