@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DataTable, EmptyState, Spinner } from '../components/index';
+import { DataTable, EmptyState, SkeletonTableRows } from '../components/index';
 import { money } from '../utils';
 import { supplyOrderApi } from '../../../api/supplyOrderApi';
 
@@ -114,11 +114,7 @@ export function SupplyOrdersPage({ refreshToken, onAdd, onView }) {
 
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
           {loading ? (
-            <tr>
-              <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                <Spinner label="Đang tải đơn nhập hàng..." />
-              </td>
-            </tr>
+            <SkeletonTableRows columns={columns.length} />
           ) : visible.length === 0 ? (
             <EmptyState
               message={isFiltering ? 'Không có đơn nhập hàng nào phù hợp' : 'Chưa có đơn nhập hàng nào'}

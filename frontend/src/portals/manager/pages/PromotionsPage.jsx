@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { promotionApi } from '../../../api/promotionApi';
-import { Spinner } from '../components/index';
+import { productApi } from '../../../api/productApi';
+import { Spinner, SkeletonTableRows, Skeleton } from '../components/index';
 
 const STATUS_FILTERS = [
   ['ALL', 'Tất cả'],
@@ -42,13 +43,6 @@ function formatDateTime(value) {
 
 function formatMoney(value) {
   return `${Number(value || 0).toLocaleString('vi-VN')}đ`;
-}
-
-function parseProductIds(value) {
-  return value
-    .split(/[\n,]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function normalizeDiscountType(value, discountValue = 0) {
@@ -106,7 +100,7 @@ function blankForm() {
     minOrderValue: '0',
     usageLimitPerCustomer: '',
     totalUsageLimit: '',
-    productIdsText: '',
+    selectedProducts: [],
   };
 }
 
@@ -122,7 +116,8 @@ function formFromPromotion(promotion) {
     minOrderValue: String(promotion.minOrderValue ?? 0),
     usageLimitPerCustomer: promotion.usageLimitPerCustomer != null ? String(promotion.usageLimitPerCustomer) : '',
     totalUsageLimit: promotion.totalUsageLimit != null ? String(promotion.totalUsageLimit) : '',
-    productIdsText: (promotion.productIds || []).join('\n'),
+    // Hydrated asynchronously in openEdit() with product names/thumbnails once fetched.
+    selectedProducts: (promotion.productIds || []).map((id) => ({ id, name: id })),
   };
 }
 
@@ -145,7 +140,25 @@ function StatusPill({ active }) {
   );
 }
 
-function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, submitting, error, notice }) {
+function PromotionModal({
+  mode,
+  promotion,
+  form,
+  setField,
+  onClose,
+  onSubmit,
+  submitting,
+  error,
+  notice,
+  productQuery,
+  setProductQuery,
+  productResults,
+  searchingProducts,
+  productsLoading,
+  onAddProduct,
+  onRemoveProduct,
+  originalProductIds,
+}) {
   const isEdit = mode === 'update';
   const now = new Date();
   const isActiveEdit = isEdit && Boolean(promotion?.active)
@@ -363,6 +376,110 @@ function PromotionModal({ mode, promotion, form, setField, onClose, onSubmit, su
             </label>
           </div>
 
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12, display: 'grid', gap: 10 }}>
+            <div>
+              <b style={{ display: 'block', color: '#0d1117', fontSize: 14 }}>Sản phẩm áp dụng</b>
+              <span style={{ display: 'block', color: '#64748b', marginTop: 3, fontSize: 12 }}>
+                Tìm và chọn sản phẩm để áp dụng khuyến mãi này. Không chọn sản phẩm nào thì khuyến mãi sẽ không hiển thị giảm giá trên trang sản phẩm.
+              </span>
+            </div>
+
+            <input
+              value={productQuery}
+              onChange={(event) => setProductQuery(event.target.value)}
+              placeholder="Tìm theo tên sản phẩm..."
+              style={{ padding: '8px 9px', fontSize: 11.5, borderRadius: 7, border: '1px solid #e5e7eb' }}
+            />
+
+            {productQuery.trim() && (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 180, overflow: 'auto', background: '#fff' }}>
+                {searchingProducts ? (
+                  <div style={{ padding: 10, color: '#64748b', fontSize: 12 }}><Spinner label="Đang tìm..." /></div>
+                ) : productResults.length === 0 ? (
+                  <div style={{ padding: 10, color: '#64748b', fontSize: 12 }}>Không tìm thấy sản phẩm phù hợp.</div>
+                ) : productResults.map((product) => {
+                  const alreadySelected = form.selectedProducts.some((item) => item.id === product.id);
+                  return (
+                    <div
+                      key={product.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '7px 10px',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: 12,
+                      }}
+                    >
+                      <span style={{ color: '#0d1117' }}>{product.name}</span>
+                      <button
+                        type="button"
+                        className="admin-row-action"
+                        disabled={alreadySelected}
+                        onClick={() => onAddProduct(product)}
+                        style={{ flexShrink: 0 }}
+                      >
+                        {alreadySelected ? 'Đã thêm' : '+ Thêm'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {productsLoading ? (
+                <span style={{ color: '#64748b', fontSize: 12 }}><Spinner label="Đang tải sản phẩm..." /></span>
+              ) : form.selectedProducts.length === 0 ? (
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>Chưa chọn sản phẩm nào.</span>
+              ) : form.selectedProducts.map((product) => {
+                const removeLocked = isEdit && hasUsage && originalProductIds.includes(product.id);
+                return (
+                  <span
+                    key={product.id}
+                    title={removeLocked ? 'Không thể gỡ sản phẩm đã có lượt sử dụng' : undefined}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: '#f1f5f9',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 999,
+                      padding: '4px 6px 4px 10px',
+                      fontSize: 12,
+                      color: '#0d1117',
+                    }}
+                  >
+                    {product.name}
+                    <button
+                      type="button"
+                      onClick={() => !removeLocked && onRemoveProduct(product.id)}
+                      disabled={removeLocked}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: removeLocked ? 'not-allowed' : 'pointer',
+                        color: removeLocked ? '#cbd5e1' : '#64748b',
+                        fontWeight: 800,
+                        padding: '0 4px',
+                        lineHeight: 1,
+                      }}
+                    >
+                      x
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+
+            {isEdit && hasUsage && (
+              <span style={{ color: '#92400e', fontSize: 11.5 }}>
+                Promotion đã có lượt sử dụng: không thể gỡ các sản phẩm đã áp dụng trước đó, nhưng vẫn có thể thêm sản phẩm mới.
+              </span>
+            )}
+          </div>
+
           {isEdit && (
           <div style={{
             display: 'flex',
@@ -498,6 +615,7 @@ export function PromotionsPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [metrics, setMetrics] = useState({ total: 0, active: 0, inactive: 0 });
+  const [metricsLoading, setMetricsLoading] = useState(true);
   const [modalMode, setModalMode] = useState(null);
   const [selectedPromotion, setSelectedPromotion] = useState(null);
   const [promotionToRemove, setPromotionToRemove] = useState(null);
@@ -509,6 +627,11 @@ export function PromotionsPage() {
   const [removing, setRemoving] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [expandingPromotionId, setExpandingPromotionId] = useState(null);
+  const [productQuery, setProductQuery] = useState('');
+  const [productResults, setProductResults] = useState([]);
+  const [searchingProducts, setSearchingProducts] = useState(false);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [originalProductIds, setOriginalProductIds] = useState([]);
   const [error, setError] = useState('');
   const [removeError, setRemoveError] = useState('');
   const [removeErrorIsInUse, setRemoveErrorIsInUse] = useState(false);
@@ -545,6 +668,7 @@ export function PromotionsPage() {
   };
 
   const loadMetrics = async () => {
+    setMetricsLoading(true);
     try {
       const counts = await promotionApi.getStatusCounts(query.trim() || undefined);
       setMetrics({
@@ -554,6 +678,8 @@ export function PromotionsPage() {
       });
     } catch (err) {
       console.error('Failed to fetch promotion status counts', err);
+    } finally {
+      setMetricsLoading(false);
     }
   };
 
@@ -574,10 +700,32 @@ export function PromotionsPage() {
     return () => clearTimeout(timer);
   }, [query]);
 
+  useEffect(() => {
+    if (!modalMode || !productQuery.trim()) {
+      setProductResults([]);
+      return;
+    }
+    setSearchingProducts(true);
+    const timer = setTimeout(async () => {
+      try {
+        const data = await productApi.searchManagerCatalog({ keyword: productQuery.trim(), page: 0, size: 8 });
+        setProductResults(Array.isArray(data.content) ? data.content : []);
+      } catch (err) {
+        setProductResults([]);
+      } finally {
+        setSearchingProducts(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [productQuery, modalMode]);
+
   const openCreate = () => {
     setSelectedPromotion(null);
     setModalMode('create');
     setForm(blankForm());
+    setOriginalProductIds([]);
+    setProductQuery('');
+    setProductResults([]);
     setError('');
     setNotice(null);
   };
@@ -587,8 +735,41 @@ export function PromotionsPage() {
     setSelectedPromotion(normalized);
     setModalMode('update');
     setForm(formFromPromotion(normalized));
+    setOriginalProductIds(normalized.productIds || []);
+    setProductQuery('');
+    setProductResults([]);
     setError('');
     setNotice(null);
+
+    const ids = normalized.productIds || [];
+    if (ids.length > 0) {
+      setProductsLoading(true);
+      Promise.all(ids.map((id) => productApi.getManagerProductDetail(id).catch(() => ({ id, name: id }))))
+        .then((details) => {
+          setForm((prev) => ({
+            ...prev,
+            selectedProducts: details.map((product) => ({
+              id: product.id,
+              name: product.name || product.id,
+            })),
+          }));
+        })
+        .finally(() => setProductsLoading(false));
+    }
+  };
+
+  const addProductToForm = (product) => {
+    setForm((prev) => {
+      if (prev.selectedProducts.some((item) => item.id === product.id)) return prev;
+      return { ...prev, selectedProducts: [...prev.selectedProducts, { id: product.id, name: product.name }] };
+    });
+  };
+
+  const removeProductFromForm = (productId) => {
+    setForm((prev) => ({
+      ...prev,
+      selectedProducts: prev.selectedProducts.filter((item) => item.id !== productId),
+    }));
   };
 
   const openRemove = (promotion) => {
@@ -608,6 +789,8 @@ export function PromotionsPage() {
     if (submitting) return;
     setModalMode(null);
     setSelectedPromotion(null);
+    setProductQuery('');
+    setProductResults([]);
     setError('');
     setNotice(null);
   };
@@ -687,7 +870,7 @@ export function PromotionsPage() {
     minOrderValue: form.minOrderValue === '' ? 0 : Number(form.minOrderValue),
     usageLimitPerCustomer: form.usageLimitPerCustomer === '' ? null : Number(form.usageLimitPerCustomer),
     totalUsageLimit: form.totalUsageLimit === '' ? null : Number(form.totalUsageLimit),
-    productIds: parseProductIds(form.productIdsText),
+    productIds: form.selectedProducts.map((product) => product.id),
   });
 
   const handleSubmit = async (event) => {
@@ -831,7 +1014,11 @@ export function PromotionsPage() {
         ].map(([label, value]) => (
           <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '10px 12px' }}>
             <span style={{ color: '#94a3b8', fontSize: 9.5, fontWeight: 850, letterSpacing: '.08em', textTransform: 'uppercase' }}>{label}</span>
-            <b style={{ display: 'block', marginTop: 4, color: '#0d1117', fontSize: 20, letterSpacing: '-.02em' }}>{value}</b>
+            {metricsLoading ? (
+              <Skeleton width={40} height={20} style={{ marginTop: 6 }} />
+            ) : (
+              <b style={{ display: 'block', marginTop: 4, color: '#0d1117', fontSize: 20, letterSpacing: '-.02em' }}>{value}</b>
+            )}
           </div>
         ))}
       </div>
@@ -922,11 +1109,7 @@ export function PromotionsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="6" style={{ padding: 18, color: '#64748b' }}>
-                    <Spinner label="Đang tải khuyến mãi..." />
-                  </td>
-                </tr>
+                <SkeletonTableRows columns={6} />
               ) : promotions.length === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ padding: 22, color: '#64748b', textAlign: 'center' }}>
@@ -966,7 +1149,14 @@ export function PromotionsPage() {
                       {promotion.code || 'Chưa có mã'}
                     </span>
                   </td>
-                  <td><b style={{ color: '#0d1117' }}>{promotion.name || 'Chưa đặt tên'}</b></td>
+                  <td>
+                    <b style={{ color: '#0d1117' }}>{promotion.name || 'Chưa đặt tên'}</b>
+                    <span style={{ display: 'block', marginTop: 3, color: '#94a3b8', fontSize: 11 }}>
+                      {promotion.productIds.length > 0
+                        ? `Áp dụng ${promotion.productIds.length} sản phẩm`
+                        : 'Chưa chọn sản phẩm'}
+                    </span>
+                  </td>
                   <td><b style={{ color: '#6d28d9' }}>{formatPromotionDiscount(promotion)}</b></td>
                   <td style={{ color: '#64748b', lineHeight: 1.35, fontSize: 12.5 }}>
                     <span style={{ display: 'block' }}>{formatDateTime(promotion.startAt)}</span>
@@ -1074,6 +1264,14 @@ export function PromotionsPage() {
           submitting={submitting}
           error={error}
           notice={notice}
+          productQuery={productQuery}
+          setProductQuery={setProductQuery}
+          productResults={productResults}
+          searchingProducts={searchingProducts}
+          productsLoading={productsLoading}
+          onAddProduct={addProductToForm}
+          onRemoveProduct={removeProductFromForm}
+          originalProductIds={originalProductIds}
         />
       )}
 

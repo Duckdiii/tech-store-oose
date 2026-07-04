@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ConfirmDialog, DataTable, EmptyState, Spinner } from '../components/index';
+import { ConfirmDialog, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
 import { supplierApi } from '../../../api/supplierApi';
 import { useTheme } from '../../../shared/context/ThemeContext';
 
@@ -85,11 +85,7 @@ export function SuppliersPage({ refreshToken, onAdd, onEdit, onDelete }) {
 
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
           {loading ? (
-            <tr>
-              <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                <Spinner label="Đang tải nhà cung cấp..." />
-              </td>
-            </tr>
+            <SkeletonTableRows columns={columns.length} />
           ) : visible.length === 0 ? (
             <EmptyState
               message={isFiltering ? 'Không có nhà cung cấp nào phù hợp' : 'Chưa có nhà cung cấp nào'}

@@ -6,6 +6,24 @@ import { ApiMessage } from './warehouse/components';
 import { WarehouseLogs } from './warehouse/WarehouseLogs';
 import { WarehouseOverview } from './warehouse/WarehouseOverview';
 import { warehouseStyles } from './warehouse/warehouseStyles';
+import { SkeletonMetricCard, SkeletonTableRows } from '../components/index';
+
+function WarehouseSkeleton() {
+  return (
+    <>
+      <div className="admin-metrics admin-metrics--three" aria-hidden="true">
+        <SkeletonMetricCard />
+        <SkeletonMetricCard />
+        <SkeletonMetricCard />
+      </div>
+      <article className="admin-card">
+        <table className="admin-table" style={{ width: '100%' }}>
+          <tbody><SkeletonTableRows columns={6} /></tbody>
+        </table>
+      </article>
+    </>
+  );
+}
 
 export function WarehousePage({ view, navigate, suppliers = [], onOpenProduct }) {
   const tabs = [['overview', 'Tổng quan'], ['import', 'Nhập kho'], ['export', 'Xuất kho'], ['logs', 'Nhật ký kho']];
@@ -30,14 +48,24 @@ export function WarehousePage({ view, navigate, suppliers = [], onOpenProduct })
     loadInventory();
   }, []);
 
+  // Chỉ chặn nội dung bằng skeleton ở lần tải đầu tiên (chưa có dữ liệu kho nào);
+  // các lần tải lại sau (sau khi nhập/xuất kho) giữ nguyên nội dung cũ để không mất
+  // trạng thái đang nhập của form Nhập/Xuất kho.
+  const isInitialLoad = inventoryLoading && inventory.products.length === 0 && !inventoryError;
+
   return <>
     <style>{warehouseStyles}</style>
     <div className="warehouse-tabs">{tabs.map(([key, label]) => <button key={key} className={view === key ? 'is-active' : ''} onClick={() => navigate(`/manager/warehouse${key === 'overview' ? '' : `/${key}`}`)}>{label}</button>)}</div>
     {inventoryError && <ApiMessage error={inventoryError} />}
-    {inventoryLoading && <ApiMessage>Đang tải dữ liệu kho...</ApiMessage>}
-    {view === 'import' && <ImportFlow products={inventory.products} variants={inventory.variants} suppliers={suppliers} onInventoryChanged={loadInventory} />}
-    {view === 'export' && <ExportFlow products={inventory.products} variants={inventory.variants} onInventoryChanged={loadInventory} />}
+    {view !== 'logs' && isInitialLoad ? (
+      <WarehouseSkeleton />
+    ) : (
+      <>
+        {view === 'import' && <ImportFlow products={inventory.products} variants={inventory.variants} suppliers={suppliers} onInventoryChanged={loadInventory} />}
+        {view === 'export' && <ExportFlow products={inventory.products} variants={inventory.variants} onInventoryChanged={loadInventory} />}
+        {view === 'overview' && <WarehouseOverview navigate={navigate} products={inventory.products} variants={inventory.variants} onOpenProduct={onOpenProduct} />}
+      </>
+    )}
     {view === 'logs' && <WarehouseLogs />}
-    {view === 'overview' && <WarehouseOverview navigate={navigate} products={inventory.products} variants={inventory.variants} onOpenProduct={onOpenProduct} />}
   </>;
 }

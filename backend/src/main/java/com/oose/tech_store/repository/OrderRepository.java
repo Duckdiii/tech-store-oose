@@ -2,6 +2,10 @@ package com.oose.tech_store.repository;
 
 import com.oose.tech_store.entity.Order;
 import com.oose.tech_store.entity.enums.OrderStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -10,8 +14,18 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecificationExecutor<Order> {
+
+	@EntityGraph(attributePaths = {"customer", "selectedPaymentMethod"})
+	List<Order> findAll();
+
+	@EntityGraph(attributePaths = {"customer", "selectedPaymentMethod"})
+	Page<Order> findAll(Specification<Order> spec, Pageable pageable);
+
+	@EntityGraph(attributePaths = {"items", "items.productVariant", "items.productVariant.product", "selectedPaymentMethod"})
+	Optional<Order> findById(String id);
 
 	List<Order> findByCustomerId(String customerId);
 

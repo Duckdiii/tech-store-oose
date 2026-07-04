@@ -135,7 +135,11 @@ export function ManagerPortal() {
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [supplyOrderFormOpen, setSupplyOrderFormOpen] = useState(false);
   const [viewingSupplyOrder, setViewingSupplyOrder] = useState(null);
-  const [ordersLoading, setOrdersLoading] = useState(false);
+  // Mặc định true để lần render đầu tiên (trước khi các effect fetch chạy xong) đã
+  // được coi là "đang tải", tránh Tổng quan lóe lên số liệu 0 giả trong một khung hình.
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [customersLoading, setCustomersLoading] = useState(true);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [toast, setToast] = useState('');
   const toastTimerRef = useRef(null);
 
@@ -166,6 +170,7 @@ export function ManagerPortal() {
   }, [activeSection]);
 
   const fetchCustomersFromApi = async () => {
+    setCustomersLoading(true);
     try {
       const customers = await customerApi.getAll();
       const mappedCustomers = (customers || []).map(c => ({
@@ -182,6 +187,8 @@ export function ManagerPortal() {
       setData(prev => ({ ...prev, customers: mappedCustomers }));
     } catch (err) {
       console.error('Failed to fetch customers:', err);
+    } finally {
+      setCustomersLoading(false);
     }
   };
 
@@ -208,36 +215,41 @@ export function ManagerPortal() {
     if (!['dashboard', 'products', 'warehouse', 'supply-orders'].includes(activeSection)) return;
 
     const syncCatalogFromApi = async () => {
-      const [catalogResult, inventoryResult] = await Promise.allSettled([
-        productApi.getManagerCatalog(),
-        getWarehouseInventory(),
-      ]);
+      setCatalogLoading(true);
+      try {
+        const [catalogResult, inventoryResult] = await Promise.allSettled([
+          productApi.getManagerCatalog(),
+          getWarehouseInventory(),
+        ]);
 
-      if (catalogResult.status === 'rejected' && inventoryResult.status === 'rejected') {
-        console.error('Failed to sync product catalog API', catalogResult.reason);
-        console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
-        setData((prev) => ({ ...prev, products: [], variants: [] }));
-        return;
+        if (catalogResult.status === 'rejected' && inventoryResult.status === 'rejected') {
+          console.error('Failed to sync product catalog API', catalogResult.reason);
+          console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
+          setData((prev) => ({ ...prev, products: [], variants: [] }));
+          return;
+        }
+
+        if (catalogResult.status === 'rejected') {
+          console.error('Failed to sync product catalog API', catalogResult.reason);
+        }
+        if (inventoryResult.status === 'rejected') {
+          console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
+        }
+
+        const catalogProducts = catalogResult.status === 'fulfilled' ? catalogResult.value : [];
+        const inventory = inventoryResult.status === 'fulfilled'
+          ? inventoryResult.value
+          : { products: [], variants: [] };
+        const merged = mergeCatalogWithInventory(catalogProducts, inventory);
+
+        setData((prev) => ({
+          ...prev,
+          products: merged.products,
+          variants: merged.variants,
+        }));
+      } finally {
+        setCatalogLoading(false);
       }
-
-      if (catalogResult.status === 'rejected') {
-        console.error('Failed to sync product catalog API', catalogResult.reason);
-      }
-      if (inventoryResult.status === 'rejected') {
-        console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
-      }
-
-      const catalogProducts = catalogResult.status === 'fulfilled' ? catalogResult.value : [];
-      const inventory = inventoryResult.status === 'fulfilled'
-        ? inventoryResult.value
-        : { products: [], variants: [] };
-      const merged = mergeCatalogWithInventory(catalogProducts, inventory);
-
-      setData((prev) => ({
-        ...prev,
-        products: merged.products,
-        variants: merged.variants,
-      }));
     };
 
     syncCatalogFromApi();
@@ -256,6 +268,10 @@ export function ManagerPortal() {
   };
 
   const [title] = PAGE_META[activeSection];
+
+  // Tổng quan phụ thuộc vào 3 nguồn dữ liệu tải song song (đơn hàng, khách hàng, catalog sản
+  // phẩm); chỉ coi là "đã tải xong" khi cả 3 đều hoàn tất, để tránh hiện số liệu 0 giả trong lúc chờ.
+  const dashboardLoading = activeSection === 'dashboard' && (ordersLoading || customersLoading || catalogLoading);
 
   const badges = useMemo(() => {
     const pendingOrders = data.orders.filter((o) => o.status === 'Chờ xác nhận').length;
@@ -493,7 +509,7 @@ export function ManagerPortal() {
     <>
       <ManagerLayout activeSection={activeSection} title={title} query={query} onQueryChange={setQuery} breadcrumbs={breadcrumbs} badges={badges}>
         {activeSection === 'dashboard' && (
-          <DashboardPage data={data} />
+          <DashboardPage data={data} loading={dashboardLoading} />
         )}
         {activeSection === 'products' && (
           <ProductsPage

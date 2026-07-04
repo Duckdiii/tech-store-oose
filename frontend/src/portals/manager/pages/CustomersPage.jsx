@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ConfirmDialog, Status, DataTable, EmptyState, Spinner } from '../components/index';
+import { ConfirmDialog, Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
 import { money, initials } from '../utils';
 import { customerApi } from '../../../api/customerApi';
 
@@ -104,11 +104,7 @@ export function CustomersPage({ refreshToken, onToggle }) {
 
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
           {loading ? (
-            <tr>
-              <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                <Spinner label="Đang tải khách hàng..." />
-              </td>
-            </tr>
+            <SkeletonTableRows columns={columns.length} />
           ) : visible.length === 0 ? (
             <EmptyState
               message={isFiltering ? 'Không có khách hàng nào phù hợp' : 'Chưa có khách hàng nào'}

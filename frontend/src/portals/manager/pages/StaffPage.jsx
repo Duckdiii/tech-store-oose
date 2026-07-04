@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ConfirmDialog, Status, DataTable, EmptyState, Spinner } from '../components/index';
+import { ConfirmDialog, Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
 import { initials } from '../utils';
 import { loginLogApi } from '../../../api/loginLogApi';
 import { staffApi } from '../../../api/staffApi';
@@ -137,7 +137,7 @@ function LoginLogTab() {
 
         <DataTable columns={['Thời gian', 'Email', 'Vai trò', 'Trạng thái']}>
           {loading ? (
-            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải dữ liệu...</td></tr>
+            <SkeletonTableRows columns={4} />
           ) : logs.length === 0 ? (
             <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Không có bản ghi phù hợp</td></tr>
           ) : logs.map((log) => (
@@ -274,11 +274,7 @@ export function StaffPage({ refreshToken, onToggle, onAdd, onDelete }) {
               sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
             >
               {loading ? (
-                <tr>
-                  <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                    <Spinner label="Đang tải nhân viên..." />
-                  </td>
-                </tr>
+                <SkeletonTableRows columns={8} />
               ) : sortedStaff.length === 0 && query ? (
                 <EmptyState
                   message="No Staff found"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ConfirmDialog, Status, DataTable, EmptyState, Spinner } from '../components/index';
+import { ConfirmDialog, Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
 import { productApi } from '../../../api/productApi';
 
 const FILTERS = [
@@ -118,11 +118,7 @@ export function ProductsPage({ searchQuery = '', refreshToken, onAdd, onEdit, on
 
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
           {loading ? (
-            <tr>
-              <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                <Spinner label="Đang tải sản phẩm..." />
-              </td>
-            </tr>
+            <SkeletonTableRows columns={columns.length} />
           ) : products.length === 0 ? (
             <EmptyState
               message={isFiltering || searchQuery ? `Không có sản phẩm nào trong bộ lọc "${currentFilter.label}"` : 'Chưa có sản phẩm nào'}

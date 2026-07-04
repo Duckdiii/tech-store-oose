@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { recoveryApi } from '../../../api/recoveryApi';
-import { Spinner } from '../components/index';
+import { Spinner, Skeleton, SkeletonLines } from '../components/index';
 
 const SETTING_ROWS = [
   ['stockAlert', 'Cảnh báo tồn kho thấp', 'Gửi thông báo khi số lượng tồn xuống dưới mức tối thiểu.'],
@@ -421,7 +421,11 @@ function BackupSection({ onToast }) {
           ].map(([label, value]) => (
             <div key={label} style={{ background: '#fff', padding: '16px 20px' }}>
               <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 850, letterSpacing: '.08em', textTransform: 'uppercase' }}>{label}</span>
-              <b style={{ display: 'block', marginTop: 6, color: '#0d1117', fontSize: 22, letterSpacing: '-.03em' }}>{value}</b>
+              {loading ? (
+                <Skeleton width={48} height={20} style={{ marginTop: 8 }} />
+              ) : (
+                <b style={{ display: 'block', marginTop: 6, color: '#0d1117', fontSize: 22, letterSpacing: '-.03em' }}>{value}</b>
+              )}
             </div>
           ))}
         </div>
@@ -456,8 +460,8 @@ function BackupSection({ onToast }) {
 
             <div style={{ display: 'grid', gap: 10, maxHeight: 430, overflow: 'auto', paddingRight: 4 }}>
               {loading ? (
-                <div style={{ padding: 18, color: '#6b7280', border: '1px solid #eef2f7', borderRadius: 10 }}>
-                  <Spinner label="Đang tải recovery points..." />
+                <div style={{ padding: 18, border: '1px solid #eef2f7', borderRadius: 10 }}>
+                  <SkeletonLines count={4} />
                 </div>
               ) : points.length === 0 ? (
                 <div style={{ padding: 18, color: '#6b7280', border: '1.5px dashed #dbe1e8', borderRadius: 10, fontSize: 13 }}>

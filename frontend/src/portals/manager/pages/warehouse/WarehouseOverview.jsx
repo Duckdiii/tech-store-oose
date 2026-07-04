@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MetricBox } from './components';
 import { WarehouseInventoryTable } from './WarehouseInventoryTable';
 import { searchWarehouseOverview } from '../../../../api/warehouseApi';
+import { SkeletonTableRows } from '../../components/index';
 
 const PAGE_SIZE = 10;
 
@@ -145,7 +146,11 @@ export function WarehouseOverview({ navigate, products = [], variants = [], onOp
             </div>
 
             {overviewLoading ? (
-              <p style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải danh sách kho...</p>
+              <div className="admin-table-wrap">
+                <table className="admin-table" style={{ width: '100%' }}>
+                  <tbody><SkeletonTableRows columns={6} /></tbody>
+                </table>
+              </div>
             ) : (
               <WarehouseInventoryTable
                 products={pageProducts}

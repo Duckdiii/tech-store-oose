@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Metric } from '../components/index';
+import { Metric, SkeletonMetricCard, SkeletonChart, SkeletonLines } from '../components/index';
 import { money } from '../utils';
 import { httpClient } from '../../../api/httpClient';
 import { useTheme } from '../../../shared/context/ThemeContext';
@@ -312,9 +312,50 @@ export function ReportsPage() {
       )}
 
       {loading ? (
-        <div style={{ background: '#fff', borderRadius: 16, padding: '64px 24px', textAlign: 'center', color: '#6b7280' }}>
-          Đang tải dữ liệu báo cáo...
-        </div>
+        <>
+          <div className="admin-metrics admin-metrics--three" aria-hidden="true">
+            <SkeletonMetricCard />
+            <SkeletonMetricCard tone="blue" />
+            <SkeletonMetricCard tone="purple" />
+          </div>
+
+          <article className="admin-card admin-chart-card" style={{ marginTop: 20 }}>
+            <div className="admin-card__head">
+              <div><p>XU HƯỚNG</p><h3>Doanh thu theo thời gian</h3></div>
+            </div>
+            <SkeletonChart />
+          </article>
+
+          <div className="admin-grid admin-grid--wide" style={{ marginTop: 20 }}>
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>TOP SẢN PHẨM</p><h3>Bán chạy nhất</h3></div>
+              </div>
+              <SkeletonLines count={5} />
+            </article>
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>PHÂN TÍCH</p><h3>Theo phương thức thanh toán</h3></div>
+              </div>
+              <SkeletonLines count={3} />
+            </article>
+          </div>
+
+          <div className="admin-grid admin-grid--wide" style={{ marginTop: 16 }}>
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>PHÂN TÍCH</p><h3>Theo danh mục sản phẩm</h3></div>
+              </div>
+              <SkeletonLines count={4} />
+            </article>
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>PHÂN TÍCH</p><h3>Theo thương hiệu</h3></div>
+              </div>
+              <SkeletonLines count={4} />
+            </article>
+          </div>
+        </>
       ) : (
         <>
           {/* KPI metrics */}

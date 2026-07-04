@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/context/AuthContext';
-import { Status, DataTable } from '../components/index';
+import { Status, DataTable, SkeletonMetricCard, SkeletonChart, SkeletonDonut, SkeletonTableRows, Skeleton } from '../components/index';
 import { money, sortRows } from '../utils';
 
 const GREET_HOUR = new Date().getHours();
@@ -126,7 +126,56 @@ function TodoSection({ pendingOrders, lowStockItems, navigate }) {
   );
 }
 
-export function DashboardPage({ data }) {
+function DashboardSkeleton() {
+  return (
+    <>
+      <div className="admin-metrics" aria-hidden="true">
+        <SkeletonMetricCard />
+        <SkeletonMetricCard tone="blue" />
+        <SkeletonMetricCard tone="purple" />
+        <SkeletonMetricCard tone="amber" />
+      </div>
+
+      <div className="admin-grid admin-grid--wide">
+        <article className="admin-card admin-chart-card">
+          <div className="admin-card__head">
+            <div><p>HIỆU QUẢ KINH DOANH</p><h3>Doanh thu theo tháng</h3></div>
+          </div>
+          <SkeletonChart />
+        </article>
+
+        <article className="admin-card">
+          <div className="admin-card__head">
+            <div><p>TRẠNG THÁI ĐƠN</p><h3>Phân bổ đơn hàng</h3></div>
+          </div>
+          <SkeletonDonut />
+        </article>
+      </div>
+
+      <div className="admin-grid admin-grid--wide">
+        <article className="admin-card">
+          <div className="admin-card__head">
+            <div><p>ĐƠN HÀNG</p><h3>Đơn hàng gần đây</h3></div>
+          </div>
+          <DataTable columns={['Mã đơn', 'Khách hàng', 'Tổng tiền', 'Trạng thái']}>
+            <SkeletonTableRows columns={4} rows={4} />
+          </DataTable>
+        </article>
+
+        <article className="admin-card">
+          <div className="admin-card__head">
+            <div><p>KHO HÀNG</p><h3>Cần chú ý</h3></div>
+          </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {[1, 2, 3].map((i) => <Skeleton key={i} height={38} radius={10} />)}
+          </div>
+        </article>
+      </div>
+    </>
+  );
+}
+
+export function DashboardPage({ data, loading }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const displayName = user?.name || user?.email || 'Manager';
@@ -251,134 +300,140 @@ export function DashboardPage({ data }) {
         </button>
       </div>
 
-      {/* Clickable metric cards */}
-      <div className="admin-metrics">
-        <ClickableMetric
-          label="Doanh thu tháng"
-          value={`${(monthlyRevenue.current / 1_000_000).toFixed(1).replace('.', ',')} triệu`}
-          hint={revenueHint}
-          tone="dark"
-          to="/manager/reports"
-          navigate={navigate}
-        />
-        <ClickableMetric
-          label="Đơn hàng mới"
-          value={String(newOrdersToday)}
-          hint={`${pendingOrders.length} đơn đang chờ xác nhận · ${data.orders.length} tổng đơn`}
-          tone="blue"
-          to="/manager/orders"
-          navigate={navigate}
-        />
-        <ClickableMetric
-          label="Khách hàng"
-          value={String(data.customers.length)}
-          hint={`${data.customers.filter((c) => c.active).length} đang hoạt động`}
-          tone="purple"
-          to="/manager/customers"
-          navigate={navigate}
-        />
-        <ClickableMetric
-          label="Tồn kho có sẵn"
-          value={String(availableVariants)}
-          hint={lowStockItems.length > 0 ? `${lowStockItems.length} sản phẩm sắp hết` : 'Kho đang ổn định'}
-          tone={lowStockItems.length > 0 ? 'amber' : 'dark'}
-          to="/manager/warehouse"
-          navigate={navigate}
-        />
-      </div>
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
+        <>
+          {/* Clickable metric cards */}
+          <div className="admin-metrics">
+            <ClickableMetric
+              label="Doanh thu tháng"
+              value={`${(monthlyRevenue.current / 1_000_000).toFixed(1).replace('.', ',')} triệu`}
+              hint={revenueHint}
+              tone="dark"
+              to="/manager/reports"
+              navigate={navigate}
+            />
+            <ClickableMetric
+              label="Đơn hàng mới"
+              value={String(newOrdersToday)}
+              hint={`${pendingOrders.length} đơn đang chờ xác nhận · ${data.orders.length} tổng đơn`}
+              tone="blue"
+              to="/manager/orders"
+              navigate={navigate}
+            />
+            <ClickableMetric
+              label="Khách hàng"
+              value={String(data.customers.length)}
+              hint={`${data.customers.filter((c) => c.active).length} đang hoạt động`}
+              tone="purple"
+              to="/manager/customers"
+              navigate={navigate}
+            />
+            <ClickableMetric
+              label="Tồn kho có sẵn"
+              value={String(availableVariants)}
+              hint={lowStockItems.length > 0 ? `${lowStockItems.length} sản phẩm sắp hết` : 'Kho đang ổn định'}
+              tone={lowStockItems.length > 0 ? 'amber' : 'dark'}
+              to="/manager/warehouse"
+              navigate={navigate}
+            />
+          </div>
 
-      {/* Todo section */}
-      {todoCount > 0 && (
-        <TodoSection
-          pendingOrders={pendingOrders}
-          lowStockItems={lowStockItems}
-          navigate={navigate}
-        />
-      )}
-
-      {/* Charts row */}
-      <div className="admin-grid admin-grid--wide">
-        <article className="admin-card admin-chart-card">
-          <div className="admin-card__head">
-            <div><p>HIỆU QUẢ KINH DOANH</p><h3>Doanh thu theo tháng</h3></div>
-            <select
-              className="admin-status-select"
-              value={revenueYear}
-              onChange={(e) => setRevenueYear(Number(e.target.value))}
-            >
-              {availableYears.map((y) => <option key={y} value={y}>Năm {y}</option>)}
-            </select>
-          </div>
-          <div className="admin-chart">
-            {revenueByMonth.heights.map((height, i) => (
-              <div key={i} className="admin-chart__item" title={money(revenueByMonth.totals[i])}>
-                <div style={{ height: `${height}%` }} />
-                <span>T{i + 1}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-card">
-          <div className="admin-card__head">
-            <div><p>TRẠNG THÁI ĐƠN</p><h3>Phân bổ đơn hàng</h3></div>
-          </div>
-          <div className="admin-donut" style={orderStatusGradient ? { background: orderStatusGradient } : undefined}>
-            <div><strong>{data.orders.length}</strong><span>đơn hàng</span></div>
-          </div>
-          <div className="admin-legend">
-            {orderStatusStats.length === 0
-              ? <span style={{ color: '#94a3b8' }}>Chưa có đơn hàng nào</span>
-              : orderStatusStats.map((s) => (
-                <span key={s.label}><i className={`dot ${s.dot}`} />{s.label} <b>{s.percent.toFixed(0)}%</b></span>
-              ))}
-          </div>
-        </article>
-      </div>
-
-      {/* Recent orders + warehouse alerts */}
-      <div className="admin-grid admin-grid--wide">
-        <article className="admin-card">
-          <div className="admin-card__head">
-            <div><p>ĐƠN HÀNG</p><h3>Đơn hàng gần đây</h3></div>
-            <button className="admin-text-button" onClick={() => navigate('/manager/orders')}>
-              Xem tất cả →
-            </button>
-          </div>
-          <DataTable columns={['Mã đơn', 'Khách hàng', 'Tổng tiền', 'Trạng thái']}>
-            {recentOrders.map((order) => (
-              <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/manager/orders')}>
-                <td><b>{order.id}</b></td>
-                <td>{order.customer}</td>
-                <td>{money(order.total)}</td>
-                <td><Status>{order.status}</Status></td>
-              </tr>
-            ))}
-          </DataTable>
-        </article>
-
-        <article className="admin-card">
-          <div className="admin-card__head">
-            <div><p>KHO HÀNG</p><h3>Cần chú ý</h3></div>
-            <button className="admin-text-button" onClick={() => navigate('/manager/warehouse')}>
-              Xem kho →
-            </button>
-          </div>
-          {lowStockItems.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: 13, padding: '8px 0' }}>Tồn kho đang ổn định.</p>
-          ) : (
-            <div className="admin-alert-list">
-              {lowStockItems.slice(0, 4).map((item) => (
-                <div key={item.id}>
-                  <b>{item.name}</b>
-                  <span>{item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} sản phẩm`}</span>
-                  <Status>{item.stock === 0 ? 'Hết hàng' : 'Sắp hết hàng'}</Status>
-                </div>
-              ))}
-            </div>
+          {/* Todo section */}
+          {todoCount > 0 && (
+            <TodoSection
+              pendingOrders={pendingOrders}
+              lowStockItems={lowStockItems}
+              navigate={navigate}
+            />
           )}
-        </article>
-      </div>
+
+          {/* Charts row */}
+          <div className="admin-grid admin-grid--wide">
+            <article className="admin-card admin-chart-card">
+              <div className="admin-card__head">
+                <div><p>HIỆU QUẢ KINH DOANH</p><h3>Doanh thu theo tháng</h3></div>
+                <select
+                  className="admin-status-select"
+                  value={revenueYear}
+                  onChange={(e) => setRevenueYear(Number(e.target.value))}
+                >
+                  {availableYears.map((y) => <option key={y} value={y}>Năm {y}</option>)}
+                </select>
+              </div>
+              <div className="admin-chart">
+                {revenueByMonth.heights.map((height, i) => (
+                  <div key={i} className="admin-chart__item" title={money(revenueByMonth.totals[i])}>
+                    <div style={{ height: `${height}%` }} />
+                    <span>T{i + 1}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>TRẠNG THÁI ĐƠN</p><h3>Phân bổ đơn hàng</h3></div>
+              </div>
+              <div className="admin-donut" style={orderStatusGradient ? { background: orderStatusGradient } : undefined}>
+                <div><strong>{data.orders.length}</strong><span>đơn hàng</span></div>
+              </div>
+              <div className="admin-legend">
+                {orderStatusStats.length === 0
+                  ? <span style={{ color: '#94a3b8' }}>Chưa có đơn hàng nào</span>
+                  : orderStatusStats.map((s) => (
+                    <span key={s.label}><i className={`dot ${s.dot}`} />{s.label} <b>{s.percent.toFixed(0)}%</b></span>
+                  ))}
+              </div>
+            </article>
+          </div>
+
+          {/* Recent orders + warehouse alerts */}
+          <div className="admin-grid admin-grid--wide">
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>ĐƠN HÀNG</p><h3>Đơn hàng gần đây</h3></div>
+                <button className="admin-text-button" onClick={() => navigate('/manager/orders')}>
+                  Xem tất cả →
+                </button>
+              </div>
+              <DataTable columns={['Mã đơn', 'Khách hàng', 'Tổng tiền', 'Trạng thái']}>
+                {recentOrders.map((order) => (
+                  <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/manager/orders')}>
+                    <td><b>{order.id}</b></td>
+                    <td>{order.customer}</td>
+                    <td>{money(order.total)}</td>
+                    <td><Status>{order.status}</Status></td>
+                  </tr>
+                ))}
+              </DataTable>
+            </article>
+
+            <article className="admin-card">
+              <div className="admin-card__head">
+                <div><p>KHO HÀNG</p><h3>Cần chú ý</h3></div>
+                <button className="admin-text-button" onClick={() => navigate('/manager/warehouse')}>
+                  Xem kho →
+                </button>
+              </div>
+              {lowStockItems.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: 13, padding: '8px 0' }}>Tồn kho đang ổn định.</p>
+              ) : (
+                <div className="admin-alert-list">
+                  {lowStockItems.slice(0, 4).map((item) => (
+                    <div key={item.id}>
+                      <b>{item.name}</b>
+                      <span>{item.stock === 0 ? 'Đã hết hàng' : `Chỉ còn ${item.stock} sản phẩm`}</span>
+                      <Status>{item.stock === 0 ? 'Hết hàng' : 'Sắp hết hàng'}</Status>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          </div>
+        </>
+      )}
     </>
   );
 }

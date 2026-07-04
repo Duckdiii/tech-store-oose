@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Status, DataTable, EmptyState, Spinner } from '../components/index';
+import { Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
 import { money, downloadCsv } from '../utils';
 import { httpClient } from '../../../api/httpClient';
 import { manageOrderApi } from '../../../api/manageOrderApi';
@@ -211,7 +211,7 @@ function PaymentLogTab() {
 
         <DataTable columns={['Mã giao dịch', 'Mã đơn', 'Khách hàng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Thời gian', '']}>
           {loading ? (
-            <tr><td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải dữ liệu...</td></tr>
+            <SkeletonTableRows columns={8} />
           ) : logs.length === 0 ? (
             <tr><td colSpan={8} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Không có giao dịch phù hợp</td></tr>
           ) : logs.map((tx) => (
@@ -520,11 +520,7 @@ export function OrdersPage({ onStatus, onExport }) {
               sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
             >
               {loading ? (
-                <tr>
-                  <td colSpan={99} style={{ padding: '48px 20px', textAlign: 'center' }}>
-                    <Spinner label="Đang tải đơn hàng..." />
-                  </td>
-                </tr>
+                <SkeletonTableRows columns={7} />
               ) : visibleOrders.length === 0 ? (
                 <EmptyState
                   message={isFiltering ? 'Không có đơn hàng nào phù hợp bộ lọc' : 'Không có đơn hàng nào'}
