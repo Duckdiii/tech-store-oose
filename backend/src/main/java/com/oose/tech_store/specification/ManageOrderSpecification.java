@@ -29,7 +29,9 @@ public class ManageOrderSpecification {
             if (keyword != null && !keyword.isBlank()) {
                 String pattern = "%" + keyword.trim().toLowerCase() + "%"; // "%nguyen%" => tìm tất cả các order id hoặc
                                                                            // customer name có chứa "nguyen"
-                Join<Order, Customer> customerJoin = root.join("customer", JoinType.LEFT);
+                Join<Order, Customer> customerJoin = root.join("customer", JoinType.LEFT); // join với bảng customer để
+                                                                                           // tìm kiếm theo tên khách
+                                                                                           // hàng
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("id")), pattern),
                         cb.like(cb.lower(customerJoin.get("fullName")), pattern)));
