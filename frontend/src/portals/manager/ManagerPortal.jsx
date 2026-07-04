@@ -127,6 +127,7 @@ export function ManagerPortal() {
   const [suppliersRefreshToken, setSuppliersRefreshToken] = useState(0);
   const [supplyOrdersRefreshToken, setSupplyOrdersRefreshToken] = useState(0);
   const [customersRefreshToken, setCustomersRefreshToken] = useState(0);
+  const [staffRefreshToken, setStaffRefreshToken] = useState(0);
   const [productForm, setProductForm] = useState(null);
   const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
@@ -190,31 +191,6 @@ export function ManagerPortal() {
     }
   }, [activeSection]);
 
-  const fetchStaffFromApi = async () => {
-    try {
-      const staffList = await staffApi.getAll();
-      const mappedStaff = (staffList || []).map(s => ({
-        id: s.id,
-        accountId: s.accountId,
-        name: s.fullName,
-        email: s.email,
-        phone: s.phone,
-        staffCode: s.staffCode,
-        hireDate: s.hireDate,
-        role: 'Staff',
-        active: s.accountStatus === 'ACTIVE',
-      }));
-      setData(prev => ({ ...prev, staff: mappedStaff }));
-    } catch (err) {
-      console.error('Failed to fetch staff:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (activeSection === 'staff') {
-      fetchStaffFromApi();
-    }
-  }, [activeSection]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -423,7 +399,7 @@ export function ManagerPortal() {
         await staffApi.unblock(member.accountId);
         showToast(`Đã mở khóa tài khoản của ${member.name}`);
       }
-      fetchStaffFromApi();
+      setStaffRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -446,7 +422,7 @@ export function ManagerPortal() {
       });
       showToast('Đã thêm nhân viên mới');
       setStaffFormOpen(false);
-      fetchStaffFromApi();
+      setStaffRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
       throw error;
@@ -457,7 +433,7 @@ export function ManagerPortal() {
     try {
       await staffApi.delete(id);
       showToast('Đã xóa nhân viên');
-      fetchStaffFromApi();
+      setStaffRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -546,7 +522,7 @@ export function ManagerPortal() {
           <CustomersPage refreshToken={customersRefreshToken} onToggle={toggleCustomer} />
         )}
         {activeSection === 'staff' && (
-          <StaffPage staff={data.staff} onToggle={toggleStaff} onAdd={() => setStaffFormOpen(true)} onDelete={deleteStaff} />
+          <StaffPage refreshToken={staffRefreshToken} onToggle={toggleStaff} onAdd={() => setStaffFormOpen(true)} onDelete={deleteStaff} />
         )}
         {activeSection === 'reports' && (
           <ReportsPage onExport={() => downloadCsv(

@@ -2,6 +2,7 @@ import { httpClient } from './httpClient';
 
 export const staffApi = {
   getAll: () => httpClient.get('/manage/staff', { params: { size: 100 } }).then(r => r.data.content || []),
+  search: (params) => httpClient.get('/manage/staff', { params }).then(r => r.data),
   add: (data) => httpClient.post('/manage/staff', data).then(r => r.data),
   delete: (staffId) => httpClient.delete(`/manage/staff/${staffId}`).then(r => r.data),
   block: (accountId) => httpClient.patch(`/manage/accounts/${accountId}/block`).then(r => r.data),
