@@ -39,6 +39,9 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
         long countByProductId(String productId);
 
+        long countByProductIdAndStatus(String productId, ProductVariantStatus status); // đếm các biến thể sản phẩm theo
+                                                                                       // productId và trạng thái
+
         List<ProductVariant> findByProductIdAndStatus(String productId, ProductVariantStatus status);
 
         /**

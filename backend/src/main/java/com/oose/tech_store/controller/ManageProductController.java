@@ -2,10 +2,13 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.manage.ManageProductRequestDTO;
 import com.oose.tech_store.dto.manage.ManageProductResponseDTO;
+import com.oose.tech_store.dto.manage.ManageProductSearchRequestDTO;
+import com.oose.tech_store.dto.manage.ManageProductStatusCountsDTO;
 import com.oose.tech_store.service.product.ManageProductService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +22,21 @@ public class ManageProductController {
     @GetMapping
     public List<ManageProductResponseDTO> getAllProducts() {
         return manageProductService.getAllProducts();
+    }
+
+    /**
+     * Paginated, filterable listing for the Manager "Danh mục sản phẩm" table.
+     *
+     * GET /api/manage/products/search?keyword=iphone&status=LOW&page=0&size=10&sort=name,asc
+     */
+    @GetMapping("/search")
+    public Page<ManageProductResponseDTO> searchProducts(@ModelAttribute ManageProductSearchRequestDTO request) {
+        return manageProductService.searchProducts(request);
+    }
+
+    @GetMapping("/status-counts")
+    public ManageProductStatusCountsDTO getStatusCounts(@RequestParam(required = false) String keyword) {
+        return manageProductService.getStatusCounts(keyword);
     }
 
     @GetMapping("/{id}")

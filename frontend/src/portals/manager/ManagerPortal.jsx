@@ -123,6 +123,7 @@ export function ManagerPortal() {
     }
   });
   const [query, setQuery] = useState('');
+  const [productsRefreshToken, setProductsRefreshToken] = useState(0);
   const [productForm, setProductForm] = useState(null);
   const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
@@ -330,11 +331,6 @@ export function ManagerPortal() {
     };
   }), [data.products, data.variants]);
 
-  const filteredProducts = useMemo(() =>
-    productRows.filter((p) => `${p.name} ${p.brand} ${p.category || ''}`.toLowerCase().includes(query.toLowerCase())),
-    [productRows, query]
-  );
-
   const selectedDetailProduct = productRows.find((p) => p.id === productDetailId);
   const selectedDetailVariants = data.variants.filter((v) => v.productId === productDetailId);
 
@@ -379,6 +375,7 @@ export function ManagerPortal() {
         exists ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm mới'
       );
       setProductForm(null);
+      setProductsRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
       throw error;
@@ -395,6 +392,7 @@ export function ManagerPortal() {
         'Đã xóa sản phẩm'
       );
       if (productDetailId === productId) setProductDetailId(null);
+      setProductsRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -532,7 +530,8 @@ export function ManagerPortal() {
         )}
         {activeSection === 'products' && (
           <ProductsPage
-            products={filteredProducts}
+            searchQuery={query}
+            refreshToken={productsRefreshToken}
             onAdd={() => setProductForm({})}
             onEdit={(product) => setProductForm(product)}
             onViewDetails={openProductDetail}
