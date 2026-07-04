@@ -114,6 +114,39 @@ const INITIAL_CATEGORIES = [
 
 const BRANDS = ['Apple', 'Samsung', 'Xiaomi', 'OPPO', 'Vivo', 'Realme', 'Nokia'];
 
+const HERO_STATS = [
+  { target: 500, decimals: 0, suffix: '+', label: 'Sản phẩm' },
+  { target: 50, decimals: 0, suffix: 'K+', label: 'Khách hàng' },
+  { target: 4.9, decimals: 1, suffix: '★', label: 'Đánh giá' },
+  { target: 30, decimals: 0, suffix: '', label: 'Ngày đổi trả' },
+];
+
+// Đếm dần từ 0 lên target mỗi khi component mount (trang chủ reload hoặc user điều hướng vào lại).
+function useCountUp(target, duration = 1400) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    setValue(0);
+    let raf;
+    const start = performance.now();
+    const tick = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setValue(target * eased);
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+
+  return value;
+}
+
+function HeroStat({ target, decimals, suffix }) {
+  const value = useCountUp(target);
+  return <>{value.toFixed(decimals)}{suffix}</>;
+}
+
 const REVIEWS = [
   { name: 'Nguyễn Thị Hoa', avatar: 'NH', product: 'iPhone 15 Pro Max', date: '12/06/2025', text: 'Shop bán hàng uy tín, giao hàng nhanh, máy chính hãng 100%. Mình đã mua lần 3 rồi, lần nào cũng hài lòng!' },
   { name: 'Trần Văn Minh', avatar: 'TM', product: 'Samsung Galaxy S24', date: '08/06/2025', text: 'Giá tốt hơn các shop khác, được tặng kèm ốp lưng và cường lực. Nhân viên tư vấn nhiệt tình, chuyên nghiệp.' },
@@ -175,10 +208,12 @@ export function HomePage() {
     const fetchProducts = async () => {
       setLoadingProducts(true);
       try {
-        let sortQuery = 'id,desc'; // Mới nhất default
-        if (activeTab === 'Giảm giá') sortQuery = 'price,asc'; // mock behavior for sorting
+        let sortQuery = 'createdAt,desc'; // Mới nhất: sản phẩm tạo gần đây nhất
+        let onPromotion;
+        if (activeTab === 'Bán chạy') sortQuery = 'sold,desc'; // tổng số lượng đã bán từ đơn hàng COMPLETED
+        if (activeTab === 'Giảm giá') { sortQuery = 'price,asc'; onPromotion = true; } // chỉ sản phẩm đang có khuyến mãi active
 
-        const data = await productApi.searchProducts({ size: 8, sort: sortQuery });
+        const data = await productApi.searchProducts({ size: 8, sort: sortQuery, onPromotion });
         setProducts(data.content || []);
       } catch (err) {
         console.error("Failed to fetch products for home", err);
@@ -249,9 +284,11 @@ export function HomePage() {
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 32 }}>
-              {[['500+','Sản phẩm'],['50K+','Khách hàng'],['4.9★','Đánh giá'],['30','Ngày đổi trả']].map(([val, label], i) => (
+              {HERO_STATS.map(({ target, decimals, suffix, label }, i) => (
                 <div key={label} style={{ flex: 1, textAlign: 'center', padding: '0 12px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
-                  <div style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: -1.5, lineHeight: 1 }}>{val}</div>
+                  <div style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: -1.5, lineHeight: 1 }}>
+                    <HeroStat target={target} decimals={decimals} suffix={suffix} />
+                  </div>
                   <div style={{ fontSize: 11, color: '#334155', marginTop: 5, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</div>
                 </div>
               ))}
@@ -370,6 +407,7 @@ export function HomePage() {
             ) : products.map(item => (
               <div key={item.id}
                 style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.22s' }}
+                onClick={() => navigate(`/products/${item.id}`)}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow='0 10px 32px rgba(0,0,0,0.09)'; e.currentTarget.style.transform='translateY(-4px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}>
                 <div style={{ background: '#f8fafc', padding: '16px', height: 196, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -392,10 +430,12 @@ export function HomePage() {
                     <span style={{ fontSize: 12, color: '#9ca3af' }}>{item.rating || 5.0} ({item.reviews || 0})</span>
                   </div>
                   <div style={{ marginBottom: 14 }}>
-                    <span style={{ fontSize: 19, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.price)}₫</span>
-                    <span style={{ fontSize: 12, color: '#c4c9d4', textDecoration: 'line-through', marginLeft: 8 }}>{fmt(item.oldPrice)}₫</span>
+                    <span style={{ fontSize: 19, fontWeight: 900, color: '#0d1117', letterSpacing: -0.5 }}>{fmt(item.lowestPrice)}₫</span>
+                    {item.originalPrice > item.lowestPrice && (
+                      <span style={{ fontSize: 12, color: '#c4c9d4', textDecoration: 'line-through', marginLeft: 8 }}>{fmt(item.originalPrice)}₫</span>
+                    )}
                   </div>
-                  <button onClick={() => addItem(item)}
+                  <button onClick={e => { e.stopPropagation(); addItem({ id: item.id, name: item.name, price: item.lowestPrice, brand: item.brandName || '', brandName: item.brandName || '', thumbnailUrl: item.thumbnailUrl || '' }); }}
                     style={{ width: '100%', padding: 10, background: '#0d1117', color: '#fff', border: 'none', borderRadius: 9, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                     onMouseEnter={e => e.currentTarget.style.background='#1e293b'}
                     onMouseLeave={e => e.currentTarget.style.background='#0d1117'}>

@@ -16,7 +16,7 @@ export function SuppliersPage({ refreshToken, onAdd, onEdit, onDelete }) {
   const [visible, setVisible] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const isFiltering = search.trim() !== '';
 

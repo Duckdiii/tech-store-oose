@@ -43,6 +43,7 @@ public class SecurityConfig {
                                                                 .hasAnyRole("STAFF", "MANAGER")
                                                 .requestMatchers(
                                                                 "/api/manage/warehouse",
+                                                                "/api/manage/warehouse/overview/**",
                                                                 "/api/manage/warehouse/import/**",
                                                                 "/api/manage/warehouse/export/**",
                                                                 "/api/warehouse/receipts/**")

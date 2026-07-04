@@ -126,6 +126,16 @@ public class ProductMapper {
         dto.setOperatingSystem(p.getOperatingSystem());
         dto.setScreenResolution(p.getScreenResolution());
 
+        // Active promotion discount (same rule as search results: highest active discount wins)
+        Double maxDiscountPercent = (p.getPromotions() == null) ? null : p.getPromotions().stream()
+                .filter(Promotion::isActiveNow)
+                .map(Promotion::getDiscountPercent)
+                .max(Double::compareTo)
+                .orElse(null);
+        BigDecimal discountFactor = (maxDiscountPercent != null && maxDiscountPercent > 0)
+                ? BigDecimal.ONE.subtract(BigDecimal.valueOf(maxDiscountPercent).divide(BigDecimal.valueOf(100)))
+                : null;
+
         // Variants
         if (variants != null) {
             List<ProductDetailResponseDTO.VariantDTO> variantDTOs = variants.stream()
@@ -136,7 +146,8 @@ public class ProductMapper {
                         vDto.setRamGb(v.getRamGb());
                         vDto.setStorageGb(v.getStorageGb());
                         vDto.setColor(v.getColor());
-                        vDto.setPrice(v.getPrice());
+                        vDto.setOriginalPrice(v.getPrice());
+                        vDto.setPrice(discountFactor != null ? v.getPrice().multiply(discountFactor) : v.getPrice());
                         vDto.setStatus(v.getStatus() != null ? v.getStatus().name() : null);
                         return vDto;
                     })

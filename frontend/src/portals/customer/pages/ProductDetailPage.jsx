@@ -62,6 +62,107 @@ function HeartIcon({ broken = false }) {
   );
 }
 
+const PLACEHOLDER_ICON = (
+  <svg width="160" height="268" viewBox="0 0 72 120" fill="none">
+    <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db" />
+    <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45" />
+    <circle cx="36" cy="105" r="5" fill="#b8bdc8" />
+  </svg>
+);
+
+function ProductGallery({ images, productName }) {
+  const list = images || [];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [zoomStyle, setZoomStyle] = useState(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  useEffect(() => { setActiveIndex(0); }, [images]);
+
+  const active = list[activeIndex];
+  const showNav = list.length > 1;
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomStyle({ transformOrigin: `${x}% ${y}%`, transform: 'scale(2)' });
+  };
+
+  const goPrev = () => setActiveIndex((i) => (i - 1 + list.length) % list.length);
+  const goNext = () => setActiveIndex((i) => (i + 1) % list.length);
+
+  return (
+    <div>
+      <div
+        onClick={() => active && setLightboxOpen(true)}
+        onMouseMove={active ? handleMouseMove : undefined}
+        onMouseLeave={() => setZoomStyle(null)}
+        style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #f1f3f5', minHeight: 440, display: 'grid', placeItems: 'center', overflow: 'hidden', cursor: active ? 'zoom-in' : 'default' }}
+      >
+        {active ? (
+          <img
+            src={active.imageUrl}
+            alt={active.name || productName}
+            style={{ maxWidth: '78%', maxHeight: 380, objectFit: 'contain', transition: 'transform 0.2s ease', willChange: 'transform', ...zoomStyle }}
+          />
+        ) : PLACEHOLDER_ICON}
+      </div>
+
+      {showNav && (
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+          {list.map((img, index) => (
+            <button
+              key={img.id || index}
+              onClick={() => setActiveIndex(index)}
+              style={{ width: 68, height: 68, borderRadius: 10, border: `2px solid ${index === activeIndex ? '#0d1117' : '#e9ecef'}`, padding: 4, background: '#fff', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
+            >
+              <img src={img.imageUrl} alt={img.name || `${productName} ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {lightboxOpen && active && (
+        <div
+          onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(13,17,23,0.92)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <button
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Đóng"
+            style={{ position: 'absolute', top: 24, right: 32, width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer' }}
+          >×</button>
+
+          {showNav && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+              aria-label="Ảnh trước"
+              style={{ position: 'absolute', left: 24, width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 26, cursor: 'pointer' }}
+            >‹</button>
+          )}
+
+          <img
+            src={active.imageUrl}
+            alt={active.name || productName}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '85vw', maxHeight: '85vh', objectFit: 'contain' }}
+          />
+
+          {showNav && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+              aria-label="Ảnh sau"
+              style={{ position: 'absolute', right: 24, width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 26, cursor: 'pointer' }}
+            >›</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -80,6 +181,8 @@ export function ProductDetailPage() {
   const [subscribed, setSubscribed] = useState(false);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [subscriptionMessage, setSubscriptionMessage] = useState('');
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,21 +212,50 @@ export function ProductDetailPage() {
     return () => { cancelled = true; };
   }, [id]);
 
+  useEffect(() => {
+    if (!product?.categoryId) {
+      setRelatedProducts([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingRelated(true);
+    productApi.searchProducts({ categoryId: product.categoryId, size: 5 })
+      .then((data) => {
+        if (cancelled) return;
+        setRelatedProducts((data.content || []).filter((item) => item.id !== product.id).slice(0, 4));
+      })
+      .catch(() => {
+        if (!cancelled) setRelatedProducts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRelated(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [product?.categoryId, product?.id]);
+
   const colors = useMemo(() => unique(product?.variants?.map((variant) => variant.color) || []), [product]);
   const storages = useMemo(
     () => unique((product?.variants || []).map((variant) => variant.storageGb).map((value) => value && `${value}GB`)),
     [product],
   );
 
-  const selectedVariant = useMemo(() => {
-    if (!product?.variants?.length) return null;
+  // Chỉ khớp đúng tổ hợp màu + dung lượng đang chọn; không fallback về variants[0]
+  // để tránh âm thầm hiển thị giá/tồn kho của một biến thể khác với lựa chọn của khách.
+  // Mỗi variant là một máy vật lý (theo số serial), nên số variant khớp tổ hợp = số máy còn hàng.
+  const matchingVariants = useMemo(() => {
+    if (!product?.variants?.length) return [];
     const color = colors[selectedColor];
     const storage = storages[selectedStorage];
-    return product.variants.find((variant) => {
+    return product.variants.filter((variant) => {
       const variantStorage = variant.storageGb ? `${variant.storageGb}GB` : null;
       return (!color || variant.color === color) && (!storage || variantStorage === storage);
-    }) || product.variants[0];
+    });
   }, [colors, product, selectedColor, selectedStorage, storages]);
+
+  const selectedVariant = matchingVariants[0] || null;
+  const stockCount = matchingVariants.length;
 
   useEffect(() => {
     if (!isLoggedIn || !id || !selectedVariant) {
@@ -165,9 +297,13 @@ export function ProductDetailPage() {
 
   const imageUrl = product.images?.[0]?.imageUrl;
   const currentPrice = selectedVariant?.price || 0;
-  const oldPrice = Math.round(currentPrice * 1.1);
+  const originalPrice = selectedVariant?.originalPrice || 0;
   const attributes = Object.entries(buildAttributes(product)).filter(([, value]) => value != null && value !== '');
-  const inStock = (product.variants || []).length > 0;
+  // Backend chỉ trả về các biến thể còn hàng (AVAILABLE), nên có selectedVariant khớp đúng
+  // tổ hợp màu + dung lượng nghĩa là tổ hợp đó đang còn hàng.
+  const inStock = !!selectedVariant;
+  const hasVariants = (product.variants || []).length > 0;
+  const comboUnavailable = hasVariants && !selectedVariant;
   const handleAddToCart = () => {
     addItem({
       id: selectedVariant?.id || product.id,
@@ -242,17 +378,7 @@ export function ProductDetailPage() {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 32px 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 32 }}>
           <div>
-            <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #f1f3f5', minHeight: 440, display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
-              {imageUrl ? (
-                <img src={imageUrl} alt={product.name} style={{ maxWidth: '78%', maxHeight: 380, objectFit: 'contain' }} />
-              ) : (
-                <svg width="160" height="268" viewBox="0 0 72 120" fill="none">
-                  <rect x="7" y="7" width="58" height="106" rx="13" fill="#d1d5db" />
-                  <rect x="13" y="23" width="46" height="70" rx="5" fill="#9ca3af" opacity="0.45" />
-                  <circle cx="36" cy="105" r="5" fill="#b8bdc8" />
-                </svg>
-              )}
-            </div>
+            <ProductGallery images={product.images} productName={product.name} />
           </div>
 
           <div>
@@ -289,9 +415,22 @@ export function ProductDetailPage() {
             {subscriptionMessage && <p style={{ margin: '-4px 0 14px', color: subscribed ? '#15803d' : '#6b7280', fontSize: 13.5, fontWeight: 500 }}>{subscriptionMessage}</p>}
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 24 }}>
-              <span style={{ fontSize: 36, fontWeight: 900, color: '#e11d48', letterSpacing: -1 }}>{fmt(currentPrice)}₫</span>
-              {currentPrice > 0 && <span style={{ fontSize: 17, color: '#9ca3af', textDecoration: 'line-through', fontWeight: 500 }}>{fmt(oldPrice)}₫</span>}
+              <span style={{ fontSize: 36, fontWeight: 900, color: '#e11d48', letterSpacing: -1 }}>
+                {selectedVariant ? `${fmt(currentPrice)}₫` : '—'}
+              </span>
+              {originalPrice > currentPrice && (
+                <span style={{ fontSize: 17, color: '#9ca3af', textDecoration: 'line-through', fontWeight: 500 }}>{fmt(originalPrice)}₫</span>
+              )}
             </div>
+
+            {selectedVariant && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 22, marginTop: -12 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: stockCount < 6 ? '#e11d48' : '#16a34a', flexShrink: 0 }} />
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: stockCount < 6 ? '#e11d48' : '#16a34a' }}>
+                  {stockCount < 6 ? `Chỉ còn ${stockCount} sản phẩm` : `Còn ${stockCount} sản phẩm`}
+                </span>
+              </div>
+            )}
 
             {colors.length > 0 && (
               <div style={{ marginBottom: 22 }}>
@@ -319,6 +458,12 @@ export function ProductDetailPage() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {comboUnavailable && (
+              <p style={{ margin: '-10px 0 16px', color: '#b91c1c', fontSize: 13.5, fontWeight: 600 }}>
+                Tổ hợp màu sắc và dung lượng này hiện không có sẵn. Vui lòng chọn lựa chọn khác.
+              </p>
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -361,6 +506,33 @@ export function ProductDetailPage() {
             {tab === 'desc' && <p style={{ maxWidth: 760, fontSize: 15.5, color: '#374151', lineHeight: 1.8 }}>{product.description || 'Sản phẩm chưa có mô tả.'}</p>}
           </div>
         </div>
+
+        {!loadingRelated && relatedProducts.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0d1117', letterSpacing: -0.6, marginBottom: 18 }}>Sản phẩm liên quan</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+              {relatedProducts.map((item) => (
+                <div key={item.id}
+                  onClick={() => navigate(`/products/${item.id}`)}
+                  style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f3f5', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.22s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 10px 32px rgba(0,0,0,0.09)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
+                >
+                  <div style={{ background: '#f8fafc', padding: 16, height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {item.thumbnailUrl ? (
+                      <img src={item.thumbnailUrl} alt={item.name} style={{ height: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : PLACEHOLDER_ICON}
+                  </div>
+                  <div style={{ padding: '14px 16px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>{item.brandName || 'Thương hiệu'}</div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0d1117', marginBottom: 9, lineHeight: 1.35, minHeight: 38 }}>{item.name}</h3>
+                    <span style={{ fontSize: 16.5, fontWeight: 900, color: '#0d1117', letterSpacing: -0.4 }}>{fmt(item.lowestPrice)}₫</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
