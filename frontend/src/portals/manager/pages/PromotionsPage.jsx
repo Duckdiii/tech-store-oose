@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { promotionApi } from '../../../api/promotionApi';
 import { Spinner } from '../components/index';
 
@@ -488,10 +488,16 @@ function RemovePromotionDialog({ promotion, onClose, onConfirm, onDeactivate, re
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function PromotionsPage() {
   const [promotions, setPromotions] = useState([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [metrics, setMetrics] = useState({ total: 0, active: 0, inactive: 0 });
   const [modalMode, setModalMode] = useState(null);
   const [selectedPromotion, setSelectedPromotion] = useState(null);
   const [promotionToRemove, setPromotionToRemove] = useState(null);
@@ -514,44 +520,59 @@ export function PromotionsPage() {
     setTimeout(() => setPageNotice(null), 4000);
   };
 
-  const filteredPromotions = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    return promotions.filter((promotion) => {
-      const matchesStatus = statusFilter === 'ALL'
-        || (statusFilter === 'ACTIVE' && promotion.active)
-        || (statusFilter === 'INACTIVE' && !promotion.active);
-      const matchesKeyword = !keyword
-        || `${promotion.code} ${promotion.name}`.toLowerCase().includes(keyword);
-      return matchesStatus && matchesKeyword;
-    });
-  }, [promotions, query, statusFilter]);
-
-  const metrics = useMemo(() => {
-    const active = promotions.filter((promotion) => promotion.active).length;
-    return {
-      total: promotions.length,
-      active,
-      inactive: promotions.length - active,
-    };
-  }, [promotions]);
-
   const loadPromotions = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await promotionApi.listPromotions();
-      const list = Array.isArray(data) ? data : Array.isArray(data?.value) ? data.value : [];
+      const data = await promotionApi.searchPromotions({
+        keyword: query.trim() || undefined,
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        page,
+        size: PAGE_SIZE,
+      });
+      const list = Array.isArray(data.content) ? data.content : [];
       setPromotions(list.map(normalizePromotion));
+      setTotalElements(data.totalElements || 0);
+      setTotalPages(data.totalPages || 0);
     } catch (err) {
       setError(promotionApiErrorMessage(err));
+      setPromotions([]);
+      setTotalElements(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadMetrics = async () => {
+    try {
+      const counts = await promotionApi.getStatusCounts(query.trim() || undefined);
+      setMetrics({
+        total: counts.all ?? 0,
+        active: counts.active ?? 0,
+        inactive: counts.inactive ?? 0,
+      });
+    } catch (err) {
+      console.error('Failed to fetch promotion status counts', err);
+    }
+  };
+
+  // Đổi bộ lọc/tìm kiếm thì quay về trang đầu.
+  useEffect(() => { setPage(0); }, [query, statusFilter]);
+
   useEffect(() => {
-    loadPromotions();
-  }, []);
+    const timer = setTimeout(() => {
+      loadPromotions();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, statusFilter, page]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMetrics();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const openCreate = () => {
     setSelectedPromotion(null);
@@ -692,7 +713,7 @@ export function PromotionsPage() {
         await promotionApi.createPromotion(requestPayload());
         setNotice({ type: 'success', message: 'Promotion created successfully', restrictedFields: [] });
       }
-      await loadPromotions();
+      await Promise.all([loadPromotions(), loadMetrics()]);
       setModalMode(null);
       setSelectedPromotion(null);
     } catch (err) {
@@ -709,7 +730,7 @@ export function PromotionsPage() {
     setRemoveErrorIsInUse(false);
     try {
       await promotionApi.removePromotion(promotionToRemove.id);
-      await loadPromotions();
+      await Promise.all([loadPromotions(), loadMetrics()]);
       setPromotionToRemove(null);
       showPageNotice('Promotion removed successfully', 'success');
     } catch (err) {
@@ -740,7 +761,7 @@ export function PromotionsPage() {
         totalUsageLimit: normalized.totalUsageLimit ?? null,
         productIds: normalized.productIds || [],
       });
-      await loadPromotions();
+      await Promise.all([loadPromotions(), loadMetrics()]);
       setPromotionToRemove(null);
       showPageNotice('Promotion deactivated successfully', 'success');
     } catch (err) {
@@ -831,10 +852,10 @@ export function PromotionsPage() {
             </p>
             <h3 style={{ margin: '6px 0 0', color: '#0d1117', fontSize: 20 }}>Danh sách khuyến mãi</h3>
             <span style={{ display: 'block', marginTop: 5, color: '#64748b', fontSize: 12.5 }}>
-              Hiển thị {filteredPromotions.length} trong {promotions.length} chương trình
+              Hiển thị {promotions.length} trong {totalElements} chương trình
             </span>
           </div>
-          <button className="admin-button admin-button--secondary" onClick={loadPromotions} disabled={loading}>
+          <button className="admin-button admin-button--secondary" onClick={() => { loadPromotions(); loadMetrics(); }} disabled={loading}>
             {loading ? <Spinner label="Đang tải..." /> : 'Tải lại'}
           </button>
         </div>
@@ -900,19 +921,19 @@ export function PromotionsPage() {
               </tr>
             </thead>
             <tbody>
-              {loading && promotions.length === 0 ? (
+              {loading ? (
                 <tr>
                   <td colSpan="6" style={{ padding: 18, color: '#64748b' }}>
                     <Spinner label="Đang tải khuyến mãi..." />
                   </td>
                 </tr>
-              ) : filteredPromotions.length === 0 ? (
+              ) : promotions.length === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ padding: 22, color: '#64748b', textAlign: 'center' }}>
                     Không có khuyến mãi phù hợp.
                   </td>
                 </tr>
-              ) : filteredPromotions.map((promotion) => {
+              ) : promotions.map((promotion) => {
                 const rowPerformance = performanceByPromotionId[promotion.id];
                 const isExpanded = expandedPromotionId === promotion.id;
 
@@ -1020,6 +1041,26 @@ export function PromotionsPage() {
             </tbody>
           </table>
         </div>
+
+        {!loading && totalPages > 1 && (
+          <div className="admin-pagination">
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              ‹ Trước
+            </button>
+            <span>Trang {page + 1} / {totalPages}</span>
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              Sau ›
+            </button>
+          </div>
+        )}
       </article>
 
       {modalMode && (
