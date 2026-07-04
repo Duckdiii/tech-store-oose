@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MetricBox } from './components';
 import { WarehouseInventoryTable } from './WarehouseInventoryTable';
+import { searchWarehouseOverview } from '../../../../api/warehouseApi';
+
+const PAGE_SIZE = 10;
 
 const filterOptions = [
   ['ALL', 'Tất cả'],
@@ -44,6 +47,11 @@ export function WarehouseOverview({ navigate, products = [], variants = [], onOp
   const [expandedProduct, setExpandedProduct] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [serialQuery, setSerialQuery] = useState('');
+  const [page, setPage] = useState(0);
+
+  const [pageProducts, setPageProducts] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [overviewLoading, setOverviewLoading] = useState(false);
 
   const getProductVariants = (productId) => variants.filter((variant) => variant.productId === productId);
   const getProductStock = (productId) =>
@@ -56,20 +64,32 @@ export function WarehouseOverview({ navigate, products = [], variants = [], onOp
   };
 
   const normalizedQuery = serialQuery.trim().toLowerCase();
-  const visibleProducts = products.filter((product) => {
-    const productVariants = getProductVariants(product.id);
-    const stock = getProductStock(product.id);
-    const statusMatch = statusFilter === 'ALL'
-      || (statusFilter === 'AVAILABLE' && stock > 0)
-      || (statusFilter === 'LOW' && stock > 0 && stock < 6)
-      || (statusFilter === 'OUT' && stock === 0);
-    const queryMatch = !normalizedQuery
-      || product.name.toLowerCase().includes(normalizedQuery)
-      || product.id.toLowerCase().includes(normalizedQuery)
-      || productVariants.some((variant) => variant.id.toLowerCase().includes(normalizedQuery));
 
-    return statusMatch && queryMatch;
-  });
+  // Đổi bộ lọc/tìm kiếm thì quay lại trang đầu.
+  useEffect(() => { setPage(0); }, [statusFilter, serialQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setOverviewLoading(true);
+      try {
+        const data = await searchWarehouseOverview({
+          keyword: serialQuery.trim() || undefined,
+          status: statusFilter === 'ALL' ? undefined : statusFilter,
+          page,
+          size: PAGE_SIZE,
+        });
+        setPageProducts(data.content || []);
+        setTotalPages(data.totalPages || 0);
+      } catch (error) {
+        console.error('Failed to fetch warehouse overview', error);
+        setPageProducts([]);
+        setTotalPages(0);
+      } finally {
+        setOverviewLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [statusFilter, serialQuery, page]);
 
   const toggleProduct = (productId) => {
     setExpandedProduct((current) => current === productId ? null : productId);
@@ -124,16 +144,40 @@ export function WarehouseOverview({ navigate, products = [], variants = [], onOp
               </label>
             </div>
 
-            <WarehouseInventoryTable
-              products={visibleProducts}
-              expandedProduct={expandedProduct}
-              normalizedQuery={normalizedQuery}
-              getProductVariants={getProductVariants}
-              getProductStock={getProductStock}
-              getInventoryStatus={getInventoryStatus}
-              onToggleProduct={toggleProduct}
-              onViewProduct={(product) => (onOpenProduct ? onOpenProduct(product) : navigate('/manager/products'))}
-            />
+            {overviewLoading ? (
+              <p style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải danh sách kho...</p>
+            ) : (
+              <WarehouseInventoryTable
+                products={pageProducts}
+                expandedProduct={expandedProduct}
+                normalizedQuery={normalizedQuery}
+                getProductVariants={getProductVariants}
+                getProductStock={getProductStock}
+                getInventoryStatus={getInventoryStatus}
+                onToggleProduct={toggleProduct}
+                onViewProduct={(product) => (onOpenProduct ? onOpenProduct(product) : navigate('/manager/products'))}
+              />
+            )}
+
+            {!overviewLoading && totalPages > 1 && (
+              <div className="admin-pagination">
+                <button
+                  className="admin-button admin-button--secondary"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  ‹ Trước
+                </button>
+                <span>Trang {page + 1} / {totalPages}</span>
+                <button
+                  className="admin-button admin-button--secondary"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                >
+                  Sau ›
+                </button>
+              </div>
+            )}
           </article>
         </>
       )}

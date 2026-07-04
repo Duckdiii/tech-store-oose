@@ -19,6 +19,13 @@ export const getWarehouseInventory = async () => {
   return normalizeInventory(response.data);
 };
 
+export const searchWarehouseOverview = async (params) => {
+  const response = await httpClient.get('/manage/warehouse/overview/search', {
+    params: cleanParams(params),
+  });
+  return response.data;
+};
+
 export const validateImport = async (payload) =>
   (await httpClient.post('/manage/warehouse/import/validate', payload)).data;
 
