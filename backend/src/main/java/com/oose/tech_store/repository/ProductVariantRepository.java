@@ -42,6 +42,19 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
         long countByProductIdAndStatus(String productId, ProductVariantStatus status); // đếm các biến thể sản phẩm theo
                                                                                        // productId và trạng thái
 
+        @Query("SELECT v.product.id AS productId, COUNT(v) AS availableCount FROM ProductVariant v " +
+                        "WHERE v.product.id IN :productIds AND v.status = :status " +
+                        "GROUP BY v.product.id")
+        List<ProductAvailableCount> countByProductIdInAndStatus(
+                        @Param("productIds") List<String> productIds,
+                        @Param("status") ProductVariantStatus status);
+
+        interface ProductAvailableCount {
+                String getProductId();
+
+                long getAvailableCount();
+        }
+
         List<ProductVariant> findByProductIdAndStatus(String productId, ProductVariantStatus status);
 
         /**

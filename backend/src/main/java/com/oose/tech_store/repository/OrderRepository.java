@@ -18,7 +18,7 @@ import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecificationExecutor<Order> {
 
-	@EntityGraph(attributePaths = {"customer", "selectedPaymentMethod"})
+	@EntityGraph(attributePaths = {"customer", "selectedPaymentMethod", "items"})
 	List<Order> findAll();
 
 	@EntityGraph(attributePaths = {"customer", "selectedPaymentMethod"})

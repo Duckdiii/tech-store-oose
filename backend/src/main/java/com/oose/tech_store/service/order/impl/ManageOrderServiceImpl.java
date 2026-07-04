@@ -14,6 +14,7 @@ import com.oose.tech_store.repository.OrderRepository;
 import com.oose.tech_store.service.order.ManageOrderService;
 import com.oose.tech_store.specification.ManageOrderSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -42,9 +44,12 @@ public class ManageOrderServiceImpl implements ManageOrderService {
             LocalDateTime endDate,
             String customerName) {
 
+        long t0 = System.currentTimeMillis();
         List<Order> orders = orderRepository.findAll();
+        long t1 = System.currentTimeMillis();
+        log.info("[PERF] getAllOrders: DB fetch took {}ms for {} orders", t1 - t0, orders.size());
 
-        return orders.stream()
+        List<ManageOrderSummaryResponse> result = orders.stream()
                 .filter(order -> status == null || order.getOrderStatus() == status)
                 .filter(order -> startDate == null || !order.getOrderDate().isBefore(startDate))
                 .filter(order -> endDate == null || !order.getOrderDate().isAfter(endDate))
@@ -54,6 +59,10 @@ public class ManageOrderServiceImpl implements ManageOrderService {
                          order.getCustomer().getFullName().toLowerCase().contains(customerName.toLowerCase())))
                 .map(this::toManageOrderSummaryResponse)
                 .collect(Collectors.toList());
+        long t2 = System.currentTimeMillis();
+        log.info("[PERF] getAllOrders: mapping/lazy-load took {}ms, total {}ms", t2 - t1, t2 - t0);
+
+        return result;
     }
 
     @Override

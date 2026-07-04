@@ -14,10 +14,14 @@ import com.oose.tech_store.repository.BrandRepository;
 import com.oose.tech_store.repository.CategoryRepository;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
+import com.oose.tech_store.repository.ProductVariantRepository.ProductAvailableCount;
 import com.oose.tech_store.service.product.ManageProductService;
 import com.oose.tech_store.specification.ManageProductSpecification;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,9 +45,12 @@ public class ManageProductServiceImpl implements ManageProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ManageProductResponseDTO> getAllProducts() {
-        return productRepository.findAll().stream()
+        List<Product> products = productRepository.findAll();
+        Map<String, Long> availableCounts = availableCountsByProductId(products);
+
+        return products.stream()
                 .sorted(Comparator.comparing(Product::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(this::toResponse)
+                .map(product -> toResponse(product, availableCounts.getOrDefault(product.getId(), 0L)))
                 .toList();
     }
 
@@ -55,7 +62,20 @@ public class ManageProductServiceImpl implements ManageProductService {
         Pageable pageable = PageRequest.of(page, size, parseSort(request.getSort()));
 
         Specification<Product> spec = ManageProductSpecification.buildFromRequest(request);
-        return productRepository.findAll(spec, pageable).map(this::toResponse);
+        Page<Product> products = productRepository.findAll(spec, pageable);
+        Map<String, Long> availableCounts = availableCountsByProductId(products.getContent());
+
+        return products.map(product -> toResponse(product, availableCounts.getOrDefault(product.getId(), 0L)));
+    }
+
+    private Map<String, Long> availableCountsByProductId(List<Product> products) {
+        if (products.isEmpty()) {
+            return Map.of();
+        }
+        List<String> productIds = products.stream().map(Product::getId).toList();
+        return productVariantRepository.countByProductIdInAndStatus(productIds, ProductVariantStatus.AVAILABLE)
+                .stream()
+                .collect(Collectors.toMap(ProductAvailableCount::getProductId, ProductAvailableCount::getAvailableCount));
     }
 
     @Override
@@ -206,6 +226,11 @@ public class ManageProductServiceImpl implements ManageProductService {
     }
 
     private ManageProductResponseDTO toResponse(Product product) {
+        long availableCount = productVariantRepository.countByProductIdAndStatus(product.getId(), ProductVariantStatus.AVAILABLE);
+        return toResponse(product, availableCount);
+    }
+
+    private ManageProductResponseDTO toResponse(Product product, long availableCount) {
         Brand brand = product.getBrand();
         Category category = product.getCategory();
 
@@ -230,7 +255,7 @@ public class ManageProductServiceImpl implements ManageProductService {
                 product.getSimType(),
                 product.getOperatingSystem(),
                 product.getScreenResolution(),
-                (int) productVariantRepository.countByProductIdAndStatus(product.getId(), ProductVariantStatus.AVAILABLE),
+                (int) availableCount,
                 images);
     }
 

@@ -212,7 +212,7 @@ export function ManagerPortal() {
   }, []);
 
   useEffect(() => {
-    if (!['dashboard', 'products', 'warehouse', 'supply-orders'].includes(activeSection)) return;
+    if (activeSection !== 'dashboard') return;
 
     const syncCatalogFromApi = async () => {
       setCatalogLoading(true);
