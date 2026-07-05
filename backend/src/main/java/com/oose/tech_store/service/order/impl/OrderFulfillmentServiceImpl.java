@@ -61,6 +61,12 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                         throw new IllegalStateException("No valid cart items found for fulfillment");
                 }
 
+                // Reserve inventory first (locks the candidate rows so two concurrent
+                // checkouts on the last unit can't both pass the stock check) before any
+                // Order/PaymentLog/Invoice is created, so an out-of-stock failure never
+                // leaves behind a "paid" order that has to be cancelled afterwards.
+                reserveInventory(selectedItems);
+
                 Order order = Order.create(customer, address, paymentMethod, selectedItems); // tạo order mới
 
                 PriceContext priceContext = checkoutPricingService.calculate(order, customer);
@@ -93,30 +99,6 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                         throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to complete your order. Please try again later.");
                 }
 
-                // Exception Flow 7c: Update Inventory status of variants to EXPORTED
-                try {
-                        for (CartItem item : selectedItems) {
-                                ProductVariant pv = item.getProductVariant();
-                                List<ProductVariant> availableList = productVariantRepository.findByProductIdAndSpecsAndStatus(
-                                                pv.getProduct().getId(),
-                                                pv.getRamGb(),
-                                                pv.getStorageGb(),
-                                                pv.getColor(),
-                                                ProductVariantStatus.AVAILABLE
-                                );
-                                if (availableList.size() < item.getQuantity()) {
-                                        throw new IllegalStateException("Insufficient stock in inventory");
-                                }
-                                for (int i = 0; i < item.getQuantity(); i++) {
-                                        ProductVariant v = availableList.get(i);
-                                        v.markAsExported();
-                                        productVariantRepository.save(v);
-                                }
-                        }
-                } catch (Exception e) {
-                        throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to update inventory information. Please contact support or try again later.");
-                }
-
                 // Clear checked-out items from cart
                 selectedItems.forEach(cart::removeItem);
                 cartRepository.save(cart);
@@ -135,5 +117,40 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
                 });
 
                 return new OrderFulfillmentResult(savedOrder.getId(), savedInvoice.getId());
+        }
+
+        private void reserveInventory(List<CartItem> selectedItems) {
+                for (CartItem item : selectedItems) {
+                        ProductVariant pv = item.getProductVariant();
+                        List<ProductVariant> candidates = productVariantRepository.findByProductIdAndSpecsAndStatus(
+                                        pv.getProduct().getId(),
+                                        pv.getRamGb(),
+                                        pv.getStorageGb(),
+                                        pv.getColor(),
+                                        ProductVariantStatus.AVAILABLE
+                        );
+
+                        if (candidates.size() < item.getQuantity()) {
+                                throw new ApiException(HttpStatus.CONFLICT,
+                                                "Insufficient stock for " + pv.getDisplayName());
+                        }
+
+                        // Lock the exact candidate rows so a concurrent checkout on the same
+                        // variant can't pass its stock check before this transaction commits.
+                        List<String> candidateIds = candidates.stream().map(ProductVariant::getId).toList();
+                        List<ProductVariant> locked = productVariantRepository.findAllByIdInForUpdate(candidateIds);
+                        List<ProductVariant> stillAvailable = locked.stream()
+                                        .filter(ProductVariant::isAvailable)
+                                        .toList();
+
+                        if (stillAvailable.size() < item.getQuantity()) {
+                                throw new ApiException(HttpStatus.CONFLICT,
+                                                "Insufficient stock for " + pv.getDisplayName());
+                        }
+
+                        List<ProductVariant> toExport = stillAvailable.subList(0, item.getQuantity());
+                        toExport.forEach(ProductVariant::markAsExported);
+                        productVariantRepository.saveAll(toExport);
+                }
         }
 }

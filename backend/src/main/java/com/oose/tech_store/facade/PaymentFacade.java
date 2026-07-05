@@ -5,8 +5,8 @@ import com.oose.tech_store.dto.payment.CheckoutSummaryResponse;
 import com.oose.tech_store.dto.payment.MomoIpnRequest;
 import com.oose.tech_store.dto.payment.PaymentInitResponse;
 import com.oose.tech_store.dto.payment.PaymentResultResponse;
-import com.oose.tech_store.payment.gateway.MomoPaymentGateway;
-import com.oose.tech_store.payment.gateway.VNPayPaymentGateway;
+import com.oose.tech_store.payment.gateway.MomoPaymentStrategy;
+import com.oose.tech_store.payment.gateway.VNPayPaymentStrategy;
 import com.oose.tech_store.service.payment.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -18,8 +18,8 @@ import java.util.Map;
 public class PaymentFacade {
 
     private final PaymentService paymentService;
-    private final MomoPaymentGateway momoGateway;
-    private final VNPayPaymentGateway vnpayGateway;
+    private final MomoPaymentStrategy momoPaymentStrategy;
+    private final VNPayPaymentStrategy vnPayPaymentStrategy;
 
     // Checkout
 
@@ -39,14 +39,16 @@ public class PaymentFacade {
     }
 
     // -------------------------------------------------------------------------
-    // IPN handlers (server-to-server callback — chỉ verify signature)
+    // IPN handlers (server-to-server callback) — this is the authoritative path
+    // for finalizing the order: it doesn't depend on the customer's browser
+    // successfully redirecting back after payment.
     // -------------------------------------------------------------------------
 
-    public boolean verifyMomoIpn(MomoIpnRequest request) {
-        return momoGateway.verifyIpnSignature(request);
+    public boolean handleMomoIpn(MomoIpnRequest request) {
+        return momoPaymentStrategy.handleIpn(request);
     }
 
-    public boolean verifyVNPayIpn(Map<String, String> params) {
-        return vnpayGateway.verifySignature(params);
+    public boolean handleVNPayIpn(Map<String, String> params) {
+        return vnPayPaymentStrategy.handleIpn(params);
     }
 }

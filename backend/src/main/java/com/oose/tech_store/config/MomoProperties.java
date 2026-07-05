@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 @Setter
 public class MomoProperties {
     private String endpoint;
+    // MoMo's "query transaction status" API — used by the reconciliation job to
+    // actively check payment status for checkouts still stuck pending.
+    private String queryEndpoint;
     private String partnerCode;
     private String accessKey;
     private String secretKey;

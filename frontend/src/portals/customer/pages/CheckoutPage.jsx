@@ -89,6 +89,14 @@ export function CheckoutPage() {
   const { t } = useTheme();
   const [method, setMethod] = useState('');
   const [placing, setPlacing] = useState(false);
+  // Stable for the lifetime of this checkout page visit — every retry of the
+  // same click (or a fast double-click before the button disables) reuses the
+  // same key, so the backend can collapse them into a single Order/payment
+  // session instead of creating duplicates.
+  const idempotencyKeyRef = useRef(null);
+  if (!idempotencyKeyRef.current) {
+    idempotencyKeyRef.current = crypto.randomUUID();
+  }
   const [success, setSuccess] = useState(null);
   const [tierInfo, setTierInfo] = useState(null);
   const [showAddrPicker, setShowAddrPicker] = useState(false);
@@ -306,6 +314,7 @@ export function CheckoutPage() {
         addressId,
         paymentMethodId: method,
         selectedCartItemIds,
+        idempotencyKey: idempotencyKeyRef.current,
       };
 
       const response = await httpClient.post(`/payments/checkout?customerId=${customerId}`, payload);

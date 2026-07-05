@@ -7,6 +7,7 @@ import com.oose.tech_store.entity.enums.PaymentLogStatus;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
+import com.oose.tech_store.payment.CheckoutIdempotencyGuard;
 import com.oose.tech_store.payment.PendingCheckout;
 import com.oose.tech_store.payment.gateway.PaymentStrategy;
 import com.oose.tech_store.payment.price.CheckoutPricingService;
@@ -37,6 +38,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final List<PaymentStrategy> paymentStrategies;
     private final MomoProperties momoProperties;
     private final CheckoutPricingService checkoutPricingService;
+    private final CheckoutIdempotencyGuard idempotencyGuard;
 
     @Override
     public CheckoutSummaryResponse getCheckoutSummary(String customerId) {
@@ -59,6 +61,14 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentInitResponse initializePayment(String customerId, CheckoutRequest request, String clientIp) {
+        // Double-submit guard: concurrent/repeated calls with the same
+        // idempotencyKey resolve to a single checkout attempt instead of each
+        // creating their own Order/gateway session.
+        return idempotencyGuard.runOnce(request.idempotencyKey(),
+                () -> doInitializePayment(customerId, request, clientIp));
+    }
+
+    private PaymentInitResponse doInitializePayment(String customerId, CheckoutRequest request, String clientIp) {
         validateRequest(request);
 
         Cart cart = cartRepository.findByCustomerId(customerId)
@@ -118,6 +128,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .amount(priceContext.getFinalAmount())
                 .cartItemIds(selectedCartItemIds)
                 .createdAt(LocalDateTime.now())
+                .gatewayType(resolveGatewayType(paymentMethod))
                 .build();
 
         PaymentStrategy strategy = paymentStrategies.stream()
@@ -145,6 +156,16 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported payment type: " + paymentType));
 
         return strategy.handleReturn(params);
+    }
+
+    private String resolveGatewayType(PaymentMethod paymentMethod) {
+        if (paymentMethod instanceof MomoPaymentMethod) {
+            return "MOMO";
+        }
+        if (paymentMethod instanceof VNPayPaymentMethod) {
+            return "VNPAY";
+        }
+        return null;
     }
 
     private void validateRequest(CheckoutRequest request) {
