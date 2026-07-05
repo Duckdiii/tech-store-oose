@@ -1,12 +1,18 @@
 package com.oose.tech_store.dto;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProductSearchRequestDTO {
 
     private String keyword;
     private String categoryId;
     private String brand;
+    private List<String> brands = new ArrayList<>();
+    private List<String> priceRanges = new ArrayList<>();
+    private List<Integer> ramGb = new ArrayList<>();
+    private List<Integer> storageGb = new ArrayList<>();
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private Boolean inStock;
@@ -37,6 +43,38 @@ public class ProductSearchRequestDTO {
 
     public void setBrand(String brand) {
         this.brand = brand;
+    }
+
+    public List<String> getBrands() {
+        return brands;
+    }
+
+    public void setBrands(List<String> brands) {
+        this.brands = brands == null ? new ArrayList<>() : brands;
+    }
+
+    public List<String> getPriceRanges() {
+        return priceRanges;
+    }
+
+    public void setPriceRanges(List<String> priceRanges) {
+        this.priceRanges = priceRanges == null ? new ArrayList<>() : priceRanges;
+    }
+
+    public List<Integer> getRamGb() {
+        return ramGb;
+    }
+
+    public void setRamGb(List<Integer> ramGb) {
+        this.ramGb = ramGb == null ? new ArrayList<>() : ramGb;
+    }
+
+    public List<Integer> getStorageGb() {
+        return storageGb;
+    }
+
+    public void setStorageGb(List<Integer> storageGb) {
+        this.storageGb = storageGb == null ? new ArrayList<>() : storageGb;
     }
 
     public BigDecimal getMinPrice() {

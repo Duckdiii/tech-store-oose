@@ -17,7 +17,20 @@ const normalizeProductForManager = (product) => ({
 
 export const productApi = {
   searchProducts: async (params) => {
-    const response = await httpClient.get('/products/search', { params });
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          if (item !== undefined && item !== null && item !== '') {
+            query.append(key, item);
+          }
+        });
+        return;
+      }
+      query.append(key, value);
+    });
+    const response = await httpClient.get(`/products/search?${query.toString()}`);
     return response.data;
   },
 

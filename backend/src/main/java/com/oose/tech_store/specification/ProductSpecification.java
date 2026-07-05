@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * JPA Specification for dynamic Product search filtering.
@@ -49,8 +50,15 @@ public class ProductSpecification {
             }
 
             // Brand filter
+            List<String> brands = request.getBrands() == null ? List.of() : request.getBrands().stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .map(value -> value.trim().toLowerCase(Locale.ROOT))
+                    .toList();
             String brand = request.getBrand();
-            if (brand != null && !brand.isBlank()) {
+            if (!brands.isEmpty()) {
+                Join<Product, Brand> brandJoin = root.join("brand", JoinType.INNER);
+                predicates.add(cb.lower(brandJoin.get("name")).in(brands));
+            } else if (brand != null && !brand.isBlank()) {
                 Join<Product, Brand> brandJoin = root.join("brand", JoinType.INNER);
                 predicates.add(cb.like(
                         cb.lower(brandJoin.get("name")),
@@ -61,7 +69,13 @@ public class ProductSpecification {
             // Price range filter: filter by variant price
             BigDecimal minPrice = request.getMinPrice();
             BigDecimal maxPrice = request.getMaxPrice();
-            if (minPrice != null || maxPrice != null) {
+            List<PriceRange> priceRanges = parsePriceRanges(request.getPriceRanges());
+            boolean hasVariantFilter = minPrice != null
+                    || maxPrice != null
+                    || !priceRanges.isEmpty()
+                    || (request.getRamGb() != null && !request.getRamGb().isEmpty())
+                    || (request.getStorageGb() != null && !request.getStorageGb().isEmpty());
+            if (hasVariantFilter) {
                 // Subquery: exists at least one variant within price range
                 assert query != null;
                 Subquery<String> variantSubquery = query.subquery(String.class);
@@ -71,11 +85,30 @@ public class ProductSpecification {
                 List<Predicate> variantPredicates = new ArrayList<>();
                 variantPredicates.add(cb.equal(variantRoot.get("product").get("id"), root.get("id")));
 
-                if (minPrice != null) {
+                if (!priceRanges.isEmpty()) {
+                    List<Predicate> rangePredicates = new ArrayList<>();
+                    for (PriceRange range : priceRanges) {
+                        List<Predicate> singleRangePredicates = new ArrayList<>();
+                        if (range.min() != null) {
+                            singleRangePredicates.add(cb.greaterThanOrEqualTo(variantRoot.get("price"), range.min()));
+                        }
+                        if (range.max() != null) {
+                            singleRangePredicates.add(cb.lessThanOrEqualTo(variantRoot.get("price"), range.max()));
+                        }
+                        rangePredicates.add(cb.and(singleRangePredicates.toArray(new Predicate[0])));
+                    }
+                    variantPredicates.add(cb.or(rangePredicates.toArray(new Predicate[0])));
+                } else if (minPrice != null) {
                     variantPredicates.add(cb.greaterThanOrEqualTo(variantRoot.get("price"), minPrice));
                 }
-                if (maxPrice != null) {
+                if (priceRanges.isEmpty() && maxPrice != null) {
                     variantPredicates.add(cb.lessThanOrEqualTo(variantRoot.get("price"), maxPrice));
+                }
+                if (request.getRamGb() != null && !request.getRamGb().isEmpty()) {
+                    variantPredicates.add(variantRoot.get("ramGb").in(request.getRamGb()));
+                }
+                if (request.getStorageGb() != null && !request.getStorageGb().isEmpty()) {
+                    variantPredicates.add(variantRoot.get("storageGb").in(request.getStorageGb()));
                 }
 
                 variantSubquery.where(variantPredicates.toArray(new Predicate[0]));
@@ -182,5 +215,36 @@ public class ProductSpecification {
                 cb.equal(orderRoot.get("orderStatus"), OrderStatus.COMPLETED)
         );
         return cb.coalesce(subquery, 0L);
+    }
+
+    private static List<PriceRange> parsePriceRanges(List<String> rawRanges) {
+        if (rawRanges == null || rawRanges.isEmpty()) {
+            return List.of();
+        }
+
+        List<PriceRange> ranges = new ArrayList<>();
+        for (String rawRange : rawRanges) {
+            if (rawRange == null || rawRange.isBlank()) {
+                continue;
+            }
+            String[] parts = rawRange.split("-", -1);
+            if (parts.length != 2) {
+                continue;
+            }
+            BigDecimal min = parseMoney(parts[0]);
+            BigDecimal max = parseMoney(parts[1]);
+            ranges.add(new PriceRange(min, max));
+        }
+        return ranges;
+    }
+
+    private static BigDecimal parseMoney(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return new BigDecimal(value.trim());
+    }
+
+    private record PriceRange(BigDecimal min, BigDecimal max) {
     }
 }

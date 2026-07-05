@@ -9,7 +9,10 @@ import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.payment.PendingCheckout;
 import com.oose.tech_store.payment.gateway.PaymentStrategy;
+import com.oose.tech_store.payment.price.CheckoutPricingService;
+import com.oose.tech_store.payment.price.PriceContext;
 import com.oose.tech_store.repository.CartRepository;
+import com.oose.tech_store.repository.CustomerRepository;
 import com.oose.tech_store.repository.PaymentMethodRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.service.payment.PaymentService;
@@ -28,10 +31,12 @@ import java.util.*;
 public class PaymentServiceImpl implements PaymentService {
 
     private final CartRepository cartRepository;
+    private final CustomerRepository customerRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final ProductVariantRepository productVariantRepository;
     private final List<PaymentStrategy> paymentStrategies;
     private final MomoProperties momoProperties;
+    private final CheckoutPricingService checkoutPricingService;
 
     @Override
     public CheckoutSummaryResponse getCheckoutSummary(String customerId) {
@@ -83,10 +88,6 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        BigDecimal amount = selectedItems.stream()
-                .map(CartItem::calculateSubtotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         PaymentMethod paymentMethod = paymentMethodRepository.findById(request.paymentMethodId())
                 .orElseThrow(() -> new ResourceNotFoundException("Payment method not found"));
 
@@ -94,15 +95,40 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Selected payment method is not available");
         }
 
-        PendingCheckout checkout = PendingCheckout.builder() // lưu thông tin checkout vào session để xử lý sau khi
-                                                             // redirect về
-                .txnRef(UUID.randomUUID().toString()) // tạo transaction reference duy nhất
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+
+        Address address = customer.getAddresses().stream()
+                .filter(a -> a.getId().equals(request.addressId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found for customer"));
+
+        String txnRef = UUID.randomUUID().toString();
+        String promotionCode = normalizePromotionCode(request.promotionCode());
+        List<String> selectedCartItemIds = selectedItems.stream().map(CartItem::getId).toList();
+
+        PendingCheckout pricingCheckout = PendingCheckout.builder()
+                .txnRef(txnRef)
                 .customerId(customerId)
                 .addressId(request.addressId())
                 .paymentMethodId(request.paymentMethodId())
-                .promotionCode(normalizePromotionCode(request.promotionCode()))
-                .amount(amount)
-                .cartItemIds(selectedItems.stream().map(CartItem::getId).toList())
+                .promotionCode(promotionCode)
+                .amount(BigDecimal.ZERO)
+                .cartItemIds(selectedCartItemIds)
+                .createdAt(LocalDateTime.now())
+                .build();
+        Order pricingOrder = Order.create(customer, address, paymentMethod, selectedItems);
+        PriceContext priceContext = checkoutPricingService.calculate(pricingCheckout, pricingOrder, customer, selectedItems);
+
+        PendingCheckout checkout = PendingCheckout.builder() // lưu thông tin checkout vào session để xử lý sau khi
+                                                             // redirect về
+                .txnRef(txnRef) // tạo transaction reference duy nhất
+                .customerId(customerId)
+                .addressId(request.addressId())
+                .paymentMethodId(request.paymentMethodId())
+                .promotionCode(promotionCode)
+                .amount(priceContext.getFinalAmount())
+                .cartItemIds(selectedCartItemIds)
                 .createdAt(LocalDateTime.now())
                 .build();
 
