@@ -123,6 +123,11 @@ export function ManagerPortal() {
     }
   });
   const [query, setQuery] = useState('');
+  const [productsRefreshToken, setProductsRefreshToken] = useState(0);
+  const [suppliersRefreshToken, setSuppliersRefreshToken] = useState(0);
+  const [supplyOrdersRefreshToken, setSupplyOrdersRefreshToken] = useState(0);
+  const [customersRefreshToken, setCustomersRefreshToken] = useState(0);
+  const [staffRefreshToken, setStaffRefreshToken] = useState(0);
   const [productForm, setProductForm] = useState(null);
   const [productDetailId, setProductDetailId] = useState(null);
   const [staffFormOpen, setStaffFormOpen] = useState(false);
@@ -130,7 +135,11 @@ export function ManagerPortal() {
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [supplyOrderFormOpen, setSupplyOrderFormOpen] = useState(false);
   const [viewingSupplyOrder, setViewingSupplyOrder] = useState(null);
-  const [ordersLoading, setOrdersLoading] = useState(false);
+  // Mặc định true để lần render đầu tiên (trước khi các effect fetch chạy xong) đã
+  // được coi là "đang tải", tránh Tổng quan lóe lên số liệu 0 giả trong một khung hình.
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [customersLoading, setCustomersLoading] = useState(true);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [toast, setToast] = useState('');
   const toastTimerRef = useRef(null);
 
@@ -161,6 +170,7 @@ export function ManagerPortal() {
   }, [activeSection]);
 
   const fetchCustomersFromApi = async () => {
+    setCustomersLoading(true);
     try {
       const customers = await customerApi.getAll();
       const mappedCustomers = (customers || []).map(c => ({
@@ -177,6 +187,8 @@ export function ManagerPortal() {
       setData(prev => ({ ...prev, customers: mappedCustomers }));
     } catch (err) {
       console.error('Failed to fetch customers:', err);
+    } finally {
+      setCustomersLoading(false);
     }
   };
 
@@ -186,31 +198,6 @@ export function ManagerPortal() {
     }
   }, [activeSection]);
 
-  const fetchStaffFromApi = async () => {
-    try {
-      const staffList = await staffApi.getAll();
-      const mappedStaff = (staffList || []).map(s => ({
-        id: s.id,
-        accountId: s.accountId,
-        name: s.fullName,
-        email: s.email,
-        phone: s.phone,
-        staffCode: s.staffCode,
-        hireDate: s.hireDate,
-        role: 'Staff',
-        active: s.accountStatus === 'ACTIVE',
-      }));
-      setData(prev => ({ ...prev, staff: mappedStaff }));
-    } catch (err) {
-      console.error('Failed to fetch staff:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (activeSection === 'staff') {
-      fetchStaffFromApi();
-    }
-  }, [activeSection]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -224,55 +211,45 @@ export function ManagerPortal() {
     fetchData();
   }, []);
 
-  const fetchSupplyOrdersFromApi = async () => {
-    try {
-      const orders = await supplyOrderApi.getAll();
-      setData(prev => ({ ...prev, supplyOrders: orders || [] }));
-    } catch (err) {
-      console.error('Failed to fetch supply orders:', err);
-    }
-  };
-
   useEffect(() => {
-    if (activeSection === 'supply-orders') {
-      fetchSupplyOrdersFromApi();
-    }
-  }, [activeSection]);
-
-  useEffect(() => {
-    if (!['dashboard', 'products', 'warehouse', 'supply-orders'].includes(activeSection)) return;
+    if (activeSection !== 'dashboard') return;
 
     const syncCatalogFromApi = async () => {
-      const [catalogResult, inventoryResult] = await Promise.allSettled([
-        productApi.getManagerCatalog(),
-        getWarehouseInventory(),
-      ]);
+      setCatalogLoading(true);
+      try {
+        const [catalogResult, inventoryResult] = await Promise.allSettled([
+          productApi.getManagerCatalog(),
+          getWarehouseInventory(),
+        ]);
 
-      if (catalogResult.status === 'rejected' && inventoryResult.status === 'rejected') {
-        console.error('Failed to sync product catalog API', catalogResult.reason);
-        console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
-        setData((prev) => ({ ...prev, products: [], variants: [] }));
-        return;
+        if (catalogResult.status === 'rejected' && inventoryResult.status === 'rejected') {
+          console.error('Failed to sync product catalog API', catalogResult.reason);
+          console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
+          setData((prev) => ({ ...prev, products: [], variants: [] }));
+          return;
+        }
+
+        if (catalogResult.status === 'rejected') {
+          console.error('Failed to sync product catalog API', catalogResult.reason);
+        }
+        if (inventoryResult.status === 'rejected') {
+          console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
+        }
+
+        const catalogProducts = catalogResult.status === 'fulfilled' ? catalogResult.value : [];
+        const inventory = inventoryResult.status === 'fulfilled'
+          ? inventoryResult.value
+          : { products: [], variants: [] };
+        const merged = mergeCatalogWithInventory(catalogProducts, inventory);
+
+        setData((prev) => ({
+          ...prev,
+          products: merged.products,
+          variants: merged.variants,
+        }));
+      } finally {
+        setCatalogLoading(false);
       }
-
-      if (catalogResult.status === 'rejected') {
-        console.error('Failed to sync product catalog API', catalogResult.reason);
-      }
-      if (inventoryResult.status === 'rejected') {
-        console.error('Failed to sync warehouse inventory API', inventoryResult.reason);
-      }
-
-      const catalogProducts = catalogResult.status === 'fulfilled' ? catalogResult.value : [];
-      const inventory = inventoryResult.status === 'fulfilled'
-        ? inventoryResult.value
-        : { products: [], variants: [] };
-      const merged = mergeCatalogWithInventory(catalogProducts, inventory);
-
-      setData((prev) => ({
-        ...prev,
-        products: merged.products,
-        variants: merged.variants,
-      }));
     };
 
     syncCatalogFromApi();
@@ -291,6 +268,10 @@ export function ManagerPortal() {
   };
 
   const [title] = PAGE_META[activeSection];
+
+  // Tổng quan phụ thuộc vào 3 nguồn dữ liệu tải song song (đơn hàng, khách hàng, catalog sản
+  // phẩm); chỉ coi là "đã tải xong" khi cả 3 đều hoàn tất, để tránh hiện số liệu 0 giả trong lúc chờ.
+  const dashboardLoading = activeSection === 'dashboard' && (ordersLoading || customersLoading || catalogLoading);
 
   const badges = useMemo(() => {
     const pendingOrders = data.orders.filter((o) => o.status === 'Chờ xác nhận').length;
@@ -329,11 +310,6 @@ export function ManagerPortal() {
       status: stock === 0 ? 'Tạm ẩn' : stock < 6 ? 'Sắp hết hàng' : 'Đang bán',
     };
   }), [data.products, data.variants]);
-
-  const filteredProducts = useMemo(() =>
-    productRows.filter((p) => `${p.name} ${p.brand} ${p.category || ''}`.toLowerCase().includes(query.toLowerCase())),
-    [productRows, query]
-  );
 
   const selectedDetailProduct = productRows.find((p) => p.id === productDetailId);
   const selectedDetailVariants = data.variants.filter((v) => v.productId === productDetailId);
@@ -379,6 +355,7 @@ export function ManagerPortal() {
         exists ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm mới'
       );
       setProductForm(null);
+      setProductsRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
       throw error;
@@ -395,6 +372,7 @@ export function ManagerPortal() {
         'Đã xóa sản phẩm'
       );
       if (productDetailId === productId) setProductDetailId(null);
+      setProductsRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -422,6 +400,7 @@ export function ManagerPortal() {
         showToast(`Đã mở khóa tài khoản của ${customer.name}`);
       }
       fetchCustomersFromApi();
+      setCustomersRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -436,7 +415,7 @@ export function ManagerPortal() {
         await staffApi.unblock(member.accountId);
         showToast(`Đã mở khóa tài khoản của ${member.name}`);
       }
-      fetchStaffFromApi();
+      setStaffRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -459,7 +438,7 @@ export function ManagerPortal() {
       });
       showToast('Đã thêm nhân viên mới');
       setStaffFormOpen(false);
-      fetchStaffFromApi();
+      setStaffRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
       throw error;
@@ -470,7 +449,7 @@ export function ManagerPortal() {
     try {
       await staffApi.delete(id);
       showToast('Đã xóa nhân viên');
-      fetchStaffFromApi();
+      setStaffRefreshToken((token) => token + 1);
     } catch (error) {
       setToast(apiMessage(error));
     }
@@ -489,6 +468,7 @@ export function ManagerPortal() {
       setData(prev => ({ ...prev, suppliers: sups }));
       setSupplierFormOpen(false);
       setEditingSupplier(null);
+      setSuppliersRefreshToken((token) => token + 1);
     } catch (err) {
       setToast('Lỗi: ' + (err.response?.data?.message || err.message));
     }
@@ -500,6 +480,7 @@ export function ManagerPortal() {
       const sups = await supplierApi.getAll();
       setData(prev => ({ ...prev, suppliers: sups }));
       setToast(t('Supplier removed successfully'));
+      setSuppliersRefreshToken((token) => token + 1);
     } catch (err) {
       setToast(t(apiMessage(err)));
     }
@@ -509,8 +490,8 @@ export function ManagerPortal() {
     try {
       await supplyOrderApi.create(payload);
       setToast(t('Purchase Order created successfully'));
-      await fetchSupplyOrdersFromApi();
       setSupplyOrderFormOpen(false);
+      setSupplyOrdersRefreshToken((token) => token + 1);
     } catch (err) {
       setToast(t(apiMessage(err)));
     }
@@ -519,8 +500,8 @@ export function ManagerPortal() {
   const updateSupplyOrderStatus = async (id, status) => {
     const updated = await supplyOrderApi.updateStatus(id, status);
     setToast(t('Supply Order status updated successfully'));
-    await fetchSupplyOrdersFromApi();
     setViewingSupplyOrder(updated);
+    setSupplyOrdersRefreshToken((token) => token + 1);
     return updated;
   };
 
@@ -528,11 +509,12 @@ export function ManagerPortal() {
     <>
       <ManagerLayout activeSection={activeSection} title={title} query={query} onQueryChange={setQuery} breadcrumbs={breadcrumbs} badges={badges}>
         {activeSection === 'dashboard' && (
-          <DashboardPage data={data} />
+          <DashboardPage data={data} loading={dashboardLoading} />
         )}
         {activeSection === 'products' && (
           <ProductsPage
-            products={filteredProducts}
+            searchQuery={query}
+            refreshToken={productsRefreshToken}
             onAdd={() => setProductForm({})}
             onEdit={(product) => setProductForm(product)}
             onViewDetails={openProductDetail}
@@ -541,7 +523,6 @@ export function ManagerPortal() {
         )}
         {activeSection === 'orders' && (
           <OrdersPage
-            orders={data.orders}
             onStatus={changeOrderStatus}
             onExport={() => downloadCsv(
               'don-hang-techstore.csv',
@@ -554,10 +535,10 @@ export function ManagerPortal() {
           <WarehousePage view={warehouseView} navigate={navigate} suppliers={data.suppliers} onOpenProduct={openProductDetail} />
         )}
         {activeSection === 'customers' && (
-          <CustomersPage customers={data.customers} onToggle={toggleCustomer} />
+          <CustomersPage refreshToken={customersRefreshToken} onToggle={toggleCustomer} />
         )}
         {activeSection === 'staff' && (
-          <StaffPage staff={data.staff} onToggle={toggleStaff} onAdd={() => setStaffFormOpen(true)} onDelete={deleteStaff} />
+          <StaffPage refreshToken={staffRefreshToken} onToggle={toggleStaff} onAdd={() => setStaffFormOpen(true)} onDelete={deleteStaff} />
         )}
         {activeSection === 'reports' && (
           <ReportsPage onExport={() => downloadCsv(
@@ -568,7 +549,7 @@ export function ManagerPortal() {
         )}
         {activeSection === 'suppliers' && (
           <SuppliersPage
-            suppliers={data.suppliers}
+            refreshToken={suppliersRefreshToken}
             onAdd={() => { setEditingSupplier(null); setSupplierFormOpen(true); }}
             onEdit={(sup) => { setEditingSupplier(sup); setSupplierFormOpen(true); }}
             onDelete={deleteSupplier}
@@ -576,7 +557,7 @@ export function ManagerPortal() {
         )}
         {activeSection === 'supply-orders' && (
           <SupplyOrdersPage
-            supplyOrders={data.supplyOrders}
+            refreshToken={supplyOrdersRefreshToken}
             onAdd={() => setSupplyOrderFormOpen(true)}
             onView={(order) => setViewingSupplyOrder(order)}
           />

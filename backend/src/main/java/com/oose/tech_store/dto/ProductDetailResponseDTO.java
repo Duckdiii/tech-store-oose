@@ -42,6 +42,7 @@ public class ProductDetailResponseDTO {
         private Integer storageGb;
         private String color;
         private BigDecimal price;
+        private BigDecimal originalPrice;
         private String status;
 
         public String getId() { return id; }
@@ -54,6 +55,8 @@ public class ProductDetailResponseDTO {
         public void setColor(String color) { this.color = color; }
         public BigDecimal getPrice() { return price; }
         public void setPrice(BigDecimal price) { this.price = price; }
+        public BigDecimal getOriginalPrice() { return originalPrice; }
+        public void setOriginalPrice(BigDecimal originalPrice) { this.originalPrice = originalPrice; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
     }

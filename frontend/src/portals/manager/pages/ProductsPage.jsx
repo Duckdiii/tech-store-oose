@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
-import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
-import { sortRows } from '../utils';
+import { useEffect, useState } from 'react';
+import { ConfirmDialog, Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
+import { productApi } from '../../../api/productApi';
 
 const FILTERS = [
   { key: 'ALL', label: 'Tất cả' },
@@ -9,39 +9,70 @@ const FILTERS = [
   { key: 'HIDDEN', label: 'Tạm ẩn' },
 ];
 
+const PAGE_SIZE = 10;
+
 const getStock = (product) => Number(product.stock || 0);
 
-function matchesFilter(product, filterKey) {
+const statusLabel = (product) => {
   const stock = getStock(product);
+  return stock === 0 ? 'Tạm ẩn' : stock < 6 ? 'Sắp hết hàng' : 'Đang bán';
+};
 
-  if (filterKey === 'ALL') return true;
-  if (filterKey === 'ACTIVE') return stock > 0;
-  if (filterKey === 'LOW') return stock > 0 && stock < 6;
-  if (filterKey === 'HIDDEN') return stock === 0 || product.status === 'Tạm ẩn';
-
-  return true;
-}
-
-export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete }) {
+export function ProductsPage({ searchQuery = '', refreshToken, onAdd, onEdit, onViewDetails, onDelete }) {
   const [filterKey, setFilterKey] = useState('ALL');
-  const [sortKey, setSortKey] = useState('');
+  const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
+  const [page, setPage] = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const filtered = useMemo(
-    () => products.filter((product) => matchesFilter(product, filterKey)),
-    [products, filterKey]
-  );
+  const [products, setProducts] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [filterCounts, setFilterCounts] = useState({ ALL: 0, ACTIVE: 0, LOW: 0, HIDDEN: 0 });
 
-  const filterCounts = useMemo(() => {
-    const counts = {};
-    FILTERS.forEach((item) => {
-      counts[item.key] = products.filter((product) => matchesFilter(product, item.key)).length;
-    });
-    return counts;
-  }, [products]);
+  // Reset to first page whenever the active filter or search term changes.
+  useEffect(() => {
+    setPage(0);
+  }, [filterKey, searchQuery]);
 
-  const visible = useMemo(() => sortRows(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await productApi.searchManagerCatalog({
+          keyword: searchQuery || undefined,
+          status: filterKey === 'ALL' ? undefined : filterKey,
+          page,
+          size: PAGE_SIZE,
+          sort: `${sortKey},${sortDir}`,
+        });
+        setProducts(data.content || []);
+        setTotalElements(data.totalElements || 0);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Failed to fetch manager product catalog', err);
+        setProducts([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filterKey, searchQuery, page, sortKey, sortDir, refreshToken]);
+
+  useEffect(() => {
+    productApi.getManagerCatalogStatusCounts(searchQuery || undefined)
+      .then((counts) => setFilterCounts({
+        ALL: counts.all ?? 0,
+        ACTIVE: counts.active ?? 0,
+        LOW: counts.low ?? 0,
+        HIDDEN: counts.hidden ?? 0,
+      }))
+      .catch((err) => console.error('Failed to fetch product status counts', err));
+  }, [searchQuery, refreshToken]);
+
   const currentFilter = FILTERS.find((item) => item.key === filterKey) || FILTERS[0];
   const isFiltering = filterKey !== 'ALL';
 
@@ -66,7 +97,7 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
     <>
       <div className="admin-page-intro">
         <div>
-          <p>{products.length} sản phẩm hiển thị</p>
+          <p>{totalElements} sản phẩm{isFiltering ? ` (đã lọc "${currentFilter.label}")` : ''}</p>
           <h2>Danh mục sản phẩm</h2>
         </div>
         <button className="admin-button" onClick={onAdd}>+ Thêm sản phẩm</button>
@@ -86,14 +117,16 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
         </div>
 
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-          {visible.length === 0 ? (
+          {loading ? (
+            <SkeletonTableRows columns={columns.length} />
+          ) : products.length === 0 ? (
             <EmptyState
-              message={isFiltering ? `Không có sản phẩm nào trong bộ lọc "${currentFilter.label}"` : 'Chưa có sản phẩm nào'}
-              hint={isFiltering ? 'Thử chọn bộ lọc khác hoặc xem tất cả sản phẩm.' : 'Thêm sản phẩm đầu tiên để bắt đầu quản lý danh mục.'}
+              message={isFiltering || searchQuery ? `Không có sản phẩm nào trong bộ lọc "${currentFilter.label}"` : 'Chưa có sản phẩm nào'}
+              hint={isFiltering || searchQuery ? 'Thử chọn bộ lọc khác hoặc xem tất cả sản phẩm.' : 'Thêm sản phẩm đầu tiên để bắt đầu quản lý danh mục.'}
               actionLabel={isFiltering ? 'Xem tất cả' : '+ Thêm sản phẩm'}
               onAction={isFiltering ? () => setFilterKey('ALL') : onAdd}
             />
-          ) : visible.map((product) => {
+          ) : products.map((product) => {
             const thumbnailUrl = product.images?.[0]?.imageUrl || product.images?.[0]?.url;
             return (
               <tr key={product.id}>
@@ -113,7 +146,7 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
                 <td>{product.brand || '—'}</td>
                 <td>{product.category || 'Chưa phân loại'}</td>
                 <td className={getStock(product) < 6 ? 'admin-low-stock' : ''}>{getStock(product)}</td>
-                <td><Status>{product.status}</Status></td>
+                <td><Status>{statusLabel(product)}</Status></td>
                 <td>
                   <div className="admin-row-actions">
                     <button className="admin-row-action admin-row-action--primary" onClick={() => onViewDetails(product)}>
@@ -127,6 +160,26 @@ export function ProductsPage({ products, onAdd, onEdit, onViewDetails, onDelete 
             );
           })}
         </DataTable>
+
+        {!loading && totalPages > 1 && (
+          <div className="admin-pagination">
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              ‹ Trước
+            </button>
+            <span>Trang {page + 1} / {totalPages}</span>
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              Sau ›
+            </button>
+          </div>
+        )}
       </article>
 
       {deleteConfirm && (

@@ -1,8 +1,18 @@
-import { useState, useEffect, useMemo } from 'react';
-import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
-import { initials, sortRows } from '../utils';
+import { useState, useEffect } from 'react';
+import { ConfirmDialog, Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
+import { initials } from '../utils';
 import { loginLogApi } from '../../../api/loginLogApi';
+import { staffApi } from '../../../api/staffApi';
 import { useTheme } from '../../../shared/context/ThemeContext';
+
+const PAGE_SIZE = 10;
+
+// Chỉ những field có thật trên entity Staff mới sort được ở backend
+// (email/role/trạng thái là dữ liệu join/suy ra, không sort được).
+const STAFF_SORT_FIELD = {
+  name: 'fullName',
+  hireDate: 'hireDate',
+};
 
 const LOGIN_LOG_STATUSES = ['Tất cả', 'SUCCESS', 'FAILED'];
 const LOGIN_LOG_ROLES    = ['Tất cả', 'STAFF', 'MANAGER'];
@@ -127,7 +137,7 @@ function LoginLogTab() {
 
         <DataTable columns={['Thời gian', 'Email', 'Vai trò', 'Trạng thái']}>
           {loading ? (
-            <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Đang tải dữ liệu...</td></tr>
+            <SkeletonTableRows columns={4} />
           ) : logs.length === 0 ? (
             <tr><td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8', padding: '28px 0' }}>Không có bản ghi phù hợp</td></tr>
           ) : logs.map((log) => (
@@ -144,27 +154,60 @@ function LoginLogTab() {
   );
 }
 
-export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
+export function StaffPage({ refreshToken, onToggle, onAdd, onDelete }) {
   const [tab,           setTab]           = useState('staff');
   const [blockConfirm,  setBlockConfirm]  = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [sortKey,       setSortKey]       = useState('');
+  const [sortKey,       setSortKey]       = useState('name');
   const [sortDir,       setSortDir]       = useState('asc');
   const [searchQuery,   setSearchQuery]   = useState('');
+  const [page,          setPage]          = useState(0);
 
-  const activeCount = staff.filter((m) => m.active).length;
+  const [sortedStaff,   setSortedStaff]   = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages,    setTotalPages]    = useState(0);
+  const [loading,       setLoading]       = useState(false);
 
   const query = searchQuery.trim().toLowerCase();
-  const filteredStaff = useMemo(() => {
-    if (!query) return staff;
-    return staff.filter((m) =>
-      (m.name || '').toLowerCase().includes(query) ||
-      (m.staffCode || '').toLowerCase().includes(query) ||
-      (m.email || '').toLowerCase().includes(query)
-    );
-  }, [staff, query]);
 
-  const sortedStaff = useMemo(() => sortRows(filteredStaff, sortKey, sortDir), [filteredStaff, sortKey, sortDir]);
+  // Đổi từ khóa tìm kiếm thì quay về trang đầu.
+  useEffect(() => { setPage(0); }, [query]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await staffApi.search({
+          criteria: query || undefined,
+          page,
+          size: PAGE_SIZE,
+          sort: `${STAFF_SORT_FIELD[sortKey] || 'fullName'},${sortDir}`,
+        });
+        const mapped = (data.content || []).map((s) => ({
+          id: s.id,
+          accountId: s.accountId,
+          name: s.fullName,
+          email: s.email,
+          phone: s.phone,
+          staffCode: s.staffCode,
+          hireDate: s.hireDate,
+          role: 'Staff',
+          active: s.accountStatus === 'ACTIVE',
+        }));
+        setSortedStaff(mapped);
+        setTotalElements(data.totalElements || 0);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Failed to fetch staff', err);
+        setSortedStaff([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, page, sortKey, sortDir, refreshToken]);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
@@ -201,7 +244,7 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
         <>
           <div className="admin-page-intro">
             <div>
-              <p>{activeCount} thành viên hoạt động</p>
+              <p>{totalElements} nhân viên{query ? ' phù hợp' : ''}</p>
               <h2>Nhân viên &amp; phân quyền</h2>
             </div>
             <button className="admin-button" onClick={onAdd}>+ Thêm nhân viên</button>
@@ -224,13 +267,15 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
                 'Email',
                 'Số điện thoại',
                 { label: 'Ngày vào làm', key: 'hireDate' },
-                { label: 'Vai trò',      key: 'role'     },
-                { label: 'Trạng thái',   key: 'active'   },
+                'Vai trò',
+                'Trạng thái',
                 '',
               ]}
               sortKey={sortKey} sortDir={sortDir} onSort={handleSort}
             >
-              {sortedStaff.length === 0 && query ? (
+              {loading ? (
+                <SkeletonTableRows columns={8} />
+              ) : sortedStaff.length === 0 && query ? (
                 <EmptyState
                   message="No Staff found"
                   hint="Không có nhân viên nào khớp với từ khóa tìm kiếm."
@@ -275,6 +320,26 @@ export function StaffPage({ staff, onToggle, onAdd, onDelete }) {
                 </tr>
               ))}
             </DataTable>
+
+            {!loading && totalPages > 1 && (
+              <div className="admin-pagination">
+                <button
+                  className="admin-button admin-button--secondary"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  ‹ Trước
+                </button>
+                <span>Trang {page + 1} / {totalPages}</span>
+                <button
+                  className="admin-button admin-button--secondary"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                >
+                  Sau ›
+                </button>
+              </div>
+            )}
           </article>
         </>
       )}

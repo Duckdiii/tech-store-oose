@@ -119,6 +119,76 @@ export function Spinner({ label }) {
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={SPIN_STYLE} />{label}</span>;
 }
 
+export function Skeleton({ width = '100%', height = 13, radius = 6, style }) {
+  return <span className="admin-skeleton" style={{ width, height, borderRadius: radius, ...style }} />;
+}
+
+// Placeholder <tr> rows for a table body while its data is still loading.
+// Bar widths vary slightly per row/column so the block doesn't look like a flat grid.
+export function SkeletonTableRows({ columns = 5, rows = 6 }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, rowIndex) => (
+        <tr key={rowIndex} aria-hidden="true">
+          {Array.from({ length: columns }).map((_, colIndex) => (
+            <td key={colIndex}>
+              <Skeleton width={colIndex === 0 ? '75%' : `${45 + ((rowIndex + colIndex) % 4) * 12}%`} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export function SkeletonMetricCard({ tone = 'dark' }) {
+  return (
+    <article className="admin-metric" aria-hidden="true">
+      <div className={`admin-metric__mark admin-metric__mark--${tone}`} />
+      <Skeleton width={92} height={11} style={{ marginBottom: 11 }} />
+      <Skeleton width={72} height={22} style={{ marginBottom: 10 }} />
+      <Skeleton width={120} height={10} />
+    </article>
+  );
+}
+
+const CHART_SKELETON_HEIGHTS = [55, 78, 40, 88, 62, 48, 72, 36, 66, 52, 82, 45];
+
+export function SkeletonChart() {
+  return (
+    <div className="admin-chart" aria-hidden="true">
+      {CHART_SKELETON_HEIGHTS.map((height, i) => (
+        <div key={i} className="admin-chart__item">
+          <Skeleton width="100%" height={`${height}%`} radius={4} style={{ maxWidth: 28 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonDonut() {
+  return (
+    <div aria-hidden="true">
+      <Skeleton width={145} height={145} radius="50%" style={{ margin: '9px auto 18px' }} />
+      <div style={{ display: 'grid', gap: 9 }}>
+        {[1, 2, 3].map((i) => <Skeleton key={i} width={`${80 - i * 12}%`} height={11} />)}
+      </div>
+    </div>
+  );
+}
+
+// Generic vertical stack of shimmer bars, used for list/card content whose exact
+// shape doesn't need a dedicated skeleton (rankings, breakdowns, recovery points...).
+export function SkeletonLines({ count = 3 }) {
+  return (
+    <div aria-hidden="true" style={{ display: 'grid', gap: 12, padding: '4px 0' }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} width={`${88 - (i % 4) * 10}%`} height={13} />
+      ))}
+    </div>
+  );
+}
+
 function DiscardOverlay({ onStay, onDiscard }) {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(255,255,255,0.97)', borderRadius: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10, textAlign: 'center' }}>

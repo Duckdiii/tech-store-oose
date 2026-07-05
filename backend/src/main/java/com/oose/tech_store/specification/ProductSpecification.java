@@ -3,9 +3,12 @@ package com.oose.tech_store.specification;
 import com.oose.tech_store.dto.ProductSearchRequestDTO;
 import com.oose.tech_store.entity.Brand;
 import com.oose.tech_store.entity.Category;
+import com.oose.tech_store.entity.Order;
+import com.oose.tech_store.entity.OrderItem;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.entity.Promotion;
+import com.oose.tech_store.entity.enums.OrderStatus;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
@@ -125,7 +128,59 @@ public class ProductSpecification {
                 }
             }
 
+            // Sort by computed values (lowest available price / total quantity sold) that
+            // aren't mapped columns on the entity: build a correlated subquery ORDER BY
+            // directly here instead of relying on Pageable's Sort (which only works for
+            // real @Column properties). Skip when this Specification is being reused to
+            // build Spring Data's count query (result type Long), where ORDER BY is invalid.
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+                String[] sortParts = (request.getSort() == null ? "" : request.getSort()).split(",");
+                String sortField = sortParts.length > 0 ? sortParts[0].trim() : "";
+                boolean desc = sortParts.length > 1 && "desc".equalsIgnoreCase(sortParts[1].trim());
+
+                if ("price".equals(sortField)) {
+                    Expression<BigDecimal> lowestPrice = lowestAvailablePriceExpression(root, query, cb);
+                    query.orderBy(desc ? cb.desc(lowestPrice) : cb.asc(lowestPrice));
+                } else if ("sold".equals(sortField)) {
+                    Expression<Long> totalSold = totalQuantitySoldExpression(root, query, cb);
+                    query.orderBy(desc ? cb.desc(totalSold) : cb.asc(totalSold));
+                }
+            }
+
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * Correlated subquery: lowest price among a product's AVAILABLE variants.
+     */
+    private static Expression<BigDecimal> lowestAvailablePriceExpression(
+            Root<Product> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        Subquery<BigDecimal> subquery = query.subquery(BigDecimal.class);
+        Root<ProductVariant> variantRoot = subquery.from(ProductVariant.class);
+        subquery.select(cb.min(variantRoot.get("price")));
+        subquery.where(
+                cb.equal(variantRoot.get("product").get("id"), root.get("id")),
+                cb.equal(variantRoot.get("status"), ProductVariantStatus.AVAILABLE)
+        );
+        return subquery;
+    }
+
+    /**
+     * Correlated subquery: total quantity sold for a product across COMPLETED orders only
+     * (excludes cancelled/refunded/not-yet-fulfilled orders).
+     */
+    private static Expression<Long> totalQuantitySoldExpression(
+            Root<Product> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
+        Subquery<Long> subquery = query.subquery(Long.class);
+        Root<Order> orderRoot = subquery.from(Order.class);
+        Join<Order, OrderItem> itemJoin = orderRoot.join("items");
+        Join<OrderItem, ProductVariant> variantJoin = itemJoin.join("productVariant");
+        subquery.select(cb.sumAsLong(itemJoin.get("quantity")));
+        subquery.where(
+                cb.equal(variantJoin.get("product").get("id"), root.get("id")),
+                cb.equal(orderRoot.get("orderStatus"), OrderStatus.COMPLETED)
+        );
+        return cb.coalesce(subquery, 0L);
     }
 }

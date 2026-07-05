@@ -4,6 +4,7 @@ import com.oose.tech_store.dto.supplyorder.CreateSupplyOrderRequestDTO;
 import com.oose.tech_store.dto.supplyorder.SupplyOrderItemRequestDTO;
 import com.oose.tech_store.dto.supplyorder.SupplyOrderItemResponseDTO;
 import com.oose.tech_store.dto.supplyorder.SupplyOrderResponseDTO;
+import com.oose.tech_store.dto.supplyorder.SupplyOrderSearchRequestDTO;
 import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.entity.SupplyOrder;
 import com.oose.tech_store.entity.SupplyOrderItem;
@@ -18,8 +19,14 @@ import com.oose.tech_store.repository.SupplyOrderRepository;
 import com.oose.tech_store.repository.SupplierRepository;
 import com.oose.tech_store.service.supplier.SupplyOrderService;
 import com.oose.tech_store.service.warehouse.WarehouseService;
+import com.oose.tech_store.specification.SupplyOrderSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +53,35 @@ public class SupplyOrderServiceImpl implements SupplyOrderService {
         return supplyOrderRepository.findAll().stream()
                 .map(po -> mapToResponseDTO(po, null))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupplyOrderResponseDTO> searchSupplyOrders(SupplyOrderSearchRequestDTO request) {
+        int page = Math.max(0, request.getPage());
+        int size = request.getSize() > 0 ? request.getSize() : 10;
+        Pageable pageable = PageRequest.of(page, size, parseSort(request.getSort()));
+
+        Specification<SupplyOrder> spec = SupplyOrderSpecification.buildFromRequest(request);
+        return supplyOrderRepository.findAll(spec, pageable).map(po -> mapToResponseDTO(po, null));
+    }
+
+    private Sort parseSort(String sortParam) {
+        if (sortParam == null || sortParam.isBlank()) {
+            return Sort.by(Sort.Direction.DESC, "orderDate");
+        }
+
+        String[] parts = sortParam.split(",");
+        String field = parts[0].trim();
+        Sort.Direction direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim())
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+
+        return switch (field) {
+            case "orderDate" -> Sort.by(direction, "orderDate");
+            case "supplierName" -> Sort.by(direction, "supplier.name");
+            default -> Sort.by(Sort.Direction.DESC, "orderDate");
+        };
     }
 
     @Override

@@ -1,4 +1,5 @@
 import { formatDate } from './utils';
+import { SkeletonTableRows } from '../../components/index';
 
 const logTypeLabel = (type) => type === 'IMPORT' ? 'Nhập kho' : 'Xuất kho';
 const statusLabel = (status) =>
@@ -12,7 +13,7 @@ export function WarehouseLogTable({ logs, loading, onShowDetail }) {
       <div className="admin-card__head">
         <div>
           <p>KẾT QUẢ TRA CỨU</p>
-          <h3>{logs.length ? `${logs.length} phiếu nhập/xuất` : 'Chưa có nhật ký phù hợp'}</h3>
+          <h3>{loading ? 'Đang tải...' : logs.length ? `${logs.length} phiếu nhập/xuất` : 'Chưa có nhật ký phù hợp'}</h3>
         </div>
       </div>
       <div className="admin-table-wrap">
@@ -30,7 +31,7 @@ export function WarehouseLogTable({ logs, loading, onShowDetail }) {
             </tr>
           </thead>
           <tbody>
-            {logs.map((log) => (
+            {loading ? <SkeletonTableRows columns={8} /> : logs.map((log) => (
               <tr key={`${log.logType}-${log.logId}`}>
                 <td><b>{log.logId}</b></td>
                 <td>{logTypeLabel(log.logType)}</td>

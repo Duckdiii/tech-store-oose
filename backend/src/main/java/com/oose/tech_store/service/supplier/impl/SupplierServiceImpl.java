@@ -2,6 +2,7 @@ package com.oose.tech_store.service.supplier.impl;
 
 import com.oose.tech_store.dto.supplier.CreateSupplierRequestDTO;
 import com.oose.tech_store.dto.supplier.SupplierResponseDTO;
+import com.oose.tech_store.dto.supplier.SupplierSearchRequestDTO;
 import com.oose.tech_store.dto.supplier.UpdateSupplierRequestDTO;
 import com.oose.tech_store.entity.Supplier;
 import com.oose.tech_store.entity.enums.POStatus;
@@ -12,8 +13,14 @@ import com.oose.tech_store.exception.SupplierHasActivePOException;
 import com.oose.tech_store.repository.SupplyOrderRepository;
 import com.oose.tech_store.repository.SupplierRepository;
 import com.oose.tech_store.service.supplier.SupplierService;
+import com.oose.tech_store.specification.SupplierSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +40,35 @@ public class SupplierServiceImpl implements SupplierService {
         return supplierRepository.findAll().stream()
                 .map(s -> new SupplierResponseDTO(s.getId(), s.getName(), s.getEmail(), s.getPhone(), s.getAddress()))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupplierResponseDTO> searchSuppliers(SupplierSearchRequestDTO request) {
+        int page = Math.max(0, request.getPage());
+        int size = request.getSize() > 0 ? request.getSize() : 10;
+        Pageable pageable = PageRequest.of(page, size, parseSort(request.getSort()));
+
+        Specification<Supplier> spec = SupplierSpecification.buildFromRequest(request);
+        return supplierRepository.findAll(spec, pageable)
+                .map(s -> new SupplierResponseDTO(s.getId(), s.getName(), s.getEmail(), s.getPhone(), s.getAddress()));
+    }
+
+    private Sort parseSort(String sortParam) {
+        if (sortParam == null || sortParam.isBlank()) {
+            return Sort.by(Sort.Direction.ASC, "name");
+        }
+
+        String[] parts = sortParam.split(",");
+        String field = parts[0].trim();
+        Sort.Direction direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim())
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+
+        return switch (field) {
+            case "name", "email", "phone" -> Sort.by(direction, field);
+            default -> Sort.by(Sort.Direction.ASC, "name");
+        };
     }
 
     @Override

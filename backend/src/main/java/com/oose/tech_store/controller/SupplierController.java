@@ -2,10 +2,12 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.supplier.CreateSupplierRequestDTO;
 import com.oose.tech_store.dto.supplier.SupplierResponseDTO;
+import com.oose.tech_store.dto.supplier.SupplierSearchRequestDTO;
 import com.oose.tech_store.dto.supplier.UpdateSupplierRequestDTO;
 import com.oose.tech_store.service.supplier.SupplierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +22,16 @@ public class SupplierController {
     @GetMapping
     public ResponseEntity<java.util.List<SupplierResponseDTO>> getAllSuppliers() {
         return ResponseEntity.ok(supplierService.getAllSuppliers());
+    }
+
+    /**
+     * Paginated, filterable listing for the Manager "Nhà cung cấp" table.
+     *
+     * GET /api/manage/suppliers/search?keyword=...&page=0&size=10&sort=name,asc
+     */
+    @GetMapping("/search")
+    public Page<SupplierResponseDTO> searchSuppliers(@ModelAttribute SupplierSearchRequestDTO request) {
+        return supplierService.searchSuppliers(request);
     }
 
     @PostMapping

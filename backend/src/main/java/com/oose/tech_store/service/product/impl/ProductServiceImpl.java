@@ -133,10 +133,13 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // Validate allowed sort fields
+        // Validate allowed sort fields.
+        // "price" and "sold" are computed values (not mapped columns), so they're not
+        // ordered here — ProductSpecification adds a correlated-subquery ORDER BY for
+        // them directly, and Pageable stays unsorted to avoid Spring Data overwriting it.
         return switch (field) {
-            case "name", "screenSize", "batteryCapacity" -> Sort.by(direction, field);
-            case "price" -> Sort.by(direction, "lowestPrice");
+            case "name", "screenSize", "batteryCapacity", "createdAt" -> Sort.by(direction, field);
+            case "price", "sold" -> Sort.unsorted();
             default -> Sort.by(Sort.Direction.ASC, "name");
         };
     }

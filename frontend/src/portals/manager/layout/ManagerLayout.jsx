@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { NAV_ITEMS, adminStyles, LAST_BACKUP } from '../constants';
 import { useAuth } from '../../../shared/context/AuthContext';
 import { manageNotificationApi } from '../../../api/manageNotificationApi';
@@ -21,15 +21,23 @@ function getRoleLabel(role) {
 }
 
 export function ManagerLayout({ activeSection, title, query, onQueryChange, breadcrumbs, badges, children }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const displayName = user?.name || user?.email || 'Manager';
   const initials = getInitials(user?.name, user?.email);
   const roleLabel = getRoleLabel(user?.role);
 
+  const handleLogout = () => {
+    logout();
+    navigate('/sign-in');
+  };
+
   const [notifications, setNotifications] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const notifRef = useRef(null);
+  const profileRef = useRef(null);
 
   const loadNotifications = async () => {
     setNotifLoading(true);
@@ -56,6 +64,9 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
     const clickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotif(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
       }
     };
     document.addEventListener('mousedown', clickOutside);
@@ -187,6 +198,53 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
           font-size: 12px;
           color: #475569;
           line-height: 1.4;
+        }
+        .admin-profile-btn {
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+        }
+        .admin-profile-dropdown {
+          position: absolute;
+          top: 48px;
+          right: 0;
+          width: 220px;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+          border: 1px solid #e2e8f0;
+          z-index: 50;
+          overflow: hidden;
+        }
+        .admin-profile-dropdown__head {
+          padding: 14px 16px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .admin-profile-dropdown__head strong {
+          display: block;
+          font-size: 13px;
+          color: #0f172a;
+        }
+        .admin-profile-dropdown__head small {
+          font-size: 11.5px;
+          color: #94a3b8;
+        }
+        .admin-profile-dropdown__logout {
+          display: block;
+          width: 100%;
+          padding: 11px 16px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: 13px;
+          color: #e11d48;
+          font-weight: 600;
+          font-family: inherit;
+          text-align: left;
+        }
+        .admin-profile-dropdown__logout:hover {
+          background: #fef2f2;
         }
       `}</style>
 
@@ -325,7 +383,27 @@ export function ManagerLayout({ activeSection, title, query, onQueryChange, brea
               )}
             </div>
 
-            <div className="admin-profile" title={displayName}>{initials}</div>
+            <div ref={profileRef} style={{ position: 'relative' }}>
+              <button
+                className="admin-profile-btn"
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                title={displayName}
+              >
+                <div className="admin-profile">{initials}</div>
+              </button>
+
+              {showProfileMenu && (
+                <div className="admin-profile-dropdown">
+                  <div className="admin-profile-dropdown__head">
+                    <strong>{displayName}</strong>
+                    <small>{roleLabel}</small>
+                  </div>
+                  <button className="admin-profile-dropdown__logout" onClick={handleLogout}>
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <section className="admin-content">

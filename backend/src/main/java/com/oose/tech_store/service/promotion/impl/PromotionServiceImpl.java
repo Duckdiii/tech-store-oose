@@ -4,6 +4,8 @@ import com.oose.tech_store.dto.promotion.CreatePromotionRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionOperationResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionPerformanceResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionResponseDTO;
+import com.oose.tech_store.dto.promotion.PromotionSearchRequestDTO;
+import com.oose.tech_store.dto.promotion.PromotionStatusCountsDTO;
 import com.oose.tech_store.dto.promotion.FlashSaleResponseDTO;
 import com.oose.tech_store.dto.promotion.UpdatePromotionRequestDTO;
 import com.oose.tech_store.entity.Product;
@@ -18,6 +20,7 @@ import com.oose.tech_store.service.promotion.DuplicatePromotionCodeException;
 import com.oose.tech_store.service.promotion.PromotionInUseException;
 import com.oose.tech_store.service.promotion.PromotionNotFoundException;
 import com.oose.tech_store.service.promotion.PromotionService;
+import com.oose.tech_store.specification.PromotionSpecification;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -27,6 +30,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +53,36 @@ public class PromotionServiceImpl implements PromotionService {
         return promotionRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PromotionResponseDTO> searchPromotions(PromotionSearchRequestDTO request) {
+        int page = Math.max(0, request.getPage());
+        int size = request.getSize() > 0 ? request.getSize() : 10;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+
+        Specification<Promotion> spec = PromotionSpecification.buildFromRequest(request);
+        return promotionRepository.findAll(spec, pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PromotionStatusCountsDTO getStatusCounts(String keyword) {
+        PromotionSearchRequestDTO base = new PromotionSearchRequestDTO();
+        base.setKeyword(keyword);
+
+        long all = countWithStatus(base, null);
+        long active = countWithStatus(base, "ACTIVE");
+        long inactive = countWithStatus(base, "INACTIVE");
+        return new PromotionStatusCountsDTO(all, active, inactive);
+    }
+
+    private long countWithStatus(PromotionSearchRequestDTO base, String status) {
+        PromotionSearchRequestDTO request = new PromotionSearchRequestDTO();
+        request.setKeyword(base.getKeyword());
+        request.setStatus(status);
+        return promotionRepository.count(PromotionSpecification.buildFromRequest(request));
     }
 
     @Override

@@ -5,6 +5,14 @@ export const promotionApi = {
     return httpClient.get('/promotions').then((res) => res.data);
   },
 
+  searchPromotions(params) {
+    return httpClient.get('/promotions/search', { params }).then((res) => res.data);
+  },
+
+  getStatusCounts(keyword) {
+    return httpClient.get('/promotions/status-counts', { params: { keyword } }).then((res) => res.data);
+  },
+
   getPromotion(id) {
     return httpClient.get(`/promotions/${id}`).then((res) => res.data);
   },

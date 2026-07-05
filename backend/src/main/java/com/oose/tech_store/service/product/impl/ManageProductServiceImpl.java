@@ -2,19 +2,32 @@ package com.oose.tech_store.service.product.impl;
 
 import com.oose.tech_store.dto.manage.ManageProductRequestDTO;
 import com.oose.tech_store.dto.manage.ManageProductResponseDTO;
+import com.oose.tech_store.dto.manage.ManageProductSearchRequestDTO;
+import com.oose.tech_store.dto.manage.ManageProductStatusCountsDTO;
 import com.oose.tech_store.entity.Brand;
 import com.oose.tech_store.entity.Category;
 import com.oose.tech_store.entity.Product;
 import com.oose.tech_store.entity.ProductImage;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.repository.BrandRepository;
 import com.oose.tech_store.repository.CategoryRepository;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
+import com.oose.tech_store.repository.ProductVariantRepository.ProductAvailableCount;
 import com.oose.tech_store.service.product.ManageProductService;
+import com.oose.tech_store.specification.ManageProductSpecification;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +45,76 @@ public class ManageProductServiceImpl implements ManageProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ManageProductResponseDTO> getAllProducts() {
-        return productRepository.findAll().stream()
+        List<Product> products = productRepository.findAll();
+        Map<String, Long> availableCounts = availableCountsByProductId(products);
+
+        return products.stream()
                 .sorted(Comparator.comparing(Product::getName, String.CASE_INSENSITIVE_ORDER))
-                .map(this::toResponse)
+                .map(product -> toResponse(product, availableCounts.getOrDefault(product.getId(), 0L)))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ManageProductResponseDTO> searchProducts(ManageProductSearchRequestDTO request) {
+        int page = Math.max(0, request.getPage());
+        int size = request.getSize() > 0 ? request.getSize() : 10;
+        Pageable pageable = PageRequest.of(page, size, parseSort(request.getSort()));
+
+        Specification<Product> spec = ManageProductSpecification.buildFromRequest(request);
+        Page<Product> products = productRepository.findAll(spec, pageable);
+        Map<String, Long> availableCounts = availableCountsByProductId(products.getContent());
+
+        return products.map(product -> toResponse(product, availableCounts.getOrDefault(product.getId(), 0L)));
+    }
+
+    private Map<String, Long> availableCountsByProductId(List<Product> products) {
+        if (products.isEmpty()) {
+            return Map.of();
+        }
+        List<String> productIds = products.stream().map(Product::getId).toList();
+        return productVariantRepository.countByProductIdInAndStatus(productIds, ProductVariantStatus.AVAILABLE)
+                .stream()
+                .collect(Collectors.toMap(ProductAvailableCount::getProductId, ProductAvailableCount::getAvailableCount));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ManageProductStatusCountsDTO getStatusCounts(String keyword) {
+        ManageProductSearchRequestDTO base = new ManageProductSearchRequestDTO();
+        base.setKeyword(keyword);
+
+        long all = countWithStatus(base, null);
+        long active = countWithStatus(base, "ACTIVE");
+        long low = countWithStatus(base, "LOW");
+        long hidden = countWithStatus(base, "HIDDEN");
+        return new ManageProductStatusCountsDTO(all, active, low, hidden);
+    }
+
+    private long countWithStatus(ManageProductSearchRequestDTO base, String status) {
+        ManageProductSearchRequestDTO request = new ManageProductSearchRequestDTO();
+        request.setKeyword(base.getKeyword());
+        request.setStatus(status);
+        return productRepository.count(ManageProductSpecification.buildFromRequest(request));
+    }
+
+    private Sort parseSort(String sortParam) {
+        if (sortParam == null || sortParam.isBlank()) {
+            return Sort.by(Sort.Direction.ASC, "name");
+        }
+
+        String[] parts = sortParam.split(",");
+        String field = parts[0].trim();
+        Sort.Direction direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim())
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+
+        return switch (field) {
+            case "name" -> Sort.by(direction, "name");
+            case "brand" -> Sort.by(direction, "brand.name");
+            case "category" -> Sort.by(direction, "category.name");
+            default -> Sort.by(Sort.Direction.ASC, "name");
+        };
     }
 
     @Override
@@ -147,6 +226,11 @@ public class ManageProductServiceImpl implements ManageProductService {
     }
 
     private ManageProductResponseDTO toResponse(Product product) {
+        long availableCount = productVariantRepository.countByProductIdAndStatus(product.getId(), ProductVariantStatus.AVAILABLE);
+        return toResponse(product, availableCount);
+    }
+
+    private ManageProductResponseDTO toResponse(Product product, long availableCount) {
         Brand brand = product.getBrand();
         Category category = product.getCategory();
 
@@ -171,6 +255,7 @@ public class ManageProductServiceImpl implements ManageProductService {
                 product.getSimType(),
                 product.getOperatingSystem(),
                 product.getScreenResolution(),
+                (int) availableCount,
                 images);
     }
 

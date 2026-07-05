@@ -1,15 +1,70 @@
-import { useState, useMemo } from 'react';
-import { ConfirmDialog, Status, DataTable, EmptyState } from '../components/index';
-import { money, initials, sortRows } from '../utils';
+import { useEffect, useState } from 'react';
+import { ConfirmDialog, Status, DataTable, EmptyState, SkeletonTableRows } from '../components/index';
+import { money, initials } from '../utils';
+import { customerApi } from '../../../api/customerApi';
 
-export function CustomersPage({ customers, onToggle }) {
+const PAGE_SIZE = 10;
+
+const MEMBERSHIP_TIER_LABEL = {
+  STANDARD: 'Member',
+  BRONZE: 'Bronze',
+  SILVER: 'Silver',
+  GOLD: 'Gold',
+  DIAMOND: 'Diamond',
+};
+
+export function CustomersPage({ refreshToken, onToggle }) {
   const [blockConfirm, setBlockConfirm] = useState(null);
-  const [sortKey,      setSortKey]      = useState('');
-  const [sortDir,      setSortDir]      = useState('asc');
+  const [sortKey, setSortKey] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
 
-  const activeCount = customers.filter((c) => c.active).length;
+  const [visible, setVisible] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const visible = useMemo(() => sortRows(customers, sortKey, sortDir), [customers, sortKey, sortDir]);
+  const isFiltering = search.trim() !== '';
+
+  // Đổi từ khóa tìm kiếm thì quay về trang đầu.
+  useEffect(() => { setPage(0); }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await customerApi.search({
+          keyword: search.trim() || undefined,
+          page,
+          size: PAGE_SIZE,
+          sort: `${sortKey},${sortDir}`,
+        });
+        const mapped = (data.content || []).map((c) => ({
+          id: c.customerId,
+          accountId: c.accountId,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          orders: Number(c.totalOrders || 0),
+          spent: Number(c.totalSpent || 0),
+          tier: MEMBERSHIP_TIER_LABEL[c.tier] || c.tier,
+          active: c.active,
+        }));
+        setVisible(mapped);
+        setTotalElements(data.totalElements || 0);
+        setTotalPages(data.totalPages || 0);
+      } catch (err) {
+        console.error('Failed to fetch customers', err);
+        setVisible([]);
+        setTotalElements(0);
+        setTotalPages(0);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, page, sortKey, sortDir, refreshToken]);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
@@ -18,11 +73,11 @@ export function CustomersPage({ customers, onToggle }) {
 
   const columns = [
     { label: 'Khách hàng',     key: 'name'   },
-    'Email',
-    { label: 'Số đơn',         key: 'orders' },
-    { label: 'Tổng chi tiêu',  key: 'spent'  },
+    { label: 'Email',          key: 'email'  },
+    'Số đơn',
+    'Tổng chi tiêu',
     { label: 'Hạng',           key: 'tier'   },
-    { label: 'Trạng thái',     key: 'active' },
+    'Trạng thái',
     '',
   ];
 
@@ -30,17 +85,30 @@ export function CustomersPage({ customers, onToggle }) {
     <>
       <div className="admin-page-intro">
         <div>
-          <p>{activeCount} khách hàng đang hoạt động</p>
+          <p>{totalElements} khách hàng{isFiltering ? ' phù hợp' : ''}</p>
           <h2>Khách hàng</h2>
         </div>
       </div>
 
       <article className="admin-card">
+        <div className="admin-filterbar" style={{ marginBottom: 12 }}>
+          <input
+            type="text"
+            className="admin-status-select"
+            placeholder="Tìm theo tên, email hoặc số điện thoại"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ minWidth: 260 }}
+          />
+        </div>
+
         <DataTable columns={columns} sortKey={sortKey} sortDir={sortDir} onSort={handleSort}>
-          {visible.length === 0 ? (
+          {loading ? (
+            <SkeletonTableRows columns={columns.length} />
+          ) : visible.length === 0 ? (
             <EmptyState
-              message="Chưa có khách hàng nào"
-              hint="Khách hàng sẽ xuất hiện ở đây sau khi họ đăng ký tài khoản."
+              message={isFiltering ? 'Không có khách hàng nào phù hợp' : 'Chưa có khách hàng nào'}
+              hint={isFiltering ? 'Thử từ khóa khác.' : 'Khách hàng sẽ xuất hiện ở đây sau khi họ đăng ký tài khoản.'}
             />
           ) : visible.map((customer) => (
             <tr key={customer.id}>
@@ -63,6 +131,26 @@ export function CustomersPage({ customers, onToggle }) {
             </tr>
           ))}
         </DataTable>
+
+        {!loading && totalPages > 1 && (
+          <div className="admin-pagination">
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              ‹ Trước
+            </button>
+            <span>Trang {page + 1} / {totalPages}</span>
+            <button
+              className="admin-button admin-button--secondary"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              Sau ›
+            </button>
+          </div>
+        )}
       </article>
 
       {blockConfirm && (

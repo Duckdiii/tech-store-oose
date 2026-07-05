@@ -27,6 +27,17 @@ export const adminStyles = `
     to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes admin-spin { to { transform: rotate(360deg); } }
+  .admin-skeleton {
+    display: block;
+    background: linear-gradient(90deg, #eef1f4 25%, #f7f8fa 37%, #eef1f4 63%);
+    background-size: 400% 100%;
+    animation: admin-shimmer 1.4s ease-in-out infinite;
+    border-radius: 6px;
+  }
+  @keyframes admin-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+  }
 `;
 
 export const INITIAL_DATA = {

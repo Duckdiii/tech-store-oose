@@ -26,6 +26,16 @@ export const productApi = {
     return (response.data || []).map(normalizeProductForManager);
   },
 
+  searchManagerCatalog: async (params) => {
+    const response = await httpClient.get('/manage/products/search', { params });
+    return { ...response.data, content: (response.data.content || []).map(normalizeProductForManager) };
+  },
+
+  getManagerCatalogStatusCounts: async (keyword) => {
+    const response = await httpClient.get('/manage/products/status-counts', { params: { keyword } });
+    return response.data;
+  },
+
   getManagerProductDetail: async (id) => {
     const response = await httpClient.get(`/manage/products/${id}`);
     return normalizeProductForManager(response.data);
