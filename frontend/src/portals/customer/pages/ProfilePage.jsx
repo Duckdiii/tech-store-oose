@@ -7,6 +7,7 @@ import { orderApi } from '../../../api/orderApi';
 import { membershipApi } from '../../../api/membershipApi';
 import { userApi } from '../../../api/userApi';
 import { notificationApi } from '../../../api/notificationApi';
+import { useTheme } from '../../../shared/context/ThemeContext';
 
 
 
@@ -72,6 +73,7 @@ const SIDEBAR_FOOTER = [
 export function ProfilePage() {
   const { user, login, logout, isLoggedIn } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTheme();
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('overview');
   const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', birthday: '', gender: '' });
@@ -286,6 +288,10 @@ export function ProfilePage() {
   const tierTarget = tierInfo ? Number(tierInfo.nextTierRequirement || 0) : 50000000;
   const tierProgress = tierTarget > 0 ? Math.min(100, Math.round((totalSpend / tierTarget) * 100)) : 100;
   const currentTierName = tierInfo ? (tierInfo.tierName || tierInfo.currentTierName) : 'Thành viên';
+  const activeBenefits = Array.isArray(tierInfo?.activeBenefits) && tierInfo.activeBenefits.length > 0
+    ? tierInfo.activeBenefits
+    : ['Standard membership benefits'];
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
 
   const SectionTitle = ({ children }) => (
     <div style={{ fontSize: 16, fontWeight: 800, color: '#0d1117', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f3f5' }}>{children}</div>
@@ -548,7 +554,7 @@ export function ProfilePage() {
             <div style={{ border: '1.5px solid #f1f3f5', borderRadius: 14, padding: 18 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#0d1117', marginBottom: 12 }}>Quyền lợi đang áp dụng</div>
               <div style={{ display: 'grid', gap: 10 }}>
-                {(tierInfo?.activeBenefits || ['Standard membership benefits']).map((benefit, index) => (
+                {activeBenefits.map((benefit, index) => (
                   <div key={`${benefit}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 10 }}>
                     <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#f0fdf4', color: '#15803d', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                       <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
@@ -568,7 +574,7 @@ export function ProfilePage() {
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '20px 22px' }}>
       <SectionTitle>Mã giảm giá của tôi</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {vouchers.map(v => (
+        {safeVouchers.map(v => (
           <div key={v.code} style={{ border: '1.5px dashed #e9ecef', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, background: '#fafafa' }}>
             <div style={{ width: 44, height: 44, background: RED, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="20" height="20" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
@@ -807,7 +813,7 @@ export function ProfilePage() {
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '0 8px', marginBottom: 16, display: 'flex', overflowX: 'auto' }}>
           {[
             { id: 'membership', label: 'Hạng thành viên' },
-            { id: 'vouchers',   label: 'Mã giảm giá', badge: vouchers.length },
+            { id: 'vouchers',   label: 'Mã giảm giá', badge: safeVouchers.length },
             { id: 'orders',     label: 'Lịch sử mua hàng' },
             { id: 'address',    label: 'Số địa chỉ' },
             { id: 'referral',   label: 'Giới thiệu bạn bè', badge: 'Mới' },
@@ -862,7 +868,7 @@ export function ProfilePage() {
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', padding: '18px 16px' }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#0d1117', marginBottom: 14 }}>Ưu đãi của bạn</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {vouchers.map(v => (
+                {safeVouchers.map(v => (
                   <div key={v.code} style={{ border: '1px solid #f0f0f0', borderRadius: 10, overflow: 'hidden', display: 'flex' }}>
                     <div style={{ width: 8, background: RED, flexShrink: 0 }}/>
                     <div style={{ padding: '10px 12px', flex: 1 }}>
