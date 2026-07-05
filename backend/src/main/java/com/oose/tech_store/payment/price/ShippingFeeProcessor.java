@@ -15,7 +15,7 @@ public class ShippingFeeProcessor implements PriceProcessor {
 
         if (context.getCustomer().getMembership() != null) {
             MembershipBenefit benefit = context.getCustomer().getMembership().getBenefit();
-            isFreeShip = benefit.hasFreeShipping();
+            isFreeShip = isFreeShip || benefit.hasFreeShipping();
         }
 
         if (context.getSubtotal().compareTo(BigDecimal.valueOf(500000)) >= 0) {

@@ -8,8 +8,9 @@ import com.oose.tech_store.entity.enums.NotificationType;
 import com.oose.tech_store.exception.ApiException;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.payment.PendingCheckout;
+import com.oose.tech_store.payment.price.CheckoutPricingService;
+import com.oose.tech_store.payment.price.PriceContext;
 import com.oose.tech_store.repository.*;
-import com.oose.tech_store.payment.price.*;
 import com.oose.tech_store.service.order.OrderFulfillmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,8 +33,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
         private final InvoiceRepository invoiceRepository;
         private final NotificationRepository notificationRepository;
         private final ProductVariantRepository productVariantRepository;
-        private final List<PriceProcessor> priceProcessors; // [MembershipDiscountProcessor (vị trí 0),
-                                                            // ShippingFeeProcessor (vị trí 1)]
+        private final CheckoutPricingService checkoutPricingService;
 
         @Override
         @Transactional
@@ -63,10 +63,7 @@ public class OrderFulfillmentServiceImpl implements OrderFulfillmentService {
 
                 Order order = Order.create(customer, address, paymentMethod, selectedItems); // tạo order mới
 
-                PriceContext priceContext = new PriceContext(order, customer);
-                for (PriceProcessor processor : priceProcessors) {
-                        processor.process(priceContext);
-                }
+                PriceContext priceContext = checkoutPricingService.calculate(order, customer);
 
                 if (PaymentLogStatus.SUCCESS.equals(paymentStatus)) {
                         order.markPaid();
