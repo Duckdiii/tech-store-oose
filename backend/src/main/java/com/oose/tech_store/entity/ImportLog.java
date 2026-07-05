@@ -20,6 +20,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ImportLog extends BaseEntity {
 
+    // ImportLogItems
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "import_log_id", nullable = false)
     private List<ImportLogItem> items = new ArrayList<>();
@@ -37,7 +38,7 @@ public class ImportLog extends BaseEntity {
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
-    @PrePersist
+    @PrePersist // được chạy trước khi entity được insert vào db
     protected void prePersistImportLog() {
         if (importedAt == null) {
             importedAt = LocalDateTime.now();

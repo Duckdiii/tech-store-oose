@@ -17,10 +17,6 @@ export const promotionApi = {
     return httpClient.get(`/promotions/${id}`).then((res) => res.data);
   },
 
-  getPromotionPerformance(id) {
-    return httpClient.get(`/promotions/${id}/performance`).then((res) => res.data);
-  },
-
   createPromotion(payload) {
     return httpClient.post('/promotions', payload).then((res) => res.data);
   },

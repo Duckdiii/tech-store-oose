@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ImportLogItem extends BaseEntity {
 
+    // ProductVariant
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_variant_id", nullable = false)
     private ProductVariant productVariant;

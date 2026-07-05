@@ -27,9 +27,12 @@ public class Notification extends BaseEntity {
     @Column(name = "type", nullable = false, length = 40)
     private NotificationType type;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "notification_channels", joinColumns = @JoinColumn(name = "notification_id"))
-    @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.LAZY) // là 1 collection chứa được nhiều giá trị enum NotificationChannel
+    @CollectionTable(name = "notification_channels", joinColumns = @JoinColumn(name = "notification_id")) // Bảng phụ để
+                                                                                                          // lưu trữ các
+                                                                                                          // kênh thông
+                                                                                                          // báo
+    @Enumerated(EnumType.STRING) // Lưu trữ các giá trị enum dưới dạng chuỗi trong cơ sở dữ liệu
     @Column(name = "channel", nullable = false, length = 20)
     private List<NotificationChannel> channels = new ArrayList<>();
 
@@ -46,10 +49,12 @@ public class Notification extends BaseEntity {
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
+    // FavoriteProduct
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "favorite_product_id")
     private FavoriteProduct favoriteProduct;
 
+    // Customer
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     private Customer customer;
@@ -57,7 +62,8 @@ public class Notification extends BaseEntity {
     @Column(name = "recipient_role", length = 30)
     private String recipientRole;
 
-    public Notification(Customer customer, String title, NotificationType type, String message, List<NotificationChannel> channels) {
+    public Notification(Customer customer, String title, NotificationType type, String message,
+            List<NotificationChannel> channels) {
         if (customer == null) {
             throw new IllegalArgumentException("customer must not be null");
         }
@@ -78,7 +84,8 @@ public class Notification extends BaseEntity {
         customer.getNotifications().add(this);
     }
 
-    public Notification(String title, NotificationType type, String message, String recipientRole, List<NotificationChannel> channels) {
+    public Notification(String title, NotificationType type, String message, String recipientRole,
+            List<NotificationChannel> channels) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("title must not be blank");
         }

@@ -12,18 +12,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "favorite_products", uniqueConstraints = @UniqueConstraint(
-        name = "uk_favorite_products_customer_variant",
-        columnNames = { "customer_id", "product_variant_id" }))
+@Table(name = "favorite_products", uniqueConstraints = @UniqueConstraint(name = "uk_favorite_products_customer_variant", columnNames = {
+        "customer_id", "product_variant_id" }))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FavoriteProduct extends BaseEntity {
 
+    // ProductVariant
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_variant_id", nullable = false)
     private ProductVariant productVariant;
 
+    // Customer
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
@@ -38,10 +39,11 @@ public class FavoriteProduct extends BaseEntity {
     @Column(name = "unsubscribed_at")
     private LocalDateTime unsubscribedAt;
 
+    // Notifications
     @OneToMany(mappedBy = "favoriteProduct", fetch = FetchType.LAZY)
     private List<Notification> notifications = new ArrayList<>();
 
-    @PrePersist
+    @PrePersist // được chạy trước khi entity được insert vào db
     protected void prePersistFavoriteProduct() {
         if (subscribedAt == null) {
             subscribedAt = LocalDateTime.now();

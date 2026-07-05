@@ -2,7 +2,6 @@ package com.oose.tech_store.service.promotion;
 
 import com.oose.tech_store.dto.promotion.CreatePromotionRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionOperationResponseDTO;
-import com.oose.tech_store.dto.promotion.PromotionPerformanceResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionSearchRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionStatusCountsDTO;
@@ -20,8 +19,6 @@ public interface PromotionService {
     PromotionStatusCountsDTO getStatusCounts(String keyword);
 
     PromotionResponseDTO getPromotion(String id);
-
-    PromotionPerformanceResponseDTO getPromotionPerformance(String id);
 
     PromotionResponseDTO createPromotion(CreatePromotionRequestDTO request);
 

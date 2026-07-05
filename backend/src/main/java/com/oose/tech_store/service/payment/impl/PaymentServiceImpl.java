@@ -100,7 +100,6 @@ public class PaymentServiceImpl implements PaymentService {
                 .customerId(customerId)
                 .addressId(request.addressId())
                 .paymentMethodId(request.paymentMethodId())
-                .promotionCode(normalizePromotionCode(request.promotionCode()))
                 .amount(amount)
                 .cartItemIds(selectedItems.stream().map(CartItem::getId).toList())
                 .createdAt(LocalDateTime.now())
@@ -143,10 +142,6 @@ public class PaymentServiceImpl implements PaymentService {
         if (request.selectedCartItemIds() == null || request.selectedCartItemIds().isEmpty()) {
             throw new IllegalArgumentException("At least one cart item must be selected");
         }
-    }
-
-    private String normalizePromotionCode(String code) {
-        return code == null || code.isBlank() ? null : code.trim().toUpperCase(Locale.ROOT);
     }
 
     private CartItemDto toCartItemDto(CartItem item) {

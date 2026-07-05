@@ -22,10 +22,12 @@ public class Product extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    // Brand
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "brand_id", nullable = false)
     private Brand brand;
 
+    // Category
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
@@ -57,12 +59,16 @@ public class Product extends BaseEntity {
     @Column(name = "screen_resolution", length = 120)
     private String screenResolution;
 
+    // ProductImages
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private List<ProductImage> images = new ArrayList<>();
 
+    // Promotions
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "product_promotions", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "promotion_id"))
+    @JoinTable(name = "product_promotions", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "promotion_id")) // bảng
+                                                                                                                                                     // trung
+                                                                                                                                                     // gian
     private List<Promotion> promotions = new ArrayList<>();
 
     public Product(String name, String description, Brand brand, Category category) {

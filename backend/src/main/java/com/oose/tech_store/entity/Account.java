@@ -38,10 +38,12 @@ public class Account extends BaseEntity {
     @Column(name = "status", nullable = false, length = 30)
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    // User
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
+    // LoginLogs
     @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
     private List<LoginLog> loginLogs = new ArrayList<>();
 

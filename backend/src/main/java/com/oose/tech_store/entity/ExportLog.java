@@ -18,6 +18,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExportLog extends BaseEntity {
 
+    // ExportLogItems
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "export_log_id", nullable = false)
     private List<ExportLogItem> items = new ArrayList<>();
@@ -35,7 +36,7 @@ public class ExportLog extends BaseEntity {
     @Column(name = "status", nullable = false, length = 30)
     private ImportAndExportStatus status = ImportAndExportStatus.PENDING;
 
-    @PrePersist
+    @PrePersist // được chạy trước khi entity được insert vào db
     protected void prePersistExportLog() {
         if (exportedAt == null) {
             exportedAt = LocalDateTime.now();

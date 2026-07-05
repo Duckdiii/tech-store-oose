@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { promotionApi } from '../../../api/promotionApi';
 import { productApi } from '../../../api/productApi';
 import { Spinner, SkeletonTableRows, Skeleton } from '../components/index';
@@ -70,7 +70,6 @@ function normalizePromotion(item) {
     discountType: normalizeDiscountType(item?.discountType, item?.discountValue ?? item?.discountPercent ?? 0),
     discountValue: item?.discountValue ?? item?.discountPercent ?? 0,
     productIds: Array.isArray(item?.productIds) ? item.productIds : [],
-    usageCount: Number(item?.usageCount || 0),
   };
 }
 
@@ -97,9 +96,7 @@ function blankForm() {
     startAt: defaultDateTime(),
     endAt: defaultDateTime(24 * 7),
     active: true,
-    minOrderValue: '0',
-    usageLimitPerCustomer: '',
-    totalUsageLimit: '',
+    usageLimit: '',
     selectedProducts: [],
   };
 }
@@ -113,9 +110,7 @@ function formFromPromotion(promotion) {
     startAt: toInputDateTime(promotion.startAt),
     endAt: toInputDateTime(promotion.endAt),
     active: Boolean(promotion.active),
-    minOrderValue: String(promotion.minOrderValue ?? 0),
-    usageLimitPerCustomer: promotion.usageLimitPerCustomer != null ? String(promotion.usageLimitPerCustomer) : '',
-    totalUsageLimit: promotion.totalUsageLimit != null ? String(promotion.totalUsageLimit) : '',
+    usageLimit: promotion.usageLimit != null ? String(promotion.usageLimit) : '',
     // Hydrated asynchronously in openEdit() with product names/thumbnails once fetched.
     selectedProducts: (promotion.productIds || []).map((id) => ({ id, name: id })),
   };
@@ -157,19 +152,16 @@ function PromotionModal({
   productsLoading,
   onAddProduct,
   onRemoveProduct,
-  originalProductIds,
 }) {
   const isEdit = mode === 'update';
   const now = new Date();
   const isActiveEdit = isEdit && Boolean(promotion?.active)
     && promotion?.startAt && new Date(promotion.startAt) <= now
     && promotion?.endAt && now <= new Date(promotion.endAt);
-  const usageCount = Number(promotion?.usageCount || 0);
-  const hasUsage = usageCount > 0;
   const hasStarted = isEdit && promotion?.startAt && new Date(promotion.startAt) <= now;
   const lockRestricted = (field) => {
     if (field === 'startAt') return hasStarted;
-    return (isActiveEdit || hasUsage) && RESTRICTED_FIELDS.includes(field);
+    return isActiveEdit && RESTRICTED_FIELDS.includes(field);
   };
 
   const disabledStyle = {
@@ -211,21 +203,6 @@ function PromotionModal({
             }}>
               <b style={{ display: 'block', marginBottom: 4 }}>Some fields cannot be edited while the promotion is active</b>
               Mã, loại giảm giá và giá trị giảm đã bị khóa vì promotion đang ACTIVE. Bạn chỉ có thể sửa ngày kết thúc, giới hạn sử dụng, hoặc tắt promotion trước khi sửa các field này.
-            </div>
-          )}
-
-          {hasUsage && (
-            <div style={{
-              border: '1px solid #bfdbfe',
-              background: '#eff6ff',
-              color: '#1d4ed8',
-              borderRadius: 10,
-              padding: '10px 12px',
-              fontSize: 12.5,
-              lineHeight: 1.45,
-            }}>
-              <b style={{ display: 'block', marginBottom: 4 }}>Promotion da co {usageCount} luot su dung</b>
-              Ma, loai giam, gia tri giam va san pham ap dung duoc khoa de giu lich su don hang.
             </div>
           )}
 
@@ -340,37 +317,13 @@ function PromotionModal({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             <label className="admin-field">
-              Giá trị đơn tối thiểu (VNĐ)
-              <input
-                type="number"
-                min="0"
-                step="1000"
-                value={form.minOrderValue}
-                onChange={(event) => setField('minOrderValue', event.target.value)}
-                placeholder="0"
-              />
-            </label>
-
-            <label className="admin-field">
-              Giới hạn lượt dùng / khách hàng
+              Giới hạn lượt dùng
               <input
                 type="number"
                 min="1"
                 step="1"
-                value={form.usageLimitPerCustomer}
-                onChange={(event) => setField('usageLimitPerCustomer', event.target.value)}
-                placeholder="Không giới hạn"
-              />
-            </label>
-
-            <label className="admin-field">
-              Tổng lượt dùng tối đa
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={form.totalUsageLimit}
-                onChange={(event) => setField('totalUsageLimit', event.target.value)}
+                value={form.usageLimit}
+                onChange={(event) => setField('usageLimit', event.target.value)}
                 placeholder="Không giới hạn"
               />
             </label>
@@ -434,11 +387,9 @@ function PromotionModal({
               ) : form.selectedProducts.length === 0 ? (
                 <span style={{ color: '#94a3b8', fontSize: 12 }}>Chưa chọn sản phẩm nào.</span>
               ) : form.selectedProducts.map((product) => {
-                const removeLocked = isEdit && hasUsage && originalProductIds.includes(product.id);
                 return (
                   <span
                     key={product.id}
-                    title={removeLocked ? 'Không thể gỡ sản phẩm đã có lượt sử dụng' : undefined}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -454,13 +405,12 @@ function PromotionModal({
                     {product.name}
                     <button
                       type="button"
-                      onClick={() => !removeLocked && onRemoveProduct(product.id)}
-                      disabled={removeLocked}
+                      onClick={() => onRemoveProduct(product.id)}
                       style={{
                         border: 'none',
                         background: 'transparent',
-                        cursor: removeLocked ? 'not-allowed' : 'pointer',
-                        color: removeLocked ? '#cbd5e1' : '#64748b',
+                        cursor: 'pointer',
+                        color: '#64748b',
                         fontWeight: 800,
                         padding: '0 4px',
                         lineHeight: 1,
@@ -472,12 +422,6 @@ function PromotionModal({
                 );
               })}
             </div>
-
-            {isEdit && hasUsage && (
-              <span style={{ color: '#92400e', fontSize: 11.5 }}>
-                Promotion đã có lượt sử dụng: không thể gỡ các sản phẩm đã áp dụng trước đó, nhưng vẫn có thể thêm sản phẩm mới.
-              </span>
-            )}
           </div>
 
           {isEdit && (
@@ -619,19 +563,15 @@ export function PromotionsPage() {
   const [modalMode, setModalMode] = useState(null);
   const [selectedPromotion, setSelectedPromotion] = useState(null);
   const [promotionToRemove, setPromotionToRemove] = useState(null);
-  const [expandedPromotionId, setExpandedPromotionId] = useState(null);
-  const [performanceByPromotionId, setPerformanceByPromotionId] = useState({});
   const [form, setForm] = useState(blankForm);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
-  const [expandingPromotionId, setExpandingPromotionId] = useState(null);
   const [productQuery, setProductQuery] = useState('');
   const [productResults, setProductResults] = useState([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [originalProductIds, setOriginalProductIds] = useState([]);
   const [error, setError] = useState('');
   const [removeError, setRemoveError] = useState('');
   const [removeErrorIsInUse, setRemoveErrorIsInUse] = useState(false);
@@ -723,7 +663,6 @@ export function PromotionsPage() {
     setSelectedPromotion(null);
     setModalMode('create');
     setForm(blankForm());
-    setOriginalProductIds([]);
     setProductQuery('');
     setProductResults([]);
     setError('');
@@ -735,7 +674,6 @@ export function PromotionsPage() {
     setSelectedPromotion(normalized);
     setModalMode('update');
     setForm(formFromPromotion(normalized));
-    setOriginalProductIds(normalized.productIds || []);
     setProductQuery('');
     setProductResults([]);
     setError('');
@@ -795,40 +733,6 @@ export function PromotionsPage() {
     setNotice(null);
   };
 
-  const togglePerformance = async (promotion) => {
-    const normalized = normalizePromotion(promotion);
-    const isExpanded = expandedPromotionId === normalized.id;
-
-    if (isExpanded) {
-      setExpandedPromotionId(null);
-      return;
-    }
-
-    setExpandedPromotionId(normalized.id);
-
-    if (performanceByPromotionId[normalized.id]) {
-      return;
-    }
-
-    setExpandingPromotionId(normalized.id);
-    try {
-      const data = await promotionApi.getPromotionPerformance(normalized.id);
-      setPerformanceByPromotionId((prev) => ({
-        ...prev,
-        [normalized.id]: data,
-      }));
-    } catch (err) {
-      setPerformanceByPromotionId((prev) => ({
-        ...prev,
-        [normalized.id]: {
-          error: err.response?.data?.message || 'Không tải được dữ liệu hiệu quả khuyến mãi.',
-        },
-      }));
-    } finally {
-      setExpandingPromotionId(null);
-    }
-  };
-
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setError('');
@@ -867,9 +771,7 @@ export function PromotionsPage() {
     startAt: form.startAt,
     endAt: form.endAt,
     active: form.active,
-    minOrderValue: form.minOrderValue === '' ? 0 : Number(form.minOrderValue),
-    usageLimitPerCustomer: form.usageLimitPerCustomer === '' ? null : Number(form.usageLimitPerCustomer),
-    totalUsageLimit: form.totalUsageLimit === '' ? null : Number(form.totalUsageLimit),
+    usageLimit: form.usageLimit === '' ? null : Number(form.usageLimit),
     productIds: form.selectedProducts.map((product) => product.id),
   });
 
@@ -939,9 +841,7 @@ export function PromotionsPage() {
         startAt: normalized.startAt,
         endAt: normalized.endAt,
         active: false,
-        minOrderValue: normalized.minOrderValue ?? 0,
-        usageLimitPerCustomer: normalized.usageLimitPerCustomer ?? null,
-        totalUsageLimit: normalized.totalUsageLimit ?? null,
+        usageLimit: normalized.usageLimit ?? null,
         productIds: normalized.productIds || [],
       });
       await Promise.all([loadPromotions(), loadMetrics()]);
@@ -1117,31 +1017,16 @@ export function PromotionsPage() {
                   </td>
                 </tr>
               ) : promotions.map((promotion) => {
-                const rowPerformance = performanceByPromotionId[promotion.id];
-                const isExpanded = expandedPromotionId === promotion.id;
-
                 return (
-                <Fragment key={promotion.id}>
-                <tr>
+                <tr key={promotion.id}>
                   <td>
-                    <span
-                      onClick={() => togglePerformance(promotion)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          togglePerformance(promotion);
-                        }
-                      }}
-                      style={{
+                    <span style={{
                       display: 'inline-flex',
                       borderRadius: 8,
                       background: '#f8fafc',
                       border: '1px solid #e2e8f0',
                       color: '#0d1117',
                       padding: '4px 7px',
-                      cursor: 'pointer',
                       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
                       fontSize: 11,
                       fontWeight: 850,
@@ -1165,9 +1050,6 @@ export function PromotionsPage() {
                   <td><StatusPill active={promotion.active} /></td>
                   <td>
                     <div className="admin-row-actions" style={{ justifyContent: 'flex-end', gap: 6 }}>
-                      <button type="button" className="admin-row-action" onClick={() => togglePerformance(promotion)}>
-                        Hiệu quả
-                      </button>
                       <button type="button" className="admin-row-action admin-row-action--primary" onClick={() => openEdit(promotion)}>
                         Sửa
                       </button>
@@ -1177,55 +1059,6 @@ export function PromotionsPage() {
                     </div>
                   </td>
                 </tr>
-
-                {isExpanded && (
-                  <tr className="promotion-detail-row">
-                    <td colSpan="6">
-                      <div style={{ padding: 14, display: 'grid', gap: 12, border: '1px solid #e5e7eb', borderRadius: 12, background: '#fbfcfe' }}>
-                        {expandingPromotionId === promotion.id && !rowPerformance && (
-                          <div style={{ color: '#64748b', fontSize: 12.5 }}>
-                            Đang tải hiệu quả khuyến mãi...
-                          </div>
-                        )}
-
-                        {rowPerformance?.error && (
-                          <div style={{ border: '1px solid #fecaca', background: '#fff1f2', color: '#991b1b', borderRadius: 10, padding: 12, fontSize: 12.5, lineHeight: 1.45 }}>
-                            {rowPerformance.error}
-                          </div>
-                        )}
-
-                        {rowPerformance && !rowPerformance.error && Number(rowPerformance.usageCount || 0) === 0 && (
-                          <div style={{ border: '1px solid #e5e7eb', background: '#fff', color: '#64748b', borderRadius: 10, padding: 14, fontSize: 12.5, lineHeight: 1.45, textAlign: 'center' }}>
-                            {rowPerformance.message || 'No performance data available for this promotion'}
-                          </div>
-                        )}
-
-                        {rowPerformance && !rowPerformance.error && Number(rowPerformance.usageCount || 0) > 0 && (
-                          <>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-                              {[
-                                ['Tổng lượt sử dụng', rowPerformance.usageCount ?? 0],
-                                ['Số đơn hàng dùng', rowPerformance.orderCount ?? rowPerformance.usageCount ?? 0],
-                                ['Tổng giảm giá', formatMoney(rowPerformance.totalDiscountAmount)],
-                                ['Doanh thu từ các đơn này', formatMoney(rowPerformance.totalOrderAmount)],
-                              ].map(([label, value]) => (
-                                <div key={label} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
-                                  <span style={{ color: '#94a3b8', fontSize: 9.5, fontWeight: 850, letterSpacing: '.07em', textTransform: 'uppercase' }}>{label}</span>
-                                  <b style={{ display: 'block', marginTop: 5, color: '#0d1117', fontSize: 18 }}>{value}</b>
-                                </div>
-                              ))}
-                            </div>
-
-                            <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', color: '#64748b', fontSize: 12.5, lineHeight: 1.55, background: '#fff' }}>
-                              Dữ liệu được tổng hợp từ các đơn hàng đã gắn promotion này và hóa đơn tương ứng. Doanh thu tính theo số tiền khách thực trả (sau giảm giá).
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-                </Fragment>
                 );
               })}
             </tbody>
@@ -1271,7 +1104,6 @@ export function PromotionsPage() {
           productsLoading={productsLoading}
           onAddProduct={addProductToForm}
           onRemoveProduct={removeProductFromForm}
-          originalProductIds={originalProductIds}
         />
       )}
 

@@ -15,7 +15,6 @@ public class PendingCheckout {
     private String customerId;
     private String addressId;
     private String paymentMethodId;
-    private String promotionCode;
     private BigDecimal amount;
     private List<String> cartItemIds;
     private LocalDateTime createdAt;

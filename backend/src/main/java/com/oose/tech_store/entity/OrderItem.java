@@ -41,8 +41,8 @@ public class OrderItem extends BaseEntity {
     @Column(name = "unit_price_at_order", nullable = false, precision = 15, scale = 2)
     private BigDecimal unitPriceAtOrder;
 
-    @PrePersist
-    @PreUpdate
+    @PrePersist // được chạy trước khi entity được insert vào db
+    @PreUpdate // được chạy trước khi entity được update vào db
     protected void validateBundleServicesLimit() {
         if (bundleServices != null && bundleServices.size() > MAX_BUNDLE_SERVICES) {
             throw new IllegalStateException("OrderItem chi duoc toi da 2 bundle services");

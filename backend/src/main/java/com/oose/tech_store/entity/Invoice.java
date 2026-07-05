@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Invoice extends BaseEntity {
 
+    // Order
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
@@ -35,7 +36,7 @@ public class Invoice extends BaseEntity {
     @Column(name = "issued_at", nullable = false)
     private LocalDateTime issuedAt;
 
-    @PrePersist
+    @PrePersist // được chạy trước khi entity được insert vào db
     protected void prePersistInvoice() {
         if (issuedAt == null) {
             issuedAt = LocalDateTime.now();
@@ -43,7 +44,7 @@ public class Invoice extends BaseEntity {
     }
 
     public Invoice(Order order, BigDecimal originalAmount, BigDecimal vatAmount,
-                   BigDecimal discountAmount, BigDecimal finalAmount) {
+            BigDecimal discountAmount, BigDecimal finalAmount) {
         if (order == null) {
             throw new IllegalArgumentException("order must not be null");
         }

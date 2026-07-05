@@ -50,6 +50,9 @@ public class ExportProductServiceImpl implements ExportProductService {
         ExportPersistenceResult result;
         try {
             result = exportPersistenceService.saveExport(request, performedBy);
+        } catch (ResponseStatusException e) {
+            // Preserve the real status (e.g. 409 from a stock race condition) instead of masking it as a 500.
+            throw e;
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to export products. Please try again later", e);

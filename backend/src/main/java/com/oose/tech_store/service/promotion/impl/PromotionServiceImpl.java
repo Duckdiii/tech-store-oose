@@ -2,7 +2,6 @@ package com.oose.tech_store.service.promotion.impl;
 
 import com.oose.tech_store.dto.promotion.CreatePromotionRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionOperationResponseDTO;
-import com.oose.tech_store.dto.promotion.PromotionPerformanceResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionSearchRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionStatusCountsDTO;
@@ -13,16 +12,13 @@ import com.oose.tech_store.entity.Promotion;
 import com.oose.tech_store.entity.enums.PromotionDiscountType;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.PromotionRepository;
-import com.oose.tech_store.repository.OrderRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.service.promotion.DuplicatePromotionCodeException;
-import com.oose.tech_store.service.promotion.PromotionInUseException;
 import com.oose.tech_store.service.promotion.PromotionNotFoundException;
 import com.oose.tech_store.service.promotion.PromotionService;
 import com.oose.tech_store.specification.PromotionSpecification;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -44,7 +40,6 @@ public class PromotionServiceImpl implements PromotionService {
 
     private final PromotionRepository promotionRepository;
     private final ProductRepository productRepository;
-    private final OrderRepository orderRepository;
     private final ProductVariantRepository productVariantRepository;
 
     @Override
@@ -94,24 +89,6 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public PromotionPerformanceResponseDTO getPromotionPerformance(String id) {
-        Promotion promotion = promotionRepository.findById(id)
-                .orElseThrow(PromotionNotFoundException::new);
-
-        if (!orderRepository.hasPromotionIdColumn()) {
-            return toPerformanceResponse(promotion, 0L, BigDecimal.ZERO, BigDecimal.ZERO);
-        }
-
-        OrderRepository.PromotionPerformanceStats stats = orderRepository.getPromotionPerformanceStats(id);
-        long usageCount = stats.getUsageCount() == null ? 0L : stats.getUsageCount();
-        BigDecimal totalDiscountAmount = defaultAmount(stats.getTotalDiscountAmount());
-        BigDecimal totalOrderAmount = defaultAmount(stats.getTotalOrderAmount());
-
-        return toPerformanceResponse(promotion, usageCount, totalDiscountAmount, totalOrderAmount);
-    }
-
-    @Override
     @Transactional
     public PromotionResponseDTO createPromotion(CreatePromotionRequestDTO request) {
         String code = normalizeCode(request.code());
@@ -136,9 +113,7 @@ public class PromotionServiceImpl implements PromotionService {
                 request.endAt(),
                 !request.startAt().isAfter(now),
                 null);
-        promotion.setMinOrderValue(request.minOrderValue() == null ? BigDecimal.ZERO : request.minOrderValue());
-        promotion.setUsageLimitPerCustomer(request.usageLimitPerCustomer());
-        promotion.setTotalUsageLimit(request.totalUsageLimit());
+        promotion.setUsageLimit(request.usageLimit());
         products.forEach(promotion::addProduct);
 
         return toResponse(promotionRepository.save(promotion));
@@ -160,9 +135,8 @@ public class PromotionServiceImpl implements PromotionService {
                 .orElseThrow(PromotionNotFoundException::new);
 
         List<Product> requestedProducts = resolveProducts(request.productIds());
-        long usageCount = getUsageCount(promotion.getId());
         boolean isActive = promotion.isActiveNow();
-        List<String> restrictedFields = restrictedFields(promotion, request, requestedProducts, usageCount, isActive);
+        List<String> restrictedFields = restrictedFields(promotion, request, requestedProducts, isActive);
 
         if (restrictedFields.isEmpty()) {
             updateEditableFields(promotion, request, requestedProducts, restrictedFields);
@@ -177,9 +151,7 @@ public class PromotionServiceImpl implements PromotionService {
         Promotion saved = promotionRepository.save(promotion);
         String message = isActive
                 ? "Some fields cannot be edited while the promotion is active"
-                : usageCount > 0
-                        ? "Some fields cannot be edited because this promotion already has usage history"
-                        : "Some fields cannot be edited in the current time window";
+                : "Some fields cannot be edited in the current time window";
         return new PromotionOperationResponseDTO(
                     message,
                     restrictedFields,
@@ -192,17 +164,9 @@ public class PromotionServiceImpl implements PromotionService {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(PromotionNotFoundException::new);
 
-        if (existsInOrders(id)) {
-            throw new PromotionInUseException();
-        }
-
         List<Product> currentProducts = new ArrayList<>(promotion.getProducts());
         currentProducts.forEach(promotion::removeProduct);
         promotionRepository.delete(promotion);
-    }
-
-    private boolean existsInOrders(String promotionId) {
-        return orderRepository.hasPromotionIdColumn() && orderRepository.existsByPromotionId(promotionId);
     }
 
     private void updateEditableFields(
@@ -239,9 +203,7 @@ public class PromotionServiceImpl implements PromotionService {
         }
         promotion.changeDates(nextStartAt, request.endAt());
 
-        promotion.setMinOrderValue(request.minOrderValue() == null ? BigDecimal.ZERO : request.minOrderValue());
-        promotion.setUsageLimitPerCustomer(request.usageLimitPerCustomer());
-        promotion.setTotalUsageLimit(request.totalUsageLimit());
+        promotion.setUsageLimit(request.usageLimit());
 
         if (!restrictedFields.contains("productIds")) {
             replaceProducts(promotion, requestedProducts);
@@ -258,27 +220,21 @@ public class PromotionServiceImpl implements PromotionService {
             Promotion promotion,
             UpdatePromotionRequestDTO request,
             List<Product> requestedProducts,
-            long usageCount,
             boolean isActive) {
         List<String> fields = new ArrayList<>();
         PromotionDiscountType requestedType = parseDiscountType(request.discountType());
         Double requestedValue = resolveDiscountValue(requestedType, request.discountValue(), request.discountPercent());
-        boolean hasUsage = usageCount > 0;
-        boolean locksSensitiveFields = isActive || hasUsage;
-        if (locksSensitiveFields && !Objects.equals(promotion.getCode(), normalizeCode(request.code()))) {
+        if (isActive && !Objects.equals(promotion.getCode(), normalizeCode(request.code()))) {
             fields.add("code");
         }
-        if (locksSensitiveFields && !Objects.equals(promotion.effectiveDiscountType(), requestedType)) {
+        if (isActive && !Objects.equals(promotion.effectiveDiscountType(), requestedType)) {
             fields.add("discountType");
         }
-        if (locksSensitiveFields && !Objects.equals(promotion.discountValue(), requestedValue)) {
+        if (isActive && !Objects.equals(promotion.discountValue(), requestedValue)) {
             fields.add("discountValue");
         }
         if (LocalDateTime.now().isAfter(promotion.getStartAt()) && !Objects.equals(promotion.getStartAt(), request.startAt())) {
             fields.add("startAt");
-        }
-        if (hasUsage && removesExistingProducts(promotion.getProducts(), requestedProducts)) {
-            fields.add("productIds");
         }
         return fields;
     }
@@ -293,15 +249,6 @@ public class PromotionServiceImpl implements PromotionService {
                 .sorted()
                 .toList();
         return currentIds.equals(requestedIds);
-    }
-
-    private boolean removesExistingProducts(List<Product> currentProducts, List<Product> requestedProducts) {
-        List<String> requestedIds = requestedProducts.stream()
-                .map(Product::getId)
-                .toList();
-        return currentProducts.stream()
-                .map(Product::getId)
-                .anyMatch(currentId -> !requestedIds.contains(currentId));
     }
 
     private List<Product> resolveProducts(List<String> productIds) {
@@ -344,46 +291,10 @@ public class PromotionServiceImpl implements PromotionService {
                 promotion.getStartAt(),
                 promotion.getEndAt(),
                 promotion.getActive(),
-                promotion.getMinOrderValue(),
-                promotion.getUsageLimitPerCustomer(),
-                promotion.getTotalUsageLimit(),
-                getUsageCount(promotion.getId()),
+                promotion.getUsageLimit(),
                 promotion.getProducts().stream().map(Product::getId).toList(),
                 promotion.getCreatedAt(),
                 promotion.getUpdatedAt());
-    }
-
-    private PromotionPerformanceResponseDTO toPerformanceResponse(
-            Promotion promotion,
-            long usageCount,
-            BigDecimal totalDiscountAmount,
-            BigDecimal totalOrderAmount) {
-        BigDecimal averageDiscountAmount = usageCount == 0
-                ? BigDecimal.ZERO
-                : totalDiscountAmount.divide(BigDecimal.valueOf(usageCount), 2, RoundingMode.HALF_UP);
-        // Exception Flow 2a
-        String message = usageCount == 0 ? "No performance data available for this promotion" : null;
-
-        return new PromotionPerformanceResponseDTO(
-                promotion.getId(),
-                promotion.getCode(),
-                promotion.getName(),
-                promotion.effectiveDiscountType().name(),
-                promotion.discountValue(),
-                promotion.getDiscountPercent(),
-                promotion.getActive(),
-                promotion.getStartAt(),
-                promotion.getEndAt(),
-                usageCount,
-                usageCount,
-                totalDiscountAmount,
-                totalOrderAmount,
-                averageDiscountAmount,
-                message);
-    }
-
-    private BigDecimal defaultAmount(BigDecimal value) {
-        return value == null ? BigDecimal.ZERO : value;
     }
 
     private String normalizeCode(String code) {
@@ -465,13 +376,5 @@ public class PromotionServiceImpl implements PromotionService {
             throw new IllegalArgumentException("Invalid discount value");
         }
         return value;
-    }
-
-    private long getUsageCount(String promotionId) {
-        if (!orderRepository.hasPromotionIdColumn()) {
-            return 0L;
-        }
-        OrderRepository.PromotionPerformanceStats stats = orderRepository.getPromotionPerformanceStats(promotionId);
-        return stats.getUsageCount() == null ? 0L : stats.getUsageCount();
     }
 }

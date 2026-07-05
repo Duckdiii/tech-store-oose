@@ -26,6 +26,7 @@ public class Brand extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    // Products
     @OneToMany(mappedBy = "brand", fetch = FetchType.LAZY)
     private List<Product> products = new ArrayList<>();
 

@@ -22,10 +22,12 @@ import lombok.Setter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Cart extends BaseEntity {
 
+    // Customer
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false, unique = true)
     private Customer customer;
 
+    // CartItems
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "cart_id", nullable = false)
     private List<CartItem> items = new ArrayList<>();

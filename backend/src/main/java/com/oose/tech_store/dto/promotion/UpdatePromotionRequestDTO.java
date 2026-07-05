@@ -3,10 +3,8 @@ package com.oose.tech_store.dto.promotion;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,14 +31,8 @@ public record UpdatePromotionRequestDTO(
 
         Boolean active,
 
-        @PositiveOrZero(message = "Invalid discount value")
-        BigDecimal minOrderValue,
-
-        @Positive(message = "Invalid discount value")
-        Integer usageLimitPerCustomer,
-
-        @Positive(message = "Invalid discount value")
-        Integer totalUsageLimit,
+        @Positive(message = "Invalid usage limit")
+        Integer usageLimit,
 
         List<String> productIds) {
 }

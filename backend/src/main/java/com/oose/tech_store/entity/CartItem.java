@@ -27,6 +27,7 @@ public class CartItem extends BaseEntity {
 
         private static final int MAX_BUNDLE_SERVICES = 2;
 
+        // Product Variant
         @ManyToOne(fetch = FetchType.LAZY, optional = false)
         @JoinColumn(name = "product_variant_id", nullable = false)
         private ProductVariant productVariant;
@@ -34,6 +35,7 @@ public class CartItem extends BaseEntity {
         @Column(name = "quantity", nullable = false)
         private Integer quantity = 1;
 
+        // Bundle Services
         @ManyToMany(fetch = FetchType.LAZY)
         @JoinTable(name = "cart_item_bundle_services", joinColumns = @JoinColumn(name = "cart_item_id"), inverseJoinColumns = @JoinColumn(name = "bundle_service_id"))
         private List<BundleService> bundleServices = new ArrayList<>();
