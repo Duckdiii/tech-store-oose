@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.UUID;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RecoveryService {
+
+    private static final Logger log = LoggerFactory.getLogger(RecoveryService.class);
 
     private static final String APP_VERSION = "tech-store-recovery-v1";
     private static final String BACKUP_EXTENSION = ".backup.json";
@@ -183,12 +187,12 @@ public class RecoveryService {
                 catalogRecoveryDataService.validateSnapshot(catalogRecoveryDataService.snapshot(scope), scope);
             }
 
-            maintenanceService.disable();
-
             String message = notificationService.restoreSuccessMessage();
             markRecoveryPointRestored(recoveryPointId);
             String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.SUCCESS, message);
-            return new RestoreResponse(true, message, recoveryPointId, null, maintenanceService.isEnabled(), auditId);
+            // Maintenance mode is always lifted for a successful restore (see the finally
+            // block below), so report it as off regardless of the exact instant it flips.
+            return new RestoreResponse(true, message, recoveryPointId, null, false, auditId);
         } catch (RecoveryRestoreException exception) {
             throw exception;
         } catch (IllegalArgumentException exception) {
@@ -198,19 +202,30 @@ public class RecoveryService {
             String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.INCIDENT, message);
             throw new RecoveryRestoreException(HttpStatus.CONFLICT, message, null, true, auditId);
         } catch (Exception exception) {
+            log.error("Restore failed for recoveryPointId={} scope={} restoreType={}; attempting rollback to previous state",
+                    recoveryPointId, scope, restoreType, exception);
             if (scope == RecoveryScope.FULL && temporarySqlBackup != null) {
                 try {
                     postgresRecoveryDataService.restore(temporarySqlBackup);
-                } catch (Exception ignored) {
+                } catch (Exception rollbackException) {
+                    log.error("Rollback to previous state also failed for recoveryPointId={} — database may be left inconsistent",
+                            recoveryPointId, rollbackException);
                 }
             } else if (scope != RecoveryScope.FULL && temporaryCatalogSnapshot != null) {
                 try {
                     catalogRecoveryDataService.restore(temporaryCatalogSnapshot, scope);
-                } catch (Exception ignored) {
+                } catch (Exception rollbackException) {
+                    log.error("Rollback to previous state also failed for recoveryPointId={} — catalog data may be left inconsistent",
+                            recoveryPointId, rollbackException);
                 }
             }
             String auditId = audit(actor, recoveryPointId, restoreType, scope, RecoveryAuditStatus.FAILED, RESTORE_FAILED_MESSAGE);
             throw new RecoveryRestoreException(HttpStatus.INTERNAL_SERVER_ERROR, RESTORE_FAILED_MESSAGE, null, true, auditId);
+        } finally {
+            // Guarantee maintenance mode always lifts once the attempt concludes, even on
+            // failure paths above that don't already disable it — otherwise the storefront
+            // (now gated by MaintenanceFilter) would stay blocked forever after a failed restore.
+            maintenanceService.disable();
         }
     }
 

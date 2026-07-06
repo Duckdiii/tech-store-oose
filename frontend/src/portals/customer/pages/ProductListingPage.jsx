@@ -59,7 +59,7 @@ export function ProductListingPage() {
   const [page, setPage] = useState(1);
   const [goTo, setGoTo] = useState('');
   const navigate = useNavigate();
-  const PER_PAGE = 8;
+  const PER_PAGE = 9;
 
   // New Search Filters States
   const [categories, setCategories] = useState([]);

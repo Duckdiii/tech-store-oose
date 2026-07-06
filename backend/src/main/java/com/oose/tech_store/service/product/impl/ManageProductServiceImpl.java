@@ -3,6 +3,7 @@ package com.oose.tech_store.service.product.impl;
 import com.oose.tech_store.dto.manage.ManageProductRequestDTO;
 import com.oose.tech_store.dto.manage.ManageProductResponseDTO;
 import com.oose.tech_store.dto.manage.ManageProductSearchRequestDTO;
+import com.oose.tech_store.dto.manage.ManageProductSpecOptionsDTO;
 import com.oose.tech_store.dto.manage.ManageProductStatusCountsDTO;
 import com.oose.tech_store.entity.Brand;
 import com.oose.tech_store.entity.Category;
@@ -115,6 +116,20 @@ public class ManageProductServiceImpl implements ManageProductService {
             case "category" -> Sort.by(direction, "category.name");
             default -> Sort.by(Sort.Direction.ASC, "name");
         };
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ManageProductSpecOptionsDTO getSpecOptions() {
+        return new ManageProductSpecOptionsDTO(
+                productRepository.findDistinctScreenSizes(),
+                productRepository.findDistinctScreenResolutions(),
+                productRepository.findDistinctRearCameras(),
+                productRepository.findDistinctFrontCameras(),
+                productRepository.findDistinctChipsets(),
+                productRepository.findDistinctBatteryCapacities(),
+                productRepository.findDistinctSimTypes(),
+                productRepository.findDistinctOperatingSystems());
     }
 
     @Override

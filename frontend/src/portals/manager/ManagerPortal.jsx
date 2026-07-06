@@ -212,8 +212,9 @@ export function ManagerPortal() {
   }, []);
 
   useEffect(() => {
-    if (activeSection !== 'dashboard') return;
-
+    // Product/variant catalog is shared app-wide (Dashboard low-stock calc, product
+    // detail modal from Products/Warehouse, and the Supply Order form's product
+    // pickers) so it must load regardless of which manager section is active.
     const syncCatalogFromApi = async () => {
       setCatalogLoading(true);
       try {
@@ -329,7 +330,7 @@ export function ManagerPortal() {
 
   const saveProduct = async (product) => {
     const exists = data.products.some((item) => item.id === product.id);
-    const { id, stock, variantCount, price, status, imagesText, ...payload } = product;
+    const { id, stock, variantCount, price, status, ...payload } = product;
 
     try {
       const savedProduct = exists

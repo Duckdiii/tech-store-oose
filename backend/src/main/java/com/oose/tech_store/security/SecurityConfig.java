@@ -21,15 +21,17 @@ public class SecurityConfig {
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry,
                         SecurityContextRepository securityContextRepository,
-                        JwtAuthFilter jwtAuthFilter) throws Exception {
+                        JwtAuthFilter jwtAuthFilter,
+                        MaintenanceFilter maintenanceFilter) throws Exception {
                 return http
                                 .csrf(csrf -> csrf.disable())
                                 .securityContext(context -> context
                                                 .requireExplicitSave(true)
                                                 .securityContextRepository(securityContextRepository))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/health", "/api/auth/**", "/api/promotions/flash-sale").permitAll()
+                                                .requestMatchers("/api/health", "/api/auth/**", "/api/promotions/flash-sale", "/api/system/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/uploads/**").permitAll()
                                                 // Payment gateway callbacks must remain public (external servers +
                                                 // browser redirects)
                                                 .requestMatchers(
@@ -90,6 +92,7 @@ public class SecurityConfig {
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(maintenanceFilter, JwtAuthFilter.class)
                                 .build();
         }
 

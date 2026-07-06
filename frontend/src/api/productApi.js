@@ -49,6 +49,22 @@ export const productApi = {
     return response.data;
   },
 
+  getManagerProductSpecOptions: async () => {
+    const response = await httpClient.get('/manage/products/spec-options');
+    return response.data;
+  },
+
+  uploadManagerProductImages: async (files) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    // Override the instance's default JSON header so axios sends real multipart
+    // form data (with boundary) instead of JSON-stringifying the FormData object.
+    const response = await httpClient.post('/manage/products/images/upload', formData, {
+      headers: { 'Content-Type': undefined },
+    });
+    return response.data;
+  },
+
   getManagerProductDetail: async (id) => {
     const response = await httpClient.get(`/manage/products/${id}`);
     return normalizeProductForManager(response.data);

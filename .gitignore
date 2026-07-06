@@ -21,4 +21,5 @@ backend/target/
 backend/.env
 backend/data/
 backend/recovery-storage/
+backend/uploads/
 

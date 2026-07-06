@@ -5,6 +5,7 @@ import { CartProvider } from './shared/context/CartContext';
 import { AuthProvider } from './shared/context/AuthContext';
 import { ThemeProvider } from './shared/context/ThemeContext';
 import { ToastProvider } from './shared/context/ToastContext';
+import { MaintenanceProvider } from './shared/context/MaintenanceContext';
 import App from './App.jsx';
 import './styles/global.css';
 
@@ -12,13 +13,15 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <CartProvider>
-              <App />
-            </CartProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <MaintenanceProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <CartProvider>
+                <App />
+              </CartProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </MaintenanceProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,

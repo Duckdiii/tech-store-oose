@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { maintenanceBus } from '../shared/maintenanceBus';
 
 export const httpClient = axios.create({
   baseURL: '/api',
@@ -25,6 +26,9 @@ httpClient.interceptors.response.use(
       localStorage.removeItem('ts_token');
       localStorage.removeItem('ts_user');
       window.location.href = '/sign-in';
+    }
+    if (err.response?.status === 503 && err.response?.data?.maintenanceMode) {
+      maintenanceBus.notifyMaintenance();
     }
     return Promise.reject(err);
   }
