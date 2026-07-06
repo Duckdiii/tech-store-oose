@@ -1,21 +1,26 @@
 package com.oose.tech_store.service.warehouse.impl;
 
+import com.oose.tech_store.dto.warehouse.AffectedProductDTO;
 import com.oose.tech_store.dto.warehouse.ExportProductPreviewResponseDTO;
 import com.oose.tech_store.dto.warehouse.ExportProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ExportProductResponseDTO;
 import com.oose.tech_store.dto.warehouse.InventoryStatusDTO;
 import com.oose.tech_store.dto.warehouse.ReceiptDTO;
 import com.oose.tech_store.entity.ProductVariant;
+import com.oose.tech_store.entity.enums.ProductVariantStatus;
 import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.service.customer.InventoryNotificationService;
 import com.oose.tech_store.service.warehouse.ExportPersistenceResult;
 import com.oose.tech_store.service.warehouse.ExportPersistenceService;
 import com.oose.tech_store.service.warehouse.ExportProductService;
 import com.oose.tech_store.service.warehouse.ReceiptService;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +51,15 @@ public class ExportProductServiceImpl implements ExportProductService {
     @Override
     public ExportProductResponseDTO confirmExport(ExportProductRequestDTO request, String performedBy) {
         // Validate first, then validate again inside the save transaction to avoid stale stock.
-        findAvailableVariants(request.serialIds());
+        List<ProductVariant> variantsToExport = findAvailableVariants(request.serialIds());
+        List<String> warnings = new ArrayList<>();
+        Map<String, PriceSnapshot> priceSnapshots = Map.of();
+        try {
+            priceSnapshots = priceSnapshotsBeforeExport(variantsToExport);
+        } catch (RuntimeException exception) {
+            log.error("Price snapshot failed before export confirmation", exception);
+            warnings.add("Products were exported, but price update notifications could not be displayed.");
+        }
         ExportPersistenceResult result;
         try {
             result = exportPersistenceService.saveExport(request, performedBy);
@@ -59,7 +72,6 @@ public class ExportProductServiceImpl implements ExportProductService {
         }
 
         ReceiptDTO receipt = null;
-        List<String> warnings = new ArrayList<>();
         try {
             receipt = receiptService.generateReceipt(result.exportLogId());
         } catch (RuntimeException exception) {
@@ -74,6 +86,12 @@ public class ExportProductServiceImpl implements ExportProductService {
         } catch (RuntimeException exception) {
             log.error("Inventory notification failed for export log {}", result.exportLogId(), exception);
             warnings.add("Inventory was updated, but notification status could not be displayed.");
+        }
+        try {
+            notifyPriceChangesAfterExport(priceSnapshots);
+        } catch (RuntimeException exception) {
+            log.error("Price update notification failed for export log {}", result.exportLogId(), exception);
+            warnings.add("Products were exported, but price update notifications could not be displayed.");
         }
 
         String message = warnings.isEmpty()
@@ -99,7 +117,7 @@ public class ExportProductServiceImpl implements ExportProductService {
             }
         }
 
-        List<ProductVariant> variants = productVariantRepository.findAllById(
+        List<ProductVariant> variants = productVariantRepository.findAllByIdInWithProduct(
                 requestedSerialIds.stream().map(String::trim).toList());
         if (variants.size() != requestedSerialIds.size()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -112,5 +130,73 @@ public class ExportProductServiceImpl implements ExportProductService {
             }
         }
         return variants;
+    }
+
+    private Map<String, PriceSnapshot> priceSnapshotsBeforeExport(List<ProductVariant> variants) {
+        Map<String, PriceSnapshot> snapshots = new LinkedHashMap<>();
+        for (ProductVariant variant : variants) {
+            String key = variantKey(variant);
+            if (snapshots.containsKey(key)) {
+                continue;
+            }
+
+            BigDecimal oldPrice = lowestAvailablePrice(variant);
+            if (oldPrice != null) {
+                snapshots.put(key, new PriceSnapshot(affectedProduct(variant), oldPrice));
+            }
+        }
+        return snapshots;
+    }
+
+    private void notifyPriceChangesAfterExport(Map<String, PriceSnapshot> snapshots) {
+        snapshots.values().forEach(snapshot -> {
+            BigDecimal newPrice = lowestAvailablePrice(
+                    snapshot.product().productId(),
+                    snapshot.product().ramGb(),
+                    snapshot.product().storageGb(),
+                    snapshot.product().color());
+            if (newPrice != null && snapshot.oldPrice().compareTo(newPrice) != 0) {
+                inventoryNotificationService.notifyPriceUpdated(snapshot.product(), snapshot.oldPrice(), newPrice);
+            }
+        });
+    }
+
+    private BigDecimal lowestAvailablePrice(ProductVariant variant) {
+        return lowestAvailablePrice(
+                variant.getProduct().getId(),
+                variant.getRamGb(),
+                variant.getStorageGb(),
+                variant.getColor());
+    }
+
+    private BigDecimal lowestAvailablePrice(String productId, Integer ramGb, Integer storageGb, String color) {
+        return productVariantRepository.findByProductIdAndSpecsAndStatus(
+                        productId,
+                        ramGb,
+                        storageGb,
+                        color,
+                        ProductVariantStatus.AVAILABLE)
+                .stream()
+                .map(ProductVariant::getPrice)
+                .filter(price -> price != null)
+                .min(BigDecimal::compareTo)
+                .orElse(null);
+    }
+
+    private AffectedProductDTO affectedProduct(ProductVariant variant) {
+        return new AffectedProductDTO(
+                variant.getProduct().getId(),
+                variant.getProduct().getName() + " (" + variant.getDisplayName() + ")",
+                variant.getRamGb(),
+                variant.getStorageGb(),
+                variant.getColor());
+    }
+
+    private String variantKey(ProductVariant variant) {
+        return variant.getProduct().getId() + "_" + variant.getRamGb() + "_"
+                + variant.getStorageGb() + "_" + variant.getColor();
+    }
+
+    private record PriceSnapshot(AffectedProductDTO product, BigDecimal oldPrice) {
     }
 }

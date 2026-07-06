@@ -57,6 +57,9 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
         List<ProductVariant> findByProductIdAndStatus(String productId, ProductVariantStatus status);
 
+        @Query("select variant from ProductVariant variant join fetch variant.product where variant.id in :serialIds")
+        List<ProductVariant> findAllByIdInWithProduct(@Param("serialIds") List<String> serialIds);
+
         /**
          * Locks the physical products while an export transaction confirms their
          * availability.

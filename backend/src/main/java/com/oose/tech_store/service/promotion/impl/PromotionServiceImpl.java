@@ -14,6 +14,7 @@ import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.PromotionRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
 import com.oose.tech_store.entity.enums.ProductVariantStatus;
+import com.oose.tech_store.service.customer.InventoryNotificationService;
 import com.oose.tech_store.service.promotion.DuplicatePromotionCodeException;
 import com.oose.tech_store.service.promotion.PromotionNotFoundException;
 import com.oose.tech_store.service.promotion.PromotionService;
@@ -41,6 +42,7 @@ public class PromotionServiceImpl implements PromotionService {
     private final PromotionRepository promotionRepository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final InventoryNotificationService inventoryNotificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -116,7 +118,9 @@ public class PromotionServiceImpl implements PromotionService {
         promotion.setUsageLimit(request.usageLimit());
         products.forEach(promotion::addProduct);
 
-        return toResponse(promotionRepository.save(promotion));
+        Promotion saved = promotionRepository.save(promotion);
+        notifySubscribedCustomersIfActive(saved, "Promotion available", null);
+        return toResponse(saved);
     }
 
     private void validateDateRange(LocalDateTime startAt, LocalDateTime endAt) {
@@ -141,6 +145,7 @@ public class PromotionServiceImpl implements PromotionService {
         if (restrictedFields.isEmpty()) {
             updateEditableFields(promotion, request, requestedProducts, restrictedFields);
             Promotion saved = promotionRepository.save(promotion);
+            notifySubscribedCustomersIfActive(saved, "Promotion updated", null);
             return new PromotionOperationResponseDTO(
                     "Promotion updated successfully",
                     List.of(),
@@ -149,6 +154,7 @@ public class PromotionServiceImpl implements PromotionService {
 
         updateEditableFields(promotion, request, requestedProducts, restrictedFields);
         Promotion saved = promotionRepository.save(promotion);
+        notifySubscribedCustomersIfActive(saved, "Promotion updated", null);
         String message = isActive
                 ? "Some fields cannot be edited while the promotion is active"
                 : "Some fields cannot be edited in the current time window";
@@ -156,6 +162,12 @@ public class PromotionServiceImpl implements PromotionService {
                     message,
                     restrictedFields,
                     toResponse(saved));
+    }
+
+    private void notifySubscribedCustomersIfActive(Promotion promotion, String title, String message) {
+        if (promotion.isActiveNow()) {
+            inventoryNotificationService.notifyPromotionChanged(promotion, title, message);
+        }
     }
 
     @Override
