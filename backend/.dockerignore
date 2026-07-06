@@ -4,3 +4,6 @@ target/
 recovery-storage/
 uploads/
 *.log
+manual_backup.sql
+Dockerfile
+.dockerignore

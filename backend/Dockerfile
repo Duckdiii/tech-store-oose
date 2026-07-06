@@ -4,13 +4,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY pom.xml .
-RUN mvn -B dependency:go-offline
-# Cache-buster: bump this value if the build platform ever serves a stale
-# cached layer for the COPY below (invalidates everything from here on).
-ARG CACHE_BUST=1
-RUN echo "cache bust: ${CACHE_BUST}"
-COPY src src
+# Single COPY of the whole build context — splitting this into separate
+# `COPY pom.xml .` + `COPY src src` steps consistently failed on Railway's
+# build infra with "failed to calculate checksum ... /src: not found" even
+# across fresh builders/services, so we trade away dependency-layer caching
+# for a build that actually completes.
+COPY . .
 RUN mvn -B package -DskipTests
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "target/tech-store-0.0.1-SNAPSHOT.jar"]
