@@ -1,11 +1,18 @@
 import axios from 'axios';
 import { maintenanceBus } from '../shared/maintenanceBus';
 
+// In production the frontend (Vercel) and backend (Railway) are on different
+// domains, so calls must target the backend's absolute URL. Set VITE_API_URL
+// in Vercel's project env vars; locally it stays unset and falls back to the
+// Vite dev server's '/api' proxy.
 export const httpClient = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  // Sends the session cookie cross-site so the backend's concurrent-login
+  // limiting keeps working once frontend/backend are on separate origins.
+  withCredentials: true,
 });
 
 // Attach Bearer token to every request
