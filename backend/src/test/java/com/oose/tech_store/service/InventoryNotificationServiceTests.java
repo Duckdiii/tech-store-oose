@@ -1,6 +1,7 @@
 package com.oose.tech_store.service;
 
 import com.oose.tech_store.service.customer.InventoryNotificationService;
+import com.oose.tech_store.service.customer.impl.InventoryNotificationServiceImpl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,7 +51,7 @@ class InventoryNotificationServiceTests {
         @BeforeEach
         void setUp() {
                 observers = new ArrayList<>(List.of(observer1, observer2));
-                service = new InventoryNotificationService(
+                service = new InventoryNotificationServiceImpl(
                                 productVariantRepository,
                                 favoriteProductRepository,
                                 notificationRepository,
@@ -151,7 +152,7 @@ class InventoryNotificationServiceTests {
         @Test
         void whenObserversListIsEmpty_NoExceptionsAreThrown() {
                 // Arrange
-                InventoryNotificationService serviceWithNoObservers = new InventoryNotificationService(
+                InventoryNotificationService serviceWithNoObservers = new InventoryNotificationServiceImpl(
                                 productVariantRepository,
                                 favoriteProductRepository,
                                 notificationRepository,

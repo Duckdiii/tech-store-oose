@@ -12,6 +12,7 @@ import com.oose.tech_store.repository.CustomerRepository;
 import com.oose.tech_store.repository.MembershipRepository;
 import com.oose.tech_store.repository.OrderRepository;
 import com.oose.tech_store.service.customer.MembershipService;
+import com.oose.tech_store.service.customer.impl.MembershipServiceImpl;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,7 @@ class MembershipServiceTests {
 
     @BeforeEach
     void setUp() {
-        membershipService = new MembershipService(customerRepository, membershipRepository, orderRepository);
+        membershipService = new MembershipServiceImpl(customerRepository, membershipRepository, orderRepository);
 
         MembershipBenefit standardBenefit = new MembershipBenefit(0.0, false, "Standard benefits");
         standardBenefit.setId("benefit-std");
