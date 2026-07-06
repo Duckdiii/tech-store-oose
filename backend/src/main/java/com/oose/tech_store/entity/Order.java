@@ -28,25 +28,25 @@ import lombok.Setter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order extends BaseEntity {
 
+    // Customer
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    // Address
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "address_id", nullable = false)
     private Address address;
 
+    // OrderItems
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "order_id", nullable = false)
     private List<OrderItem> items = new ArrayList<>();
 
+    // PaymentMethod
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "selected_payment_method_id", nullable = false)
     private PaymentMethod selectedPaymentMethod;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "promotion_id")
-    private Promotion promotion;
 
     @Column(name = "order_date", nullable = false)
     private LocalDateTime orderDate;
@@ -74,7 +74,8 @@ public class Order extends BaseEntity {
         this.orderDate = LocalDateTime.now();
     }
 
-    public static Order create(Customer customer, Address address, PaymentMethod selectedPaymentMethod, List<CartItem> cartItems) {
+    public static Order create(Customer customer, Address address, PaymentMethod selectedPaymentMethod,
+            List<CartItem> cartItems) {
         Order order = new Order(customer, address, selectedPaymentMethod);
         for (CartItem cartItem : cartItems) {
             OrderItem orderItem = new OrderItem(order, cartItem.getProductVariant(),

@@ -15,16 +15,20 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Customer extends User {
 
+    // Membership
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "membership_id", nullable = false)
     private Membership membership;
 
+    // Cart
     @OneToOne(mappedBy = "customer", fetch = FetchType.LAZY)
     private Cart cart;
 
+    // Notifications
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
     private List<Notification> notifications = new ArrayList<>();
 
+    // Favorite Products
     @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
     private List<FavoriteProduct> favoriteProducts = new ArrayList<>();
 

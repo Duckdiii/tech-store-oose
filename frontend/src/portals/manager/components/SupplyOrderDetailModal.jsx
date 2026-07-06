@@ -31,7 +31,7 @@ export function SupplyOrderDetailModal({ supplyOrder, onUpdateStatus, onClose })
 
   return (
     <div className="admin-modal-backdrop" onClick={onClose}>
-      <div className="admin-modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+      <div className="admin-modal" style={{ width: 'min(720px, 100%)' }} onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal__head">
           <h2>Chi tiết đơn nhập hàng</h2>
           <button className="admin-close" onClick={onClose}>×</button>
@@ -56,26 +56,28 @@ export function SupplyOrderDetailModal({ supplyOrder, onUpdateStatus, onClose })
           </div>
         </div>
 
-        <table className="admin-table" style={{ marginBottom: 14 }}>
-          <thead>
-            <tr>
-              <th>Sản phẩm</th>
-              <th>Số lượng</th>
-              <th>Đơn giá</th>
-              <th>Thành tiền</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(supplyOrder.items || []).map((item) => (
-              <tr key={item.id}>
-                <td>{item.productVariantName}</td>
-                <td>{item.quantity}</td>
-                <td>{money(item.unitPrice)}</td>
-                <td>{money(Number(item.quantity) * Number(item.unitPrice))}</td>
+        <div className="admin-table-wrap" style={{ marginBottom: 14 }}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Sản phẩm</th>
+                <th>Số lượng</th>
+                <th>Đơn giá</th>
+                <th>Thành tiền</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(supplyOrder.items || []).map((item) => (
+                <tr key={item.id}>
+                  <td>{item.productVariantName}</td>
+                  <td>{item.quantity}</td>
+                  <td>{money(item.unitPrice)}</td>
+                  <td>{money(Number(item.quantity) * Number(item.unitPrice))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {supplyOrder.notes && (
           <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>Ghi chú: {supplyOrder.notes}</p>

@@ -295,9 +295,6 @@ export function DashboardPage({ data, loading }) {
           <p>{TODAY}</p>
           <h2>{GREET}, {displayName}.</h2>
         </div>
-        <button className="admin-button" onClick={() => navigate('/manager/products')}>
-          + Thêm sản phẩm
-        </button>
       </div>
 
       {loading ? (

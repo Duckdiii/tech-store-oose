@@ -56,7 +56,7 @@ public class PaymentController {
         response.put("responseTime", System.currentTimeMillis());
         response.put("extraData", request.extraData() != null ? request.extraData() : "");
 
-        if (!paymentFacade.verifyMomoIpn(request)) {
+        if (!paymentFacade.handleMomoIpn(request)) {
             response.put("resultCode", 1);
             response.put("message", "Invalid signature");
             return ResponseEntity.ok(response);
@@ -78,7 +78,7 @@ public class PaymentController {
     @PostMapping("/vnpay/ipn")
     public ResponseEntity<Map<String, String>> handleVNPayIpn(
             @RequestParam Map<String, String> params) {
-        if (!paymentFacade.verifyVNPayIpn(params)) {
+        if (!paymentFacade.handleVNPayIpn(params)) {
             return ResponseEntity.ok(Map.of("RspCode", "97", "Message", "Invalid Signature"));
         }
         return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Confirm Success"));

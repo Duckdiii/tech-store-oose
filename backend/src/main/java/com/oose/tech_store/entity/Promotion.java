@@ -20,7 +20,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Promotion extends BaseEntity {
 
-        @JsonIgnore
+        @JsonIgnore // để tránh vòng lặp vô hạn khi serializing
         @ManyToMany(mappedBy = "promotions", fetch = FetchType.LAZY)
         private List<Product> products = new ArrayList<>();
 
@@ -46,14 +46,8 @@ public class Promotion extends BaseEntity {
         @Column(name = "active", nullable = false)
         private Boolean active = true;
 
-        @Column(name = "min_order_value")
-        private BigDecimal minOrderValue = BigDecimal.ZERO;
-
-        @Column(name = "usage_limit_per_customer")
-        private Integer usageLimitPerCustomer;
-
-        @Column(name = "total_usage_limit")
-        private Integer totalUsageLimit;
+        @Column(name = "usage_limit")
+        private Integer usageLimit;
 
         public Promotion(String code, String name, Double discountPercent, LocalDateTime startAt, LocalDateTime endAt,
                         Boolean active, Product product) {

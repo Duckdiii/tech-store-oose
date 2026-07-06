@@ -1,4 +1,8 @@
+let itemUidCounter = 0;
+const nextItemUid = () => `item-${Date.now()}-${itemUidCounter++}`;
+
 export const blankItem = () => ({
+  uid: nextItemUid(),
   productId: '',
   serialId: '',
   ramGb: '',

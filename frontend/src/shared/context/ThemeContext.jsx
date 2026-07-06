@@ -62,6 +62,14 @@ const translations = {
     'Standard membership benefits': 'Quyền lợi thành viên tiêu chuẩn',
     'Standard customer benefits': 'Quyền lợi thành viên tiêu chuẩn',
     'Free shipping benefit': 'Ưu đãi miễn phí vận chuyển',
+    'Bronze tier: 1% discount on all orders': 'Hạng Bronze: giảm giá 1% cho tất cả đơn hàng',
+    'Silver tier: 2% discount on all orders': 'Hạng Silver: giảm giá 2% cho tất cả đơn hàng',
+    'Gold tier: 5% discount and Free Shipping': 'Hạng Gold: giảm giá 5% và miễn phí vận chuyển',
+    'Diamond tier: 10% discount and Free Shipping': 'Hạng Diamond: giảm giá 10% và miễn phí vận chuyển',
+    '1.0% discount on eligible orders': 'Giảm giá 1.0% cho các đơn hàng đủ điều kiện',
+    '2.0% discount on eligible orders': 'Giảm giá 2.0% cho các đơn hàng đủ điều kiện',
+    '5.0% discount on eligible orders': 'Giảm giá 5.0% cho các đơn hàng đủ điều kiện',
+    '10.0% discount on eligible orders': 'Giảm giá 10.0% cho các đơn hàng đủ điều kiện',
     'Account Restricted': 'Tài khoản bị hạn chế',
     'Congratulations! You are now BRONZE Tier!': 'Chúc mừng! Bạn đã được thăng hạng BRONZE!',
     'Congratulations! You are now SILVER Tier!': 'Chúc mừng! Bạn đã được thăng hạng SILVER!',
@@ -95,7 +103,9 @@ const translations = {
     'Expected delivery date must be in the future': 'Ngày dự kiến giao hàng phải ở trong tương lai.',
     'Supply Order status updated successfully': 'Cập nhật trạng thái đơn nhập hàng thành công',
     'Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED': 'Chuyển trạng thái không hợp lệ. Vui lòng theo đúng thứ tự: PENDING → CONFIRMED → SHIPPING → DELIVERED.',
-    'This Supply Order has already been completed or cancelled and cannot be updated': 'Đơn nhập hàng này đã hoàn tất hoặc đã hủy nên không thể cập nhật.'
+    'This Supply Order has already been completed or cancelled and cannot be updated': 'Đơn nhập hàng này đã hoàn tất hoặc đã hủy nên không thể cập nhật.',
+    'Hệ thống đang bảo trì': 'Hệ thống đang bảo trì',
+    'Chúng tôi đang khôi phục dữ liệu để đảm bảo hệ thống hoạt động ổn định. Vui lòng quay lại sau ít phút.': 'Chúng tôi đang khôi phục dữ liệu để đảm bảo hệ thống hoạt động ổn định. Vui lòng quay lại sau ít phút.'
   },
   en: {
     'Trang chủ': 'Home',
@@ -156,6 +166,14 @@ const translations = {
     'Standard membership benefits': 'Standard membership benefits',
     'Standard customer benefits': 'Standard customer benefits',
     'Free shipping benefit': 'Free shipping benefit',
+    'Bronze tier: 1% discount on all orders': 'Bronze tier: 1% discount on all orders',
+    'Silver tier: 2% discount on all orders': 'Silver tier: 2% discount on all orders',
+    'Gold tier: 5% discount and Free Shipping': 'Gold tier: 5% discount and Free Shipping',
+    'Diamond tier: 10% discount and Free Shipping': 'Diamond tier: 10% discount and Free Shipping',
+    '1.0% discount on eligible orders': '1.0% discount on eligible orders',
+    '2.0% discount on eligible orders': '2.0% discount on eligible orders',
+    '5.0% discount on eligible orders': '5.0% discount on eligible orders',
+    '10.0% discount on eligible orders': '10.0% discount on eligible orders',
     'Account Restricted': 'Account Restricted',
     'Congratulations! You are now BRONZE Tier!': 'Congratulations! You are now BRONZE Tier!',
     'Congratulations! You are now SILVER Tier!': 'Congratulations! You are now SILVER Tier!',
@@ -189,7 +207,9 @@ const translations = {
     'Expected delivery date must be in the future': 'Expected delivery date must be in the future',
     'Supply Order status updated successfully': 'Supply Order status updated successfully',
     'Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED': 'Invalid status transition. Please follow the correct order: PENDING → CONFIRMED → SHIPPING → DELIVERED',
-    'This Supply Order has already been completed or cancelled and cannot be updated': 'This Supply Order has already been completed or cancelled and cannot be updated'
+    'This Supply Order has already been completed or cancelled and cannot be updated': 'This Supply Order has already been completed or cancelled and cannot be updated',
+    'Hệ thống đang bảo trì': 'System under maintenance',
+    'Chúng tôi đang khôi phục dữ liệu để đảm bảo hệ thống hoạt động ổn định. Vui lòng quay lại sau ít phút.': 'We are restoring data to keep the system running smoothly. Please check back in a few minutes.'
   }
 };
 

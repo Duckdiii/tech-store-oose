@@ -42,10 +42,6 @@ export function CartPage() {
     setExpandedItem(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   };
   const [tierInfo, setTierInfo] = useState(null);
-  const [vouchers, setVouchers] = useState([]);
-  const [promotionCode, setPromotionCode] = useState('');
-  const [appliedPromotionCode, setAppliedPromotionCode] = useState('');
-  const [promotionMessage, setPromotionMessage] = useState('');
 
   useEffect(() => {
     const fetchBundleServices = async () => {
@@ -63,12 +59,8 @@ export function CartPage() {
   useEffect(() => {
     const fetchMembershipOffers = async () => {
       try {
-        const [tierData, voucherData] = await Promise.all([
-          membershipApi.getMyTier(),
-          membershipApi.getMyVouchers(),
-        ]);
+        const tierData = await membershipApi.getMyTier();
         setTierInfo(tierData);
-        setVouchers(voucherData || []);
       } catch (error) {
         console.error('Error fetching membership offers:', error);
       }
@@ -86,63 +78,9 @@ export function CartPage() {
   const membershipDiscountRate = Number(tierInfo?.discountPercentage || 0);
   const membershipDiscount = Math.round((cartSubtotal * membershipDiscountRate) / 100);
   const currentTierName = tierInfo?.tierName || tierInfo?.currentTierName || '';
-  const appliedVoucher = vouchers.find((voucher) => voucher.code === appliedPromotionCode);
-  const appliedVoucherValue = Number(appliedVoucher?.discountValue ?? appliedVoucher?.discountPercent ?? 0);
-  const appliedVoucherType = String(
-    appliedVoucher?.discountType || (appliedVoucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')
-  ).toUpperCase();
-  const canUseAppliedVoucher = Boolean(appliedVoucher?.usableNow);
-  const isNewMemberVoucherAllowed = appliedPromotionCode !== 'NEWMEM50K'
-    || String(currentTierName).toUpperCase() === 'STANDARD';
-  const isTech10Allowed = appliedPromotionCode !== 'TECH10OFF' || cartSubtotal >= 5000000;
-  const appliedVoucherValid = canUseAppliedVoucher && isNewMemberVoucherAllowed && isTech10Allowed;
-  const promotionDiscount = appliedVoucherValid && appliedVoucherType === 'FIXED_AMOUNT'
-    ? Math.min(appliedVoucherValue, Math.max(0, cartSubtotal - membershipDiscount))
-    : appliedVoucherValid && appliedVoucherType === 'PERCENTAGE'
-      ? Math.round((cartSubtotal * appliedVoucherValue) / 100)
-      : 0;
   const freeShippingByTier = Boolean(tierInfo?.freeShipping);
-  const freeShippingByVoucher = appliedVoucherValid && appliedVoucherType === 'FREE_SHIPPING';
-  const shipping = cartSubtotal >= 500000 || freeShippingByTier || freeShippingByVoucher ? 0 : 30000;
-  const finalTotal = Math.max(0, cartSubtotal - membershipDiscount - promotionDiscount) + shipping;
-  const checkoutPath = appliedPromotionCode
-    ? `/checkout?promo=${encodeURIComponent(appliedPromotionCode)}`
-    : '/checkout';
-
-  const handleApplyPromotion = () => {
-    const code = promotionCode.trim().toUpperCase();
-    if (!code) {
-      setAppliedPromotionCode('');
-      setPromotionMessage('');
-      return;
-    }
-
-    const voucher = vouchers.find((item) => item.code === code);
-    if (!voucher) {
-      setAppliedPromotionCode('');
-      setPromotionMessage('Ma giam gia khong ton tai.');
-      return;
-    }
-    if (!voucher.usableNow) {
-      setAppliedPromotionCode('');
-      setPromotionMessage('Ma giam gia da het han hoac chua duoc kich hoat.');
-      return;
-    }
-    if (code === 'TECH10OFF' && cartSubtotal < 5000000) {
-      setAppliedPromotionCode('');
-      setPromotionMessage('TECH10OFF chi ap dung cho don tu 5.000.000d.');
-      return;
-    }
-    if (code === 'NEWMEM50K' && String(currentTierName).toUpperCase() !== 'STANDARD') {
-      setAppliedPromotionCode('');
-      setPromotionMessage('NEWMEM50K chi ap dung cho thanh vien STANDARD.');
-      return;
-    }
-    setAppliedPromotionCode(code);
-    const voucherValue = Number(voucher.discountValue ?? voucher.discountPercent ?? 0);
-    const voucherType = String(voucher.discountType || (voucherValue > 100 ? 'FIXED_AMOUNT' : 'PERCENTAGE')).toUpperCase();
-    setPromotionMessage(voucherType === 'FREE_SHIPPING' ? 'Da ap dung mien phi van chuyen.' : 'Da ap dung ma giam gia.');
-  };
+  const shipping = cartSubtotal >= 500000 || freeShippingByTier ? 0 : 30000;
+  const finalTotal = Math.max(0, cartSubtotal - membershipDiscount) + shipping;
 
   if (items.length === 0) {
     return (
@@ -390,36 +328,7 @@ export function CartPage() {
                   <span style={{ fontWeight: 700 }}>-{fmt(membershipDiscount)}₫</span>
                 </div>
               )}
-              {promotionDiscount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#16a34a' }}>
-                  <span>Ma {appliedPromotionCode}</span>
-                  <span style={{ fontWeight: 700 }}>-{fmt(promotionDiscount)}₫</span>
-                </div>
-              )}
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <input
-                type="text"
-                placeholder="Mã giảm giá"
-                value={promotionCode}
-                onChange={(event) => setPromotionCode(event.target.value.toUpperCase())}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') handleApplyPromotion();
-                }}
-                style={{ flex: 1, height: 40, padding: '0 12px', border: '1.5px solid #e9ecef', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-              />
-              <button
-                onClick={handleApplyPromotion}
-                style={{ padding: '0 14px', height: 40, background: '#f4f5f7', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#374151' }}
-              >
-                Áp dụng
-              </button>
-            </div>
-            {promotionMessage && (
-              <div style={{ marginTop: -10, marginBottom: 16, fontSize: 12.5, color: appliedVoucherValid ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                {promotionMessage}
-              </div>
-            )}
             <div style={{ height: 1, background: '#f1f3f5', marginBottom: 16 }}/>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
               <span style={{ fontSize: 16, fontWeight: 800, color: '#0d1117' }}>Tổng cộng</span>
@@ -430,7 +339,7 @@ export function CartPage() {
                 showToast(t('Some items in your cart are no longer available. Please remove or update them to continue.'), 'error');
                 return;
               }
-              navigate(checkoutPath);
+              navigate('/checkout');
             }}
               disabled={anyUnavailable}
               style={{ width: '100%', padding: '14px', background: anyUnavailable ? '#9ca3af' : '#0d1117', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 800, cursor: anyUnavailable ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginBottom: 12 }}

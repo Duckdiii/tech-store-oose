@@ -1,4 +1,4 @@
-package com.oose.tech_store.service.customer;
+package com.oose.tech_store.service.customer.impl;
 
 import com.oose.tech_store.dto.notification.NotificationResponse;
 import com.oose.tech_store.entity.FavoriteProduct;
@@ -6,6 +6,7 @@ import com.oose.tech_store.entity.Notification;
 import com.oose.tech_store.entity.ProductVariant;
 import com.oose.tech_store.exception.ResourceNotFoundException;
 import com.oose.tech_store.repository.NotificationRepository;
+import com.oose.tech_store.service.customer.ManageNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

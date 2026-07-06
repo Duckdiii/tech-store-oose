@@ -15,8 +15,10 @@ public class PendingCheckout {
     private String customerId;
     private String addressId;
     private String paymentMethodId;
-    private String promotionCode;
     private BigDecimal amount;
     private List<String> cartItemIds;
     private LocalDateTime createdAt;
+    // "MOMO" or "VNPAY" — lets the reconciliation job know which gateway to
+    // query for a stale pending checkout without re-loading the PaymentMethod.
+    private String gatewayType;
 }

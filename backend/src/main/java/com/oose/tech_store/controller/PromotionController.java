@@ -2,13 +2,11 @@ package com.oose.tech_store.controller;
 
 import com.oose.tech_store.dto.promotion.CreatePromotionRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionOperationResponseDTO;
-import com.oose.tech_store.dto.promotion.PromotionPerformanceResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionResponseDTO;
 import com.oose.tech_store.dto.promotion.PromotionSearchRequestDTO;
 import com.oose.tech_store.dto.promotion.PromotionStatusCountsDTO;
 import com.oose.tech_store.dto.promotion.UpdatePromotionRequestDTO;
 import com.oose.tech_store.service.promotion.DuplicatePromotionCodeException;
-import com.oose.tech_store.service.promotion.PromotionInUseException;
 import com.oose.tech_store.service.promotion.PromotionNotFoundException;
 import com.oose.tech_store.service.promotion.PromotionService;
 import jakarta.validation.Valid;
@@ -68,11 +66,6 @@ public class PromotionController {
         return ResponseEntity.ok(promotionService.getPromotion(id));
     }
 
-    @GetMapping("/{id}/performance")
-    public ResponseEntity<PromotionPerformanceResponseDTO> getPromotionPerformance(@PathVariable String id) {
-        return ResponseEntity.ok(promotionService.getPromotionPerformance(id));
-    }
-
     @PostMapping
     public ResponseEntity<PromotionResponseDTO> createPromotion(
             @Valid @RequestBody CreatePromotionRequestDTO request) {
@@ -94,11 +87,6 @@ public class PromotionController {
 
     @ExceptionHandler(DuplicatePromotionCodeException.class)
     public ResponseEntity<Map<String, String>> handleDuplicateCode(DuplicatePromotionCodeException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", exception.getMessage()));
-    }
-
-    @ExceptionHandler(PromotionInUseException.class)
-    public ResponseEntity<Map<String, String>> handlePromotionInUse(PromotionInUseException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", exception.getMessage()));
     }
 

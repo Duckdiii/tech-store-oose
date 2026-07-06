@@ -1,0 +1,9 @@
+target/
+.env
+.env.properties
+recovery-storage/
+uploads/
+*.log
+manual_backup.sql
+Dockerfile
+.dockerignore

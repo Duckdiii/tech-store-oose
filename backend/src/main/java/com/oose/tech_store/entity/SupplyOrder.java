@@ -17,14 +17,17 @@ import java.util.List;
 @NoArgsConstructor
 public class SupplyOrder extends BaseEntity {
 
+    // Supplier
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
+    // Status
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private POStatus status = POStatus.PENDING;
 
+    // Items
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "purchase_order_id", nullable = false)
     private List<SupplyOrderItem> items = new ArrayList<>();

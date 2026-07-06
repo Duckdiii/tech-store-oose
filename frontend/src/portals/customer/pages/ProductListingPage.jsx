@@ -59,7 +59,7 @@ export function ProductListingPage() {
   const [page, setPage] = useState(1);
   const [goTo, setGoTo] = useState('');
   const navigate = useNavigate();
-  const PER_PAGE = 8;
+  const PER_PAGE = 9;
 
   // New Search Filters States
   const [categories, setCategories] = useState([]);
@@ -107,14 +107,16 @@ export function ProductListingPage() {
     setList(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
 
   useEffect(() => {
+    setPage(1);
+  }, [params, brands, prices, rams, storages, selectedCategory, inStock, onPromotion]);
+
+  useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       setError('');
       try {
         const q = params.get('q') || '';
-        const brandQuery = brands.length > 0 ? brands[0] : '';
-        const minPrice = prices.length > 0 ? prices[0].min : '';
-        const maxPrice = prices.length > 0 ? prices[0].max : '';
+        const priceRanges = prices.map(p => `${p.min ?? ''}-${p.max === Infinity ? '' : (p.max ?? '')}`);
         
         let sortQuery = '';
         if (sort === 'price-asc') sortQuery = 'price,asc';
@@ -122,12 +124,13 @@ export function ProductListingPage() {
 
         const data = await productApi.searchProducts({
           keyword: q,
-          brand: brandQuery,
+          brands,
           categoryId: selectedCategory || undefined,
           inStock: inStock === 'all' ? undefined : (inStock === 'true'),
           onPromotion: onPromotion ? true : undefined,
-          minPrice: minPrice !== '' && minPrice !== Infinity ? minPrice : undefined,
-          maxPrice: maxPrice !== '' && maxPrice !== Infinity ? maxPrice : undefined,
+          priceRanges,
+          ramGb: rams.map(value => Number.parseInt(value, 10)).filter(Number.isFinite),
+          storageGb: storages.map(value => Number.parseInt(value, 10)).filter(Number.isFinite),
           page: page - 1,
           size: PER_PAGE,
           sort: sortQuery || undefined
@@ -156,7 +159,7 @@ export function ProductListingPage() {
       fetchProducts();
     }, 300);
     return () => clearTimeout(timer);
-  }, [params, brands, prices, sort, page, selectedCategory, inStock, onPromotion]);
+  }, [params, brands, prices, rams, storages, sort, page, selectedCategory, inStock, onPromotion]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -313,6 +316,22 @@ export function ProductListingPage() {
               <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
                 <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Khoảng giá</h3>
                 {FILTER_PRICES.map(p => <CheckItem key={p.label} label={p.label} checked={prices.includes(p)} onToggle={() => toggle(prices, setPrices, p)}/>)}
+              </div>
+
+              {/* RAM Filter */}
+              <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
+                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>RAM</h3>
+                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                  {FILTER_RAMS.map(r => <Chip key={r} label={r} selected={rams.includes(r)} onToggle={() => toggle(rams, setRams, r)} />)}
+                </div>
+              </div>
+
+              {/* Storage Filter */}
+              <div style={{ paddingTop: 18, paddingBottom: 18, borderBottom: '1px solid #f4f5f7' }}>
+                <h3 style={{ fontSize: 11, fontWeight: 800, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 13 }}>Dung lượng</h3>
+                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                  {FILTER_STORAGES.map(s => <Chip key={s} label={s} selected={storages.includes(s)} onToggle={() => toggle(storages, setStorages, s)} />)}
+                </div>
               </div>
 
               {/* Custom Price Filter */}

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,6 +44,20 @@ public class CheckoutSessionStore {
             return null;
         }
         return checkout;
+    }
+
+    /**
+     * Sessions still sitting here longer than {@code minAge} means neither the
+     * browser return redirect nor the gateway IPN has finalized them yet — the
+     * reconciliation job actively queries the gateway for these instead of
+     * waiting indefinitely for a callback that may never arrive.
+     */
+    public List<PendingCheckout> findStalePending(Duration minAge) {
+        LocalDateTime threshold = LocalDateTime.now().minus(minAge);
+        return store.values().stream()
+                .filter(checkout -> !isExpired(checkout))
+                .filter(checkout -> checkout.getCreatedAt() != null && checkout.getCreatedAt().isBefore(threshold))
+                .toList();
     }
 
     private boolean isExpired(PendingCheckout checkout) {

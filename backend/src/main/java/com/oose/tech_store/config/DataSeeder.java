@@ -471,7 +471,7 @@ public class DataSeeder implements CommandLineRunner {
                 PromotionDiscountType.PERCENTAGE,
                 10.0,
                 LocalDateTime.of(2026, 1, 1, 0, 0),
-                LocalDateTime.of(2026, 6, 30, 23, 59));
+                LocalDateTime.of(2026, 7, 30, 23, 59));
         ensureVoucher(
                 "FREESHIP",
                 "Miễn phí vận chuyển toàn quốc",

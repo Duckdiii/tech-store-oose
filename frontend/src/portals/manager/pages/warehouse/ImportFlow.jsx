@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { confirmImport, getApiError, validateImport } from '../../../../api/warehouseApi';
 import { useTheme } from '../../../../shared/context/ThemeContext';
 import { ApiMessage, Field } from './components';
-import { blankItem } from './utils';
+import { blankItem, formatMoney } from './utils';
 
 const toNumberOrNull = (value) => value === '' ? null : Number(value);
 const itemProductId = (item) => (item.productId || '').trim();
@@ -15,6 +15,7 @@ export function ImportFlow({ products = [], variants = [], suppliers = [], onInv
   const [supplierId, setSupplierId] = useState('');
   const [note, setNote] = useState('');
   const [items, setItems] = useState([blankItem()]);
+  const [collapsedUids, setCollapsedUids] = useState(new Set());
   const [preview, setPreview] = useState(null);
   const [validatedPayload, setValidatedPayload] = useState(null);
   const [result, setResult] = useState(null);
@@ -56,12 +57,33 @@ export function ImportFlow({ products = [], variants = [], suppliers = [], onInv
         importPrice: current[0]?.importPrice || '',
       },
     ]);
+    // Auto-collapse every row already filled in so the newly added row is the only one expanded.
+    setCollapsedUids((current) => {
+      const next = new Set(current);
+      items.forEach((item) => next.add(item.uid));
+      return next;
+    });
     resetValidation();
   };
 
-  const removeItem = (index) => {
-    setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  const removeItem = (uid) => {
+    setItems((current) => current.filter((item) => item.uid !== uid));
+    setCollapsedUids((current) => {
+      if (!current.has(uid)) return current;
+      const next = new Set(current);
+      next.delete(uid);
+      return next;
+    });
     resetValidation();
+  };
+
+  const toggleCollapse = (uid) => {
+    setCollapsedUids((current) => {
+      const next = new Set(current);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
   };
 
   const applyFirstItemToAll = () => {
@@ -226,15 +248,50 @@ export function ImportFlow({ products = [], variants = [], suppliers = [], onInv
               ? variants.filter((variant) => variant.productId === selectedProduct.id && variant.status === 'AVAILABLE').length
               : 0;
 
+            const isCollapsed = collapsedUids.has(item.uid);
+            const summaryParts = [
+              selectedProduct?.name || 'Chưa chọn sản phẩm',
+              item.serialId.trim() || 'Chưa có mã máy',
+              (item.ramGb || item.storageGb) ? `${item.ramGb || '?'}GB/${item.storageGb || '?'}GB` : null,
+              item.color.trim() || null,
+              item.price ? `${formatMoney(item.price)}₫` : null,
+            ].filter(Boolean);
+
+            if (isCollapsed) {
+              return (
+                <div className="warehouse-item" style={{ padding: '9px 13px' }} key={item.uid}>
+                  <div className="warehouse-item__head" style={{ paddingBottom: 0 }}>
+                    <b>Sản phẩm nhập kho #{index + 1}</b>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <button type="button" className="admin-button admin-button--secondary" onClick={() => toggleCollapse(item.uid)}>
+                        Mở rộng
+                      </button>
+                      {items.length > 1 && (
+                        <button type="button" className="warehouse-remove" onClick={() => removeItem(item.uid)}>
+                          Xóa sản phẩm
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <small style={{ gridColumn: '1 / -1', color: '#6b7280' }}>{summaryParts.join(' · ')}</small>
+                </div>
+              );
+            }
+
             return (
-              <div className="warehouse-item" key={index}>
+              <div className="warehouse-item" key={item.uid}>
                 <div className="warehouse-item__head">
                   <b>Sản phẩm nhập kho #{index + 1}</b>
-                  {items.length > 1 && (
-                    <button type="button" className="warehouse-remove" onClick={() => removeItem(index)}>
-                      Xóa sản phẩm
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <button type="button" className="admin-button admin-button--secondary" onClick={() => toggleCollapse(item.uid)}>
+                      Thu gọn
                     </button>
-                  )}
+                    {items.length > 1 && (
+                      <button type="button" className="warehouse-remove" onClick={() => removeItem(item.uid)}>
+                        Xóa sản phẩm
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <Field label="Sản phẩm trong danh mục" wide>

@@ -5,6 +5,7 @@ import com.oose.tech_store.dto.payment.MomoIpnRequest;
 import com.oose.tech_store.exception.PaymentServiceUnavailableException;
 import com.oose.tech_store.payment.PendingCheckout;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class MomoPaymentGateway {
@@ -104,6 +106,49 @@ public class MomoPaymentGateway {
         } catch (Exception e) {
             throw new PaymentServiceUnavailableException(
                     "Payment service is currently unavailable. Please try again later.", e);
+        }
+    }
+
+    /**
+     * Actively asks MoMo whether {@code orderId} (our txnRef) was actually paid,
+     * used by the reconciliation job for checkouts stuck pending with no return
+     * redirect or IPN callback having arrived yet.
+     */
+    public boolean isPaid(String orderId) {
+        String requestId = UUID.randomUUID().toString();
+        String rawSignature = "accessKey=" + properties.getAccessKey()
+                + "&orderId=" + orderId
+                + "&partnerCode=" + properties.getPartnerCode()
+                + "&requestId=" + requestId;
+        String signature = hmacSHA256(rawSignature, properties.getSecretKey());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("partnerCode", properties.getPartnerCode());
+        body.put("requestId", requestId);
+        body.put("orderId", orderId);
+        body.put("lang", "vi");
+        body.put("signature", signature);
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restClient.post()
+                    .uri(properties.getQueryEndpoint())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                    .body(Map.class);
+
+            if (response == null) {
+                return false;
+            }
+            int resultCode = ((Number) response.getOrDefault("resultCode", -1)).intValue();
+            return resultCode == 0;
+        } catch (Exception e) {
+            // Network/gateway error while reconciling — treat as "not confirmed
+            // yet"; the next scheduled run retries.
+            log.warn("MoMo query transaction status failed for orderId={}", orderId, e);
+            return false;
         }
     }
 

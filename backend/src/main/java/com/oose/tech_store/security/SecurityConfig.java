@@ -1,5 +1,7 @@
 package com.oose.tech_store.security;
 
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,22 +16,33 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
 
+        // Comma-separated list of frontend origins allowed to call the API cross-site
+        // (e.g. the Vercel deployment URL). Defaults to the local Vite dev server.
+        @Value("${app.cors.allowed-origins:http://localhost:5173}")
+        private String allowedOrigins;
+
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry,
                         SecurityContextRepository securityContextRepository,
-                        JwtAuthFilter jwtAuthFilter) throws Exception {
+                        JwtAuthFilter jwtAuthFilter,
+                        MaintenanceFilter maintenanceFilter) throws Exception {
                 return http
                                 .csrf(csrf -> csrf.disable())
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .securityContext(context -> context
                                                 .requireExplicitSave(true)
                                                 .securityContextRepository(securityContextRepository))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/health", "/api/auth/**", "/api/promotions/flash-sale").permitAll()
+                                                .requestMatchers("/api/health", "/api/auth/**", "/api/promotions/flash-sale", "/api/system/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/uploads/**").permitAll()
                                                 // Payment gateway callbacks must remain public (external servers +
                                                 // browser redirects)
                                                 .requestMatchers(
@@ -90,7 +103,24 @@ public class SecurityConfig {
                                 .formLogin(form -> form.disable())
                                 .httpBasic(basic -> basic.disable())
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterBefore(maintenanceFilter, JwtAuthFilter.class)
                                 .build();
+        }
+
+        @Bean
+        CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+                configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(List.of("*"));
+                // The session cookie (used only for concurrent-login limiting) must travel
+                // cross-site for that feature to keep working once frontend/backend are on
+                // different domains; actual request auth is via the Bearer JWT regardless.
+                configuration.setAllowCredentials(true);
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
         }
 
         @Bean

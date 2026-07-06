@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -87,25 +88,49 @@ public class CartBundleServiceImpl implements CartBundleService {
     @Transactional
     public CartResponse syncCart(String customerId, List<CartSyncRequest.CartSyncItem> items) {
         Cart cart = loadCustomerCart(customerId);
-        
-        cart.getItems().clear();
-        
+
+        List<CartItem> existingItems = new ArrayList<>(cart.getItems());
+        List<CartItem> keptItems = new ArrayList<>();
+
         if (items != null) {
             for (CartSyncRequest.CartSyncItem itemDto : items) {
                 ProductVariant variant = productVariantRepository.findById(itemDto.productVariantId())
                         .orElseThrow(() -> new ResourceNotFoundException("Product variant not found: " + itemDto.productVariantId()));
-                
-                CartItem cartItem = new CartItem(cart, variant, itemDto.quantity());
-                
-                if (itemDto.bundleServiceIds() != null) {
-                    for (String bsId : itemDto.bundleServiceIds()) {
-                        BundleService bs = loadBundleService(bsId);
-                        cartItem.addBundleService(bs);
+
+                // Reuse the existing CartItem for this variant instead of recreating it,
+                // so its id (and any client references to it) stays valid.
+                CartItem cartItem = existingItems.stream()
+                        .filter(ci -> !keptItems.contains(ci) && ci.getProductVariant().getId().equals(variant.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (cartItem != null) {
+                    cartItem.changeQuantity(itemDto.quantity());
+                } else {
+                    cartItem = new CartItem(cart, variant, itemDto.quantity());
+                }
+                keptItems.add(cartItem);
+
+                List<String> desiredBundleIds = itemDto.bundleServiceIds() != null
+                        ? itemDto.bundleServiceIds()
+                        : List.of();
+                for (BundleService bs : new ArrayList<>(cartItem.getBundleServices())) {
+                    if (!desiredBundleIds.contains(bs.getId())) {
+                        cartItem.removeBundleService(bs);
                     }
+                }
+                for (String bsId : desiredBundleIds) {
+                    cartItem.addBundleService(loadBundleService(bsId));
                 }
             }
         }
-        
+
+        for (CartItem existing : existingItems) {
+            if (!keptItems.contains(existing)) {
+                cart.removeItem(existing);
+            }
+        }
+
         cartRepository.saveAndFlush(cart);
         return toCartResponse(cart);
     }

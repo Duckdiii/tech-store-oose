@@ -14,9 +14,7 @@ public class PriceContext {
 
     private BigDecimal subtotal;
     private BigDecimal membershipDiscount = BigDecimal.ZERO;
-    private BigDecimal promotionDiscount = BigDecimal.ZERO;
     private BigDecimal shippingFee = BigDecimal.ZERO;
-    private boolean freeShippingByPromotion = false;
     private BigDecimal taxAmount = BigDecimal.ZERO;
     private BigDecimal finalAmount;
 

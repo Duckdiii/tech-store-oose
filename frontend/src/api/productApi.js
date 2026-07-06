@@ -17,7 +17,20 @@ const normalizeProductForManager = (product) => ({
 
 export const productApi = {
   searchProducts: async (params) => {
-    const response = await httpClient.get('/products/search', { params });
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          if (item !== undefined && item !== null && item !== '') {
+            query.append(key, item);
+          }
+        });
+        return;
+      }
+      query.append(key, value);
+    });
+    const response = await httpClient.get(`/products/search?${query.toString()}`);
     return response.data;
   },
 
@@ -33,6 +46,22 @@ export const productApi = {
 
   getManagerCatalogStatusCounts: async (keyword) => {
     const response = await httpClient.get('/manage/products/status-counts', { params: { keyword } });
+    return response.data;
+  },
+
+  getManagerProductSpecOptions: async () => {
+    const response = await httpClient.get('/manage/products/spec-options');
+    return response.data;
+  },
+
+  uploadManagerProductImages: async (files) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    // Override the instance's default JSON header so axios sends real multipart
+    // form data (with boundary) instead of JSON-stringifying the FormData object.
+    const response = await httpClient.post('/manage/products/images/upload', formData, {
+      headers: { 'Content-Type': undefined },
+    });
     return response.data;
   },
 

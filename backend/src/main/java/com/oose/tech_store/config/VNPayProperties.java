@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 @Setter
 public class VNPayProperties {
     private String paymentUrl;
+    // VNPay's "querydr" transaction lookup API — used by the reconciliation job to
+    // actively check payment status for checkouts still stuck pending.
+    private String queryEndpoint;
     private String tmnCode;
     private String hashSecret;
     private String returnUrl;

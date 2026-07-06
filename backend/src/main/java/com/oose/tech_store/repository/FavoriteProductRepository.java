@@ -26,6 +26,8 @@ public interface FavoriteProductRepository extends JpaRepository<FavoriteProduct
 
         List<FavoriteProduct> findByProductVariant_Product_IdAndStatus(String productId, SubscriptionStatus status);
 
+        List<FavoriteProduct> findByProductVariant_Product_IdInAndStatus(List<String> productIds, SubscriptionStatus status);
+
         List<FavoriteProduct> findByCustomer_IdOrderByUpdatedAtDesc(String customerId);
 
         Optional<FavoriteProduct> findByCustomer_IdAndProductVariant_Id(String customerId, String productVariantId);

@@ -1,5 +1,6 @@
 package com.oose.tech_store.service.warehouse.impl;
 
+import com.oose.tech_store.dto.warehouse.AffectedProductDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductPreviewResponseDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductRequestDTO;
 import com.oose.tech_store.dto.warehouse.ImportProductResponseDTO;
@@ -12,14 +13,16 @@ import com.oose.tech_store.entity.enums.ImportAndExportStatus;
 import com.oose.tech_store.repository.ImportLogRepository;
 import com.oose.tech_store.repository.ProductRepository;
 import com.oose.tech_store.repository.ProductVariantRepository;
+import com.oose.tech_store.service.customer.InventoryNotificationService;
 import com.oose.tech_store.service.warehouse.ImportProductService;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.LinkedHashMap;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -33,6 +36,7 @@ public class ImportProductServiceImpl implements ImportProductService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ImportLogRepository importLogRepository;
+    private final InventoryNotificationService inventoryNotificationService;
 
     /**
      * Validates the request without writing anything to the database. The client displays this
@@ -92,6 +96,7 @@ public class ImportProductServiceImpl implements ImportProductService {
             variant.setId(item.serialId().trim());
             variants.add(variant);
         }
+        Map<String, PriceChange> priceChanges = detectPriceChanges(variants);
 
         List<ProductVariant> savedVariants;
         ImportLog savedImportLog;
@@ -111,12 +116,108 @@ public class ImportProductServiceImpl implements ImportProductService {
                     "Unable to import products. Please try again later", e);
         }
 
+        inventoryNotificationService.notifyCustomerRestock(productsRestockedFromZero(savedVariants));
+        notifyPriceChanges(priceChanges);
+
         return new ImportProductResponseDTO(
                 savedImportLog.getId(),
                 savedImportLog.getStatus(),
                 savedVariants.size(),
                 savedVariants.stream().map(ProductVariant::getId).toList(),
                 "Products were imported successfully");
+    }
+
+    private List<AffectedProductDTO> affectedProducts(List<ProductVariant> variants) {
+        Map<String, AffectedProductDTO> products = new LinkedHashMap<>();
+        for (ProductVariant variant : variants) {
+            String key = variantKey(variant);
+            products.putIfAbsent(key, affectedProduct(variant));
+        }
+        return new ArrayList<>(products.values());
+    }
+
+    private Map<String, PriceChange> detectPriceChanges(List<ProductVariant> variants) {
+        Map<String, PriceChange> changes = new LinkedHashMap<>();
+        for (ProductVariant variant : variants) {
+            String key = variantKey(variant);
+            if (changes.containsKey(key)) {
+                continue;
+            }
+
+            List<ProductVariant> existingAvailable = productVariantRepository.findByProductIdAndSpecsAndStatus(
+                    variant.getProduct().getId(),
+                    variant.getRamGb(),
+                    variant.getStorageGb(),
+                    variant.getColor(),
+                    com.oose.tech_store.entity.enums.ProductVariantStatus.AVAILABLE);
+            if (existingAvailable.isEmpty()) {
+                continue;
+            }
+
+            BigDecimal oldPrice = existingAvailable.stream()
+                    .map(ProductVariant::getPrice)
+                    .filter(price -> price != null)
+                    .findFirst()
+                    .orElse(null);
+            BigDecimal newPrice = variant.getPrice();
+            if (oldPrice != null && newPrice != null && oldPrice.compareTo(newPrice) != 0) {
+                changes.put(key, new PriceChange(affectedProduct(variant), oldPrice, newPrice));
+            }
+        }
+        return changes;
+    }
+
+    private void notifyPriceChanges(Map<String, PriceChange> priceChanges) {
+        priceChanges.values().forEach(change ->
+                inventoryNotificationService.notifyPriceUpdated(
+                        change.product(),
+                        change.oldPrice(),
+                        change.newPrice()));
+    }
+
+    private List<AffectedProductDTO> productsRestockedFromZero(List<ProductVariant> variants) {
+        Map<String, Integer> importedQuantityByKey = new LinkedHashMap<>();
+        for (ProductVariant variant : variants) {
+            String key = variantKey(variant);
+            importedQuantityByKey.merge(key, 1, Integer::sum);
+        }
+
+        return affectedProducts(variants).stream()
+                .filter(product -> {
+                    String key = variantKey(product.productId(), product.ramGb(), product.storageGb(), product.color());
+                    long availableAfterImport = productVariantRepository.countByProductIdAndSpecsAndStatus(
+                            product.productId(),
+                            product.ramGb(),
+                            product.storageGb(),
+                            product.color(),
+                            com.oose.tech_store.entity.enums.ProductVariantStatus.AVAILABLE);
+                    return availableAfterImport == importedQuantityByKey.getOrDefault(key, 0);
+                })
+                .toList();
+    }
+
+    private String variantKey(ProductVariant variant) {
+        return variantKey(
+                variant.getProduct().getId(),
+                variant.getRamGb(),
+                variant.getStorageGb(),
+                variant.getColor());
+    }
+
+    private String variantKey(String productId, Integer ramGb, Integer storageGb, String color) {
+        return productId + "_" + ramGb + "_" + storageGb + "_" + color;
+    }
+
+    private AffectedProductDTO affectedProduct(ProductVariant variant) {
+        return new AffectedProductDTO(
+                variant.getProduct().getId(),
+                variant.getProduct().getName() + " (" + variant.getDisplayName() + ")",
+                variant.getRamGb(),
+                variant.getStorageGb(),
+                variant.getColor());
+    }
+
+    private record PriceChange(AffectedProductDTO product, BigDecimal oldPrice, BigDecimal newPrice) {
     }
 
     private Product findProduct(String productId) {

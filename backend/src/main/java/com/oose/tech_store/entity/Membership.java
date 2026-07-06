@@ -23,6 +23,7 @@ public class Membership extends BaseEntity {
     @Column(name = "tier", nullable = false, length = 30)
     private MembershipTier tier;
 
+    // MembershipBenefit
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "benefit_id", nullable = false, unique = true)
     private MembershipBenefit benefit;
@@ -33,6 +34,7 @@ public class Membership extends BaseEntity {
     @Column(name = "max_spending", precision = 15, scale = 2)
     private BigDecimal maxSpending;
 
+    // Customers
     @OneToMany(mappedBy = "membership", fetch = FetchType.LAZY)
     private List<Customer> customers = new ArrayList<>();
 

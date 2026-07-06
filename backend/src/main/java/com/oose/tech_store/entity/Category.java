@@ -23,6 +23,7 @@ public class Category extends BaseEntity {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    // Products
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     private List<Product> products = new ArrayList<>();
 

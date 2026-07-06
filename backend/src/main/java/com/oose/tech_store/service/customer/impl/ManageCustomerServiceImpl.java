@@ -1,4 +1,4 @@
-package com.oose.tech_store.service.customer;
+package com.oose.tech_store.service.customer.impl;
 
 import com.oose.tech_store.dto.manage.ManageCustomerResponseDTO;
 import com.oose.tech_store.dto.manage.ManageCustomerSearchRequestDTO;
@@ -6,6 +6,7 @@ import com.oose.tech_store.entity.Customer;
 import com.oose.tech_store.repository.CustomerRepository;
 import com.oose.tech_store.repository.OrderRepository;
 import com.oose.tech_store.repository.OrderRepository.CustomerOrderStats;
+import com.oose.tech_store.service.customer.ManageCustomerService;
 import com.oose.tech_store.specification.ManageCustomerSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
